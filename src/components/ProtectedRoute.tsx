@@ -7,17 +7,8 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
-
-  // Zeige Ladebildschirm während der Authentifizierungsstatus geprüft wird
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Lade...</p>
-      </div>
-    );
-  }
 
   if (!isAuthenticated) {
     // Nicht authentifizierte Benutzer zur Login-Seite umleiten

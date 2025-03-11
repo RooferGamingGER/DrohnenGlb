@@ -1,301 +1,197 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/hooks/use-toast";
 
+// Benutzertyp-Definition
 export interface User {
   id: string;
   username: string;
   isAdmin?: boolean;
 }
 
+// AuthContext Typdefinition
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
-  register: (email: string, password: string) => Promise<boolean>;
-  createUser: (email: string, password: string, isAdmin: boolean) => Promise<boolean>;
-  deleteUser: (userId: string) => Promise<boolean>;
-  updateUser: (userId: string, updates: { username?: string; password?: string }) => Promise<boolean>;
+  login: (username: string, password: string) => boolean;
+  logout: () => void;
+  register: (username: string, password: string) => boolean;
+  createUser: (username: string, password: string, isAdmin: boolean) => boolean;
+  deleteUser: (userId: string) => boolean;
+  updateUser: (userId: string, updates: { username?: string; password?: string }) => boolean;
   users: Array<{ id: string; username: string; isAdmin?: boolean }>;
   isAuthenticated: boolean;
-  isLoading: boolean;
 }
 
+// Auth-Kontext erstellen
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Mock-Daten für Benutzer (in einer realen Anwendung würde dies in einer Datenbank gespeichert)
+const USERS_STORAGE_KEY = 'app_users';
+
+const defaultUsers = [
+  {
+    id: '1',
+    username: 'admin',
+    password: 'admin123',
+    isAdmin: true,
+  },
+];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<Array<{ id: string; username: string; isAdmin?: boolean }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const [users, setUsers] = useState<Array<{ id: string; username: string; password: string; isAdmin?: boolean }>>(
+    () => {
+      // Benutzer aus dem localStorage laden oder Standardbenutzer verwenden
+      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+      return storedUsers ? JSON.parse(storedUsers) : defaultUsers;
+    }
+  );
 
+  // Benutzer beim Start aus dem localStorage laden
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setIsLoading(true);
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { data: userData, error } = await supabase
-            .from('app_users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Fehler beim Abrufen der Benutzerinformationen:', error);
-            setUser(null);
-          } else if (userData) {
-            setUser({
-              id: userData.id,
-              username: userData.username,
-              isAdmin: userData.is_admin,
-            });
-          }
-        } else {
-          setUser(null);
-        }
-        
-        await fetchUsers();
-      } catch (error) {
-        console.error('Fehler beim Überprüfen der Authentifizierung:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkAuth();
-    
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        const { data: userData, error } = await supabase
-          .from('app_users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (!error && userData) {
-          setUser({
-            id: userData.id,
-            username: userData.username,
-            isAdmin: userData.is_admin,
-          });
-        }
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      
+      // Prüfen ob der gespeicherte Benutzer noch in der Benutzerliste existiert
+      const userStillExists = users.some(u => u.id === parsedUser.id);
+      
+      if (userStillExists) {
+        setUser(parsedUser);
       } else {
-        setUser(null);
+        // Wenn Benutzer nicht mehr existiert, aus dem localStorage entfernen
+        localStorage.removeItem('currentUser');
       }
-      
-      await fetchUsers();
-    });
-    
-    return () => {
-      authListener.subscription.unsubscribe();
+    }
+  }, [users]);
+
+  // Benutzer im localStorage aktualisieren, wenn sich die Liste ändert
+  useEffect(() => {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  }, [users]);
+
+  // Login-Funktion
+  const login = (username: string, password: string): boolean => {
+    const foundUser = users.find(
+      (u) => u.username === username && u.password === password
+    );
+
+    if (foundUser) {
+      // Passwort aus dem User-Objekt entfernen bevor es gespeichert wird
+      const { password, ...userWithoutPassword } = foundUser;
+      setUser(userWithoutPassword);
+      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+      return true;
+    }
+    return false;
+  };
+
+  // Logout-Funktion
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('currentUser');
+    // Don't clear saved credentials here to keep them for next login
+  };
+
+  // Registrierungsfunktion
+  const register = (username: string, password: string): boolean => {
+    // Prüfen, ob Benutzername bereits existiert
+    if (users.some((u) => u.username === username)) {
+      return false;
+    }
+
+    // Neuen Benutzer erstellen
+    const newUser = {
+      id: Date.now().toString(),
+      username,
+      password,
+      isAdmin: false,
     };
-  }, []);
 
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase.from('app_users').select('*');
-      
-      if (error) {
-        console.error('Fehler beim Abrufen der Benutzer:', error);
-      } else if (data) {
-        const formattedUsers = data.map(user => ({
-          id: user.id,
-          username: user.username,
-          isAdmin: user.is_admin,
-        }));
-        setUsers(formattedUsers);
-      }
-    } catch (error) {
-      console.error('Fehler beim Abrufen der Benutzer:', error);
-    }
+    setUsers([...users, newUser]);
+    return true;
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        console.error('Anmeldefehler:', error.message);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Unerwarteter Fehler bei der Anmeldung:', error);
-      return false;
-    }
-  };
-
-  const register = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (error) {
-        console.error('Registrierungsfehler:', error.message);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Unerwarteter Fehler bei der Registrierung:', error);
-      return false;
-    }
-  };
-
-  const createUser = async (email: string, password: string, isAdmin: boolean): Promise<boolean> => {
+  // Neue Funktion: Admin kann Benutzer erstellen
+  const createUser = (username: string, password: string, isAdmin: boolean): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
     if (!user?.isAdmin) {
-      toast({
-        title: "Fehlgeschlagen",
-        description: "Nur Administratoren können Benutzer erstellen.",
-        variant: "destructive",
-      });
       return false;
     }
-    
-    try {
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      
-      if (authError) {
-        console.error('Fehler beim Erstellen des Benutzers:', authError.message);
-        toast({
-          title: "Fehler",
-          description: authError.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      if (!authData.user) {
-        return false;
-      }
-      
-      const { error: updateError } = await supabase
-        .from('app_users')
-        .update({ is_admin: isAdmin })
-        .eq('id', authData.user.id);
-      
-      if (updateError) {
-        console.error('Fehler beim Aktualisieren des Admin-Status:', updateError.message);
-        return false;
-      }
-      
-      await fetchUsers();
-      
-      return true;
-    } catch (error) {
-      console.error('Unerwarteter Fehler beim Erstellen des Benutzers:', error);
+
+    // Prüfen, ob Benutzername bereits existiert
+    if (users.some((u) => u.username === username)) {
       return false;
     }
+
+    // Neuen Benutzer erstellen
+    const newUser = {
+      id: Date.now().toString(),
+      username,
+      password,
+      isAdmin,
+    };
+
+    setUsers([...users, newUser]);
+    return true;
   };
 
-  const updateUser = async (
+  // Neue Funktion: Benutzer aktualisieren
+  const updateUser = (
     userId: string,
     updates: { username?: string; password?: string }
-  ): Promise<boolean> => {
+  ): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
     if (!user?.isAdmin) {
-      toast({
-        title: "Fehlgeschlagen",
-        description: "Nur Administratoren können Benutzer aktualisieren.",
-        variant: "destructive",
-      });
       return false;
     }
-    
-    try {
-      if (updates.username) {
-        const { error: updateError } = await supabase
-          .from('app_users')
-          .update({ username: updates.username })
-          .eq('id', userId);
-        
-        if (updateError) {
-          console.error('Fehler beim Aktualisieren des Benutzernamens:', updateError.message);
-          return false;
+
+    setUsers(currentUsers => {
+      const updatedUsers = currentUsers.map(u => {
+        if (u.id === userId) {
+          // Aktualisiere den Benutzer mit den neuen Werten
+          const updatedUser = { ...u };
+          if (updates.username) updatedUser.username = updates.username;
+          if (updates.password) updatedUser.password = updates.password;
+          return updatedUser;
+        }
+        return u;
+      });
+
+      // Wenn der aktuell eingeloggte Benutzer aktualisiert wurde, aktualisiere auch den lokalen Zustand
+      if (user && user.id === userId) {
+        const updatedUser = updatedUsers.find(u => u.id === userId);
+        if (updatedUser) {
+          const { password, ...userWithoutPassword } = updatedUser;
+          setUser(userWithoutPassword);
+          localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
         }
       }
-      
-      if (updates.password) {
-        const { error: passwordError } = await supabase.auth.admin.updateUserById(
-          userId,
-          { password: updates.password }
-        );
-        
-        if (passwordError) {
-          console.error('Fehler beim Aktualisieren des Passworts:', passwordError.message);
-          return false;
-        }
-      }
-      
-      await fetchUsers();
-      
-      return true;
-    } catch (error) {
-      console.error('Unerwarteter Fehler beim Aktualisieren des Benutzers:', error);
-      return false;
-    }
+
+      return updatedUsers;
+    });
+
+    return true;
   };
 
-  const deleteUser = async (userId: string): Promise<boolean> => {
+  // Neue Funktion: Admin kann Benutzer löschen
+  const deleteUser = (userId: string): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
     if (!user?.isAdmin) {
-      toast({
-        title: "Fehlgeschlagen",
-        description: "Nur Administratoren können Benutzer löschen.",
-        variant: "destructive",
-      });
       return false;
     }
     
-    if (userId === user.id) {
-      toast({
-        title: "Fehler",
-        description: "Sie können Ihren eigenen Account nicht löschen.",
-        variant: "destructive",
-      });
+    // Prüfen, ob der zu löschende Benutzer existiert
+    const userToDelete = users.find(u => u.id === userId);
+    if (!userToDelete) {
       return false;
     }
     
-    try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (error) {
-        console.error('Fehler beim Löschen des Benutzers:', error.message);
-        toast({
-          title: "Fehler",
-          description: error.message,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      await fetchUsers();
-      
-      return true;
-    } catch (error) {
-      console.error('Unerwarteter Fehler beim Löschen des Benutzers:', error);
-      return false;
-    }
+    // Benutzer aus der Liste entfernen
+    setUsers(users.filter(u => u.id !== userId));
+    return true;
   };
 
-  const logout = async (): Promise<void> => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Fehler beim Abmelden:', error);
-    }
-  };
+  // Erstelle eine Liste von Benutzern ohne Passwörter für die Admin-Anzeige
+  const userList = users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
 
   return (
     <AuthContext.Provider
@@ -307,9 +203,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createUser,
         deleteUser,
         updateUser,
-        users,
+        users: userList,
         isAuthenticated: !!user,
-        isLoading,
       }}
     >
       {children}
@@ -317,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// Hook für einfachen Zugriff auf den Auth-Kontext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
