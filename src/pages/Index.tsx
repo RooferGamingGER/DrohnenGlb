@@ -1,12 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import ModelViewer from '@/components/ModelViewer';
+import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 const Index = () => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Welcome toast with instructions
+    toast({
+      title: "Willkommen bei Drohnenaufmaß",
+      description: "Laden Sie ein 3D-Modell im GLB-Format hoch, um es zu betrachten.",
+      duration: 5000,
+    });
+  }, [toast]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="h-full w-full overflow-hidden bg-gradient-to-b from-background to-secondary/20">
+      <ModelViewer />
     </div>
   );
 };
