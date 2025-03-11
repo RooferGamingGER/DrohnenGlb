@@ -5,7 +5,7 @@ import UploadArea from './UploadArea';
 import ControlPanel from './ControlPanel';
 import MeasurementTools from './MeasurementTools';
 import LoadingOverlay from './LoadingOverlay';
-import { ChevronUp, Info, X, Download, Maximize, Minimize, Camera } from 'lucide-react';
+import { ChevronUp, Info, X, Download, Maximize, Minimize } from 'lucide-react';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,7 +34,6 @@ const ModelViewer: React.FC = () => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
-    takeScreenshot
   } = useModelViewer({ containerRef: viewerRef });
 
   // Fix infinite loop by memoizing the file selection handler
@@ -87,12 +86,6 @@ const ModelViewer: React.FC = () => {
     }
   }, []);
 
-  const handleTakeScreenshot = useCallback(() => {
-    if (takeScreenshot) {
-      takeScreenshot();
-    }
-  }, [takeScreenshot]);
-
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -107,7 +100,7 @@ const ModelViewer: React.FC = () => {
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
       <div 
-        className={`flex-1 relative overflow-hidden ${loadedModel ? 'bg-gray-50' : 'bg-white'}`} 
+        className={`flex-1 relative overflow-hidden ${loadedModel ? 'bg-gray-100' : 'bg-white'}`} 
         ref={viewerRef}
       >
         {!loadedModel && !isLoading && !isUploading && (
@@ -147,39 +140,31 @@ const ModelViewer: React.FC = () => {
         
         {loadedModel && (
           <>
-            {/* Top navigation bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm">
+            {/* New top control bar similar to reference site */}
+            <div className="absolute top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-sm px-4 py-2 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm">Drohnenaufmaß</span>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={resetView}
-                  className="text-xs flex items-center gap-1 px-3 py-1.5 border border-gray-200 hover:bg-gray-50 rounded-full transition-colors"
+                  className="text-xs flex items-center gap-1 px-3 py-1.5 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <span>Ansicht zurücksetzen</span>
                 </button>
                 
                 <button 
-                  onClick={handleTakeScreenshot}
-                  className="p-1.5 border border-gray-200 hover:bg-gray-50 rounded-full transition-colors"
-                  aria-label="Screenshot erstellen"
-                >
-                  <Camera className="w-4 h-4 text-gray-700" />
-                </button>
-                
-                <button 
                   onClick={toggleModelInfo}
-                  className="p-1.5 border border-gray-200 hover:bg-gray-50 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Modell-Hilfe"
                 >
-                  <Info className="w-4 h-4 text-gray-700" />
+                  <Info className="w-4 h-4 text-primary" />
                 </button>
                 
                 <button 
                   onClick={toggleFullscreen}
-                  className="p-1.5 border border-gray-200 hover:bg-gray-50 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Vollbild umschalten"
                 >
                   {isFullscreen ? 
@@ -191,7 +176,7 @@ const ModelViewer: React.FC = () => {
             </div>
             
             <div 
-              className="fixed left-4 top-20 transform z-20"
+              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
               onClick={handleToolsPanelClick}
               onMouseDown={handleToolsPanelClick}
               onMouseUp={handleToolsPanelClick}
@@ -210,14 +195,14 @@ const ModelViewer: React.FC = () => {
             
             <button
               onClick={toggleControls}
-              className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-white text-gray-700 shadow-sm px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 border border-gray-200"
+              className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-white text-primary shadow-lg px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 border border-gray-200"
             >
               <span className="text-sm">Optionen</span>
               <ChevronUp className={`w-4 h-4 transition-transform ${showControls ? 'rotate-180' : ''}`} />
             </button>
             
             {showModelInfo && (
-              <div className="fixed top-16 right-4 z-20 bg-white shadow-sm p-4 rounded-lg max-w-xs border border-gray-200">
+              <div className="fixed top-16 right-4 z-20 bg-white shadow-lg p-4 rounded-lg max-w-xs border border-gray-200">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-sm">Modellsteuerung</h3>
                   <button 
