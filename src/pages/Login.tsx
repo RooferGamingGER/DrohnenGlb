@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
 
 const Login = () => {
   const [email, setEmail] = useState(() => localStorage.getItem('savedEmail') || '');
@@ -32,18 +33,15 @@ const Login = () => {
     setIsLoading(true);
     setProgress(10);
     
-    // Start measuring performance
     const metrics: Record<string, number> = {};
     const startTime = performance.now();
-    metrics.startTime = startTime;
     
     try {
       const previousEmail = localStorage.getItem('savedEmail');
       const previousPassword = localStorage.getItem('savedPassword');
       
-      // Save credentials if remember me is checked
       setProgress(20);
-      metrics.beforeRememberMeTime = performance.now() - startTime;
+      metrics.speichernStart = performance.now() - startTime;
       
       if (rememberMe) {
         localStorage.setItem('savedEmail', email);
@@ -51,21 +49,20 @@ const Login = () => {
       }
       
       setProgress(30);
-      metrics.beforeLoginTime = performance.now() - startTime;
-      console.log("Attempting login...");
+      metrics.vorLogin = performance.now() - startTime;
+      console.log("Starte Login-Prozess...");
       
-      // Perform login
       const loginStartTime = performance.now();
       const success = await login(email, password);
       const loginEndTime = performance.now();
-      metrics.loginTime = loginEndTime - loginStartTime;
-      metrics.totalLoginTime = loginEndTime - startTime;
+      metrics.loginDauer = loginEndTime - loginStartTime;
+      metrics.gesamtDauer = loginEndTime - startTime;
       
-      console.log("Login performance metrics:", metrics);
       setProgress(90);
+      setPerformanceMetrics(metrics);
       
       if (success) {
-        console.log("Login successful, navigating...");
+        console.log("Login erfolgreich, leite weiter...");
         setProgress(100);
         navigate('/', { replace: true });
       } else {
@@ -85,9 +82,8 @@ const Login = () => {
         });
       }
     } catch (error) {
-      console.error("Login error:", error);
-      metrics.errorTime = performance.now() - startTime;
-      console.log("Login error metrics:", metrics);
+      console.error("Login-Fehler:", error);
+      metrics.fehlerZeit = performance.now() - startTime;
       
       toast({
         title: "Fehler",
@@ -100,19 +96,15 @@ const Login = () => {
         localStorage.removeItem('savedPassword');
       }
     } finally {
-      const endTime = performance.now();
-      metrics.totalTime = endTime - startTime;
-      console.log("Final login metrics:", metrics);
+      metrics.gesamtDauer = performance.now() - startTime;
       setPerformanceMetrics(metrics);
-      
-      setProgress(100);
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-6 rounded-lg border p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md space-y-6 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold">Anmelden</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -183,24 +175,21 @@ const Login = () => {
             {isLoading ? "Anmeldung läuft..." : "Anmelden"}
           </Button>
         </form>
-        
-        <div className="mt-4 text-center text-sm">
-          <p>
-            Nur ein Administrator kann neue Konten erstellen.
-          </p>
-        </div>
-        
+
         {Object.keys(performanceMetrics).length > 0 && (
-          <div className="mt-4 text-xs border-t pt-4 text-muted-foreground">
-            <p className="font-medium">Debug-Informationen:</p>
-            <ul className="space-y-1 mt-2">
+          <Card className="mt-4 p-4 bg-muted">
+            <h3 className="font-medium mb-2">Performance-Metriken:</h3>
+            <div className="space-y-1 text-sm">
               {Object.entries(performanceMetrics).map(([key, value]) => (
-                <li key={key}>{key}: {value.toFixed(2)}ms</li>
+                <div key={key} className="flex justify-between">
+                  <span>{key}:</span>
+                  <span>{value.toFixed(2)} ms</span>
+                </div>
               ))}
-            </ul>
-          </div>
+            </div>
+          </Card>
         )}
-      </div>
+      </Card>
     </div>
   );
 };
