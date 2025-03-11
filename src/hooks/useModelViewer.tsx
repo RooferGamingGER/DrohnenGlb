@@ -138,7 +138,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       }
     }
     // Normal hover detection for model or measurement points
-    else if (activeTool !== 'none' && modelRef.current && cameraRef.current) {
+    else if ((activeTool === 'length' || activeTool === 'height') && modelRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
@@ -149,7 +149,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       }
     }
     // Check if we're hovering over any measurement points
-    else if (activeTool === 'none' && measurementGroupRef.current && cameraRef.current) {
+    else if ((activeTool === 'none' || activeTool === 'move') && measurementGroupRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
       // Filter for meshes only (points)
@@ -162,7 +162,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (intersects.length > 0) {
         const pointId = intersects[0].object.name;
         setHoveredPointId(pointId);
-        document.body.style.cursor = 'grab';
+        
+        // Use specific cursor for move tool
+        if (activeTool === 'move') {
+          document.body.style.cursor = 'grab';
+        } else {
+          document.body.style.cursor = 'pointer';
+        }
         
         // Update the point material to show it's hoverable
         if (intersects[0].object instanceof THREE.Mesh) {
@@ -207,8 +213,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       event.preventDefault();
     }
     
-    // Check if we're clicking on a measurement point
-    if (hoveredPointId && !isDraggingPoint) {
+    // Check if we're clicking on a measurement point while using the move tool
+    if (hoveredPointId && (activeTool === 'move' || activeTool === 'none')) {
       // Prevent event propagation to stop orbit controls from activating
       event.preventDefault();
       if ('stopPropagation' in event) event.stopPropagation();
@@ -234,9 +240,24 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           setSelectedMeasurementId(measurementId);
           setSelectedPointIndex(pointIndex);
           
+          // Highlight the selected measurement
+          setMeasurements(prev => prev.map(m => ({
+            ...m,
+            isActive: m.id === measurementId
+          })));
+          
           // Disable orbit controls while dragging
           if (controlsRef.current) {
             controlsRef.current.enabled = false;
+          }
+          
+          // Show toast notification for user feedback
+          if (activeTool === 'move') {
+            toast({
+              title: "Messpunkt wird verschoben",
+              description: "Bewegen Sie den Cursor und klicken Sie erneut, um den Punkt zu platzieren",
+              duration: 2000,
+            });
           }
         }
       }
@@ -255,9 +276,24 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         controlsRef.current.enabled = true;
       }
       
+      // Reset active measurements
+      setMeasurements(prev => prev.map(m => ({
+        ...m,
+        isActive: false
+      })));
+      
       // Clear selection
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
+      
+      // If we are in move mode, show confirmation
+      if (activeTool === 'move') {
+        toast({
+          title: "Messpunkt verschoben",
+          description: "Der Messpunkt wurde erfolgreich neu positioniert",
+          duration: 2000,
+        });
+      }
     }
   };
 
@@ -611,7 +647,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const handleMeasurementClick = (event: MouseEvent | TouchEvent) => {
     // Skip if we're currently dragging a point or if we're clicking on a measurement point
-    if (isDraggingPoint || hoveredPointId) return;
+    // or if we're in move mode (since move mode has its own handling)
+    if (isDraggingPoint || hoveredPointId || activeTool === 'move') return;
     
     if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
         !sceneRef.current || !cameraRef.current) {
@@ -871,11 +908,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   useEffect(() => {
     if (!containerRef.current) return;
     
-    if (activeTool !== 'none') {
+    // Only add measurement click handlers for length and height tools
+    if (activeTool === 'length' || activeTool === 'height') {
       containerRef.current.addEventListener('click', handleMeasurementClick);
       containerRef.current.addEventListener('touchend', handleMeasurementClick, { passive: false });
       
       if (controlsRef.current) {
+        // Disable rotation for measurement tools
         controlsRef.current.enableRotate = false;
       }
     } else {
@@ -884,7 +923,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       setTemporaryPoints([]);
       
       if (controlsRef.current) {
-        controlsRef.current.enableRotate = true;
+        // Enable orbit controls for navigation and move tool
+        controlsRef.current.enableRotate = activeTool !== 'move';
+      }
+      
+      // For move tool, highlight measurement points
+      if (activeTool === 'move' && measurementGroupRef.current) {
+        // Make all measurement points more visible in move mode
+        measurementGroupRef.current.children.forEach(child => {
+          if (child instanceof THREE.Mesh && child.name.startsWith('point-')) {
+            child.scale.set(1.3, 1.3, 1.3); // Make points larger
+          }
+        });
+      } else if (measurementGroupRef.current) {
+        // Reset point sizes in other modes
+        measurementGroupRef.current.children.forEach(child => {
+          if (child instanceof THREE.Mesh && child.name.startsWith('point-')) {
+            child.scale.set(1, 1, 1);
+          }
+        });
       }
     }
     

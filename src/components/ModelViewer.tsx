@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
@@ -112,6 +113,12 @@ const ModelViewer: React.FC = () => {
               />
             </div>
             
+            {activeTool === 'move' && (
+              <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm p-3 rounded-lg z-50 shadow-lg animate-fade-in">
+                <p className="text-sm">Klicken Sie auf einen Messpunkt, um ihn zu verschieben</p>
+              </div>
+            )}
+            
             <button
               onClick={() => setShowControls(!showControls)}
               className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
@@ -145,6 +152,7 @@ const ModelViewer: React.FC = () => {
                   <p>• Zwei Finger zum Verschieben</p>
                   <p>• Doppelklick zum Zurücksetzen der Ansicht</p>
                   <p>• Für Messungen: Tool auswählen und auf das Modell klicken</p>
+                  <p>• Messpunkte verschieben: Tool auswählen und auf Messpunkt klicken</p>
                 </div>
               </div>
             )}
