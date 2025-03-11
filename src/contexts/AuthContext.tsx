@@ -15,6 +15,7 @@ interface AuthContextType {
   logout: () => void;
   register: (username: string, password: string) => boolean;
   createUser: (username: string, password: string, isAdmin: boolean) => boolean;
+  deleteUser: (userId: string) => boolean;
   users: Array<{ id: string; username: string; isAdmin?: boolean }>;
   isAuthenticated: boolean;
 }
@@ -123,6 +124,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
   
+  // Neue Funktion: Admin kann Benutzer löschen
+  const deleteUser = (userId: string): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
+    if (!user?.isAdmin) {
+      return false;
+    }
+    
+    // Prüfen, ob der zu löschende Benutzer existiert
+    const userToDelete = users.find(u => u.id === userId);
+    if (!userToDelete) {
+      return false;
+    }
+    
+    // Benutzer aus der Liste entfernen
+    setUsers(users.filter(u => u.id !== userId));
+    return true;
+  };
+  
   // Erstelle eine Liste von Benutzern ohne Passwörter für die Admin-Anzeige
   const userList = users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
 
@@ -134,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         register,
         createUser,
+        deleteUser,
         users: userList,
         isAuthenticated: !!user,
       }}

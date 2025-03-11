@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
 import { Navigate } from 'react-router-dom';
 import { Switch } from "@/components/ui/switch";
+import { Trash2 } from "lucide-react";
 
 const AdminDashboard = () => {
-  const { user, users, createUser } = useAuth();
+  const { user, users, createUser, deleteUser } = useAuth();
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,6 +54,36 @@ const AdminDashboard = () => {
         description: "Der Benutzername existiert bereits oder Sie haben keine Admin-Rechte.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteUser = (userId: string, username: string) => {
+    // Prüfen, ob es der aktuell eingeloggte Benutzer ist
+    if (userId === user?.id) {
+      toast({
+        title: "Fehler",
+        description: "Sie können Ihren eigenen Account nicht löschen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Bestätigung vom Benutzer einholen
+    if (window.confirm(`Möchten Sie den Benutzer "${username}" wirklich löschen?`)) {
+      const success = deleteUser(userId);
+      
+      if (success) {
+        toast({
+          title: "Benutzer gelöscht",
+          description: `Benutzer "${username}" wurde erfolgreich gelöscht.`,
+        });
+      } else {
+        toast({
+          title: "Fehler",
+          description: "Der Benutzer konnte nicht gelöscht werden.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -124,6 +155,7 @@ const AdminDashboard = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Benutzername</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Rolle</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
@@ -141,6 +173,17 @@ const AdminDashboard = () => {
                             Benutzer
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDeleteUser(user.id, user.username)}
+                          title="Benutzer löschen"
+                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
