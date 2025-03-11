@@ -26,6 +26,11 @@ const Header = () => {
               <span className="text-sm">
                 Angemeldet als: <b>{user?.username}</b>
               </span>
+              {user?.isAdmin && (
+                <Button variant="outline" asChild>
+                  <Link to="/admin">Admin Dashboard</Link>
+                </Button>
+              )}
               <Button variant="outline" onClick={handleLogout}>
                 Abmelden
               </Button>

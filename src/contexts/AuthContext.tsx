@@ -14,6 +14,8 @@ interface AuthContextType {
   login: (username: string, password: string) => boolean;
   logout: () => void;
   register: (username: string, password: string) => boolean;
+  createUser: (username: string, password: string, isAdmin: boolean) => boolean;
+  users: Array<{ id: string; username: string; isAdmin?: boolean }>;
   isAuthenticated: boolean;
 }
 
@@ -97,6 +99,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  // Neue Funktion: Admin kann Benutzer erstellen
+  const createUser = (username: string, password: string, isAdmin: boolean): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
+    if (!user?.isAdmin) {
+      return false;
+    }
+
+    // Prüfen, ob Benutzername bereits existiert
+    if (users.some((u) => u.username === username)) {
+      return false;
+    }
+
+    // Neuen Benutzer erstellen
+    const newUser = {
+      id: Date.now().toString(),
+      username,
+      password,
+      isAdmin,
+    };
+
+    setUsers([...users, newUser]);
+    return true;
+  };
+  
+  // Erstelle eine Liste von Benutzern ohne Passwörter für die Admin-Anzeige
+  const userList = users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
+
   return (
     <AuthContext.Provider
       value={{
@@ -104,6 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         register,
+        createUser,
+        users: userList,
         isAuthenticated: !!user,
       }}
     >
