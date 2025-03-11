@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Benutzertyp-Definition
@@ -16,6 +15,7 @@ interface AuthContextType {
   register: (username: string, password: string) => boolean;
   createUser: (username: string, password: string, isAdmin: boolean) => boolean;
   deleteUser: (userId: string) => boolean;
+  updateUser: (userId: string, updates: { username?: string; password?: string; id?: string }) => boolean;
   users: Array<{ id: string; username: string; isAdmin?: boolean }>;
   isAuthenticated: boolean;
 }
@@ -132,7 +132,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers([...users, newUser]);
     return true;
   };
-  
+
+  // Neue Funktion: Benutzer aktualisieren
+  const updateUser = (
+    userId: string,
+    updates: { username?: string; password?: string; id?: string }
+  ): boolean => {
+    // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
+    if (!user?.isAdmin) {
+      return false;
+    }
+
+    setUsers(currentUsers => {
+      const updatedUsers = currentUsers.map(u => {
+        if (u.id === userId) {
+          // Aktualisiere den Benutzer mit den neuen Werten
+          const updatedUser = { ...u };
+          if (updates.username) updatedUser.username = updates.username;
+          if (updates.password) updatedUser.password = updates.password;
+          if (updates.id) updatedUser.id = updates.id;
+          return updatedUser;
+        }
+        return u;
+      });
+
+      // Wenn der aktuell eingeloggte Benutzer aktualisiert wurde, aktualisiere auch den lokalen Zustand
+      if (user && user.id === userId) {
+        const updatedUser = updatedUsers.find(u => u.id === userId);
+        if (updatedUser) {
+          const { password, ...userWithoutPassword } = updatedUser;
+          setUser(userWithoutPassword);
+          localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+        }
+      }
+
+      return updatedUsers;
+    });
+
+    return true;
+  };
+
   // Neue Funktion: Admin kann Benutzer löschen
   const deleteUser = (userId: string): boolean => {
     // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
@@ -150,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(users.filter(u => u.id !== userId));
     return true;
   };
-  
+
   // Erstelle eine Liste von Benutzern ohne Passwörter für die Admin-Anzeige
   const userList = users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
 
@@ -163,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         createUser,
         deleteUser,
+        updateUser,
         users: userList,
         isAuthenticated: !!user,
       }}

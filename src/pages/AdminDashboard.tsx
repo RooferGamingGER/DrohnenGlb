@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,15 +5,24 @@ import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
 import { Navigate } from 'react-router-dom';
 import { Switch } from "@/components/ui/switch";
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye, EyeOff, Save, Edit } from "lucide-react";
 
 const AdminDashboard = () => {
-  const { user, users, createUser, deleteUser } = useAuth();
+  const { user, users, createUser, deleteUser, updateUser } = useAuth();
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // State für die Bearbeitung
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    username: string;
+    password: string;
+    id: string;
+  }>({ username: '', password: '', id: '' });
 
   // Wenn kein Admin-Benutzer, zur Startseite umleiten
   if (!user?.isAdmin) {
@@ -55,6 +63,48 @@ const AdminDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleStartEdit = (userItem: any) => {
+    setEditingUser(userItem.id);
+    setEditForm({
+      username: userItem.username,
+      password: '', // Passwort leer lassen, da es nicht angezeigt wird
+      id: userItem.id,
+    });
+  };
+
+  const handleSaveEdit = (userId: string) => {
+    const updates: { username?: string; password?: string; id?: string } = {};
+    
+    if (editForm.username !== users.find(u => u.id === userId)?.username) {
+      updates.username = editForm.username;
+    }
+    if (editForm.password) {
+      updates.password = editForm.password;
+    }
+    if (editForm.id !== userId) {
+      updates.id = editForm.id;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const success = updateUser(userId, updates);
+      if (success) {
+        toast({
+          title: "Benutzer aktualisiert",
+          description: "Die Änderungen wurden erfolgreich gespeichert.",
+        });
+      } else {
+        toast({
+          title: "Fehler",
+          description: "Die Änderungen konnten nicht gespeichert werden.",
+          variant: "destructive",
+        });
+      }
+    }
+    
+    setEditingUser(null);
+    setShowPassword(null);
   };
 
   const handleDeleteUser = (userId: string, username: string) => {
@@ -161,8 +211,28 @@ const AdminDashboard = () => {
                 <tbody className="bg-card divide-y divide-border">
                   {users.map((userItem) => (
                     <tr key={userItem.id}>
-                      <td className="px-4 py-3 text-sm">{userItem.id}</td>
-                      <td className="px-4 py-3 text-sm font-medium">{userItem.username}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {editingUser === userItem.id ? (
+                          <Input
+                            value={editForm.id}
+                            onChange={(e) => setEditForm({ ...editForm, id: e.target.value })}
+                            className="w-full"
+                          />
+                        ) : (
+                          userItem.id
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {editingUser === userItem.id ? (
+                          <Input
+                            value={editForm.username}
+                            onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                            className="w-full"
+                          />
+                        ) : (
+                          userItem.username
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm">
                         {userItem.isAdmin ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -175,15 +245,55 @@ const AdminDashboard = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleDeleteUser(userItem.id, userItem.username)}
-                          title="Benutzer löschen"
-                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {editingUser === userItem.id ? (
+                            <>
+                              <Input
+                                type={showPassword === userItem.id ? "text" : "password"}
+                                value={editForm.password}
+                                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                placeholder="Neues Passwort"
+                                className="w-32"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setShowPassword(showPassword === userItem.id ? null : userItem.id)}
+                                title={showPassword === userItem.id ? "Passwort verbergen" : "Passwort anzeigen"}
+                              >
+                                {showPassword === userItem.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleSaveEdit(userItem.id)}
+                                title="Änderungen speichern"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleStartEdit(userItem)}
+                              title="Benutzer bearbeiten"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleDeleteUser(userItem.id, userItem.username)}
+                            title="Benutzer löschen"
+                            className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
