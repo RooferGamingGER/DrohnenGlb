@@ -1,61 +1,40 @@
 
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Info, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 
 interface LoadingOverlayProps {
   progress: number;
-  showInstructions: boolean;
   isUploading: boolean;
-  onCloseInstructions: () => void;
 }
 
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   progress,
-  showInstructions,
   isUploading,
-  onCloseInstructions,
 }) => {
+  const getMessage = () => {
+    if (progress < 50) {
+      return 'Datei wird hochgeladen';
+    } else if (progress < 75) {
+      return 'Datei wird verarbeitet';
+    } else if (progress < 100) {
+      return 'Modell wird vorbereitet';
+    } else {
+      return 'Modell wird geladen';
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
       <div className="max-w-md w-full mx-4">
         <div className="bg-card p-6 rounded-lg shadow-lg">
           <div className="space-y-4">
-            {isUploading ? (
-              <>
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <Upload className="w-5 h-5 animate-pulse" />
-                  <h3 className="text-lg font-semibold">Datei wird hochgeladen</h3>
-                </div>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
-              </>
-            ) : progress < 100 ? (
-              <>
-                <h3 className="text-lg font-semibold text-center">Modell wird geladen</h3>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
-              </>
-            ) : showInstructions ? (
-              <>
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <Info className="w-5 h-5" />
-                  <h3 className="text-lg font-semibold">Modellsteuerung</h3>
-                </div>
-                <div className="space-y-3 text-sm text-muted-foreground">
-                  <p>• Klicken und ziehen zum Drehen des Modells</p>
-                  <p>• Scrollen oder Pinch-Geste zum Zoomen</p>
-                  <p>• Zwei Finger zum Verschieben</p>
-                  <p>• Doppelklick zum Zurücksetzen der Ansicht</p>
-                </div>
-                <button
-                  onClick={onCloseInstructions}
-                  className="w-full mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Verstanden
-                </button>
-              </>
-            ) : null}
+            <div className="flex items-center justify-center gap-2 text-primary">
+              <Upload className="w-5 h-5 animate-pulse" />
+              <h3 className="text-lg font-semibold">{getMessage()}</h3>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
           </div>
         </div>
       </div>

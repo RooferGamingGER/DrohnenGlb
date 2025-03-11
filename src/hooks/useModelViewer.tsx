@@ -1,13 +1,8 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { 
-  loadGLBModel, 
-  centerModel, 
-  loadTexture, 
-  BackgroundOption, 
-  backgroundOptions 
-} from '@/utils/modelUtils';
+import { loadGLBModel, centerModel, loadTexture, BackgroundOption, backgroundOptions } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseModelViewerProps {
@@ -152,30 +147,33 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: null,
       });
 
+      // Load the model with combined upload and loading progress
       const model = await loadGLBModel(
         file,
         (event) => {
           if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setState(prev => ({ ...prev, progress: percentComplete }));
+            // First 50% for upload progress
+            const uploadProgress = (event.loaded / event.total) * 50;
+            setState(prev => ({ ...prev, progress: Math.round(uploadProgress) }));
           }
         }
       );
+
+      // Set progress to 75% during model processing
+      setState(prev => ({ ...prev, progress: 75 }));
 
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
 
-      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
-
       if (cameraRef.current && controlsRef.current) {
-        // Improved camera positioning for better centering
-        const distance = size * 1.5; // Reduced from 2 to 1.5 to show model bigger
-        cameraRef.current.position.copy(center);
-        cameraRef.current.position.z += distance; // Position camera to front for a better initial view
+        const distance = size * 2;
+        
+        // Position camera for top-down view
+        cameraRef.current.position.set(center.x, center.y + distance, center.z);
         cameraRef.current.lookAt(center);
 
-        // Set controls to look at center of model
+        // Update controls
         controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
@@ -184,6 +182,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       sceneRef.current.add(model);
       modelRef.current = model;
 
+      // Set progress to 100% when everything is ready
       setState({
         isLoading: false,
         progress: 100,
@@ -191,8 +190,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      // Apply dark background
-      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+      // Apply dark background as default
+      const darkBackground = backgroundOptions.find(bg => bg.id === 'dark');
+      if (darkBackground) {
+        applyBackground(darkBackground);
+      }
 
       toast({
         title: "Modell geladen",
