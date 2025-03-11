@@ -170,12 +170,18 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
 
+      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
+
       if (cameraRef.current && controlsRef.current) {
         const distance = size * 2;
         cameraRef.current.position.copy(center);
-        cameraRef.current.position.z += distance;
+        cameraRef.current.position.y += distance; // Position camera above for top-down view
         cameraRef.current.lookAt(center);
 
+        // Enable all rotation axes
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.minPolarAngle = 0;
+        controlsRef.current.maxPolarAngle = Math.PI;
         controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
@@ -193,7 +199,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
       toast({
         title: "Modell geladen",
-        description: "Das 3D-Modell wurde erfolgreich geladen.",
+        description: "Das 3D-Modell wurde erfolgreich geladen. Sie können es jetzt von allen Seiten betrachten.",
         duration: 3000,
       });
 

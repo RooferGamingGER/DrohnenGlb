@@ -1,8 +1,8 @@
-
 import { useState, useRef } from 'react';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 import { formatFileSize, validateFile } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 interface UploadAreaProps {
   onFileSelected: (file: File) => void;
@@ -91,17 +91,15 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
         </div>
 
         {isLoading ? (
-          <div className="w-full max-w-xs">
-            <div className="flex justify-between mb-1 text-sm">
-              <span>Wird geladen...</span>
+          <div className="w-full space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{progress < 100 ? 'Wird hochgeladen...' : 'Wird verarbeitet...'}</span>
               <span>{progress}%</span>
             </div>
-            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center">
+              Bitte warten Sie, während das Modell geladen wird
+            </p>
           </div>
         ) : (
           <>
