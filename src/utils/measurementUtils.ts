@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -133,8 +132,8 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
 export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
     color: isHovered ? 0xffff00 : 0xff0000,
-    opacity: isHovered ? 0.8 : 1.0,
-    transparent: true
+    opacity: isHovered ? 0.9 : 0.8,
+    transparent: true,
+    depthTest: false
   });
 };
-
