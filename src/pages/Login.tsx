@@ -1,84 +1,87 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Spinner } from '@/components/ui/spinner';
 
-const Login = () => {
-  // Login state
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Register state
-  const [registerEmail, setRegisterEmail] = useState('');
-  const [registerUsername, setRegisterUsername] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
-  const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('');
+  const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-
-  const { login, register, isAuthenticated, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, register, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Check for saved credentials on component mount
+  const from = location.state?.from?.pathname || '/';
+
   useEffect(() => {
-    const savedEmail = localStorage.getItem('savedEmail');
-    const savedPassword = localStorage.getItem('savedPassword');
-    
-    if (savedEmail && savedPassword) {
-      setEmail(savedEmail);
-      setPassword(savedPassword);
-      setRememberMe(true);
+    // Redirect if already authenticated
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
     }
-  }, []);
+  }, [isAuthenticated, navigate, from]);
 
-  // Redirect to homepage if already logged in
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      navigate('/');
-    }
-  }, [isAuthenticated, authLoading, navigate]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      const { success, error } = await login(email, password);
-      
-      if (success) {
-        // Save login credentials if Remember Me is checked
-        if (rememberMe) {
-          localStorage.setItem('savedEmail', email);
-          localStorage.setItem('savedPassword', password);
-        } else {
-          // Remove saved credentials if Remember Me is unchecked
-          localStorage.removeItem('savedEmail');
-          localStorage.removeItem('savedPassword');
+      if (isRegistering) {
+        // Registration
+        if (!username.trim()) {
+          toast({
+            title: "Fehler",
+            description: "Bitte gib einen Benutzernamen ein.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
         }
-        
-        toast({
-          title: "Anmeldung erfolgreich",
-          description: "Sie wurden erfolgreich angemeldet.",
-        });
-        navigate('/');
+
+        console.log('Registering with:', { email, username, password });
+        const { success, error } = await register(email, username, password);
+
+        if (success) {
+          toast({
+            title: "Registrierung erfolgreich",
+            description: "Dein Account wurde erstellt. Du kannst dich jetzt anmelden.",
+          });
+          setIsRegistering(false);
+        } else {
+          toast({
+            title: "Registrierung fehlgeschlagen",
+            description: error || "Ein unbekannter Fehler ist aufgetreten.",
+            variant: "destructive",
+          });
+        }
       } else {
-        toast({
-          title: "Anmeldung fehlgeschlagen",
-          description: error || "Ungültige E-Mail-Adresse oder Passwort.",
-          variant: "destructive",
-        });
+        // Login
+        const { success, error } = await login(email, password);
+
+        if (success) {
+          toast({
+            title: "Anmeldung erfolgreich",
+            description: "Du wirst weitergeleitet...",
+          });
+          navigate(from, { replace: true });
+        } else {
+          toast({
+            title: "Anmeldung fehlgeschlagen",
+            description: error || "E-Mail oder Passwort falsch.",
+            variant: "destructive",
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Anmeldung fehlgeschlagen",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
+        title: "Fehler",
+        description: error.message || "Ein unbekannter Fehler ist aufgetreten.",
         variant: "destructive",
       });
     } finally {
@@ -86,198 +89,104 @@ const Login = () => {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (password !== registerPasswordConfirm) {
-      toast({
-        title: "Registrierung fehlgeschlagen",
-        description: "Die Passwörter stimmen nicht überein.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsRegistering(true);
-    
-    try {
-      const { success, error } = await register(registerEmail, registerUsername, registerPassword);
-      
-      if (success) {
-        toast({
-          title: "Registrierung erfolgreich",
-          description: "Ihr Konto wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
-        });
-        // Switch to login tab after successful registration
-        setEmail(registerEmail);
-        setPassword(registerPassword);
-        // Reset register form
-        setRegisterEmail('');
-        setRegisterUsername('');
-        setRegisterPassword('');
-        setRegisterPasswordConfirm('');
-      } else {
-        toast({
-          title: "Registrierung fehlgeschlagen",
-          description: error || "Die Registrierung konnte nicht abgeschlossen werden.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Registrierung fehlgeschlagen",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRegistering(false);
-    }
+  const toggleMode = () => {
+    setIsRegistering(!isRegistering);
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-6 rounded-lg border p-8 shadow-md">
+    <div className="container mx-auto h-full flex items-center justify-center py-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Willkommen</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Melden Sie sich an oder erstellen Sie ein neues Konto
+          <h1 className="text-3xl font-bold">
+            {isRegistering ? "Registrierung" : "Anmeldung"}
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            {isRegistering
+              ? "Erstelle einen neuen Account"
+              : "Melde dich mit deinen Zugangsdaten an"}
           </p>
         </div>
-        
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Anmelden</TabsTrigger>
-            <TabsTrigger value="register">Registrieren</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  E-Mail-Adresse
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="E-Mail-Adresse eingeben"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Passwort
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Passwort eingeben"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="rememberMe" 
-                  checked={rememberMe} 
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                />
-                <label
-                  htmlFor="rememberMe"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Anmeldedaten speichern
-                </label>
-              </div>
-              
-              <Button
-                type="submit"
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6 bg-card p-8 rounded-lg border shadow-sm">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium mb-1">
+                E-Mail-Adresse
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="deine@email.de"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Anmeldung läuft..." : "Anmelden"}
-              </Button>
-            </form>
-          </TabsContent>
-          
-          <TabsContent value="register">
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="registerEmail" className="text-sm font-medium">
-                  E-Mail-Adresse
-                </label>
-                <Input
-                  id="registerEmail"
-                  type="email"
-                  placeholder="E-Mail-Adresse eingeben"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="registerUsername" className="text-sm font-medium">
+              />
+            </div>
+
+            {isRegistering && (
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium mb-1">
                   Benutzername
                 </label>
                 <Input
-                  id="registerUsername"
-                  placeholder="Benutzernamen eingeben"
-                  value={registerUsername}
-                  onChange={(e) => setRegisterUsername(e.target.value)}
+                  id="username"
+                  name="username"
+                  type="text"
                   required
+                  placeholder="Dein Benutzername"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="registerPassword" className="text-sm font-medium">
-                  Passwort
-                </label>
-                <Input
-                  id="registerPassword"
-                  type="password"
-                  placeholder="Passwort eingeben"
-                  value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="registerPasswordConfirm" className="text-sm font-medium">
-                  Passwort bestätigen
-                </label>
-                <Input
-                  id="registerPasswordConfirm"
-                  type="password"
-                  placeholder="Passwort erneut eingeben"
-                  value={registerPasswordConfirm}
-                  onChange={(e) => setRegisterPasswordConfirm(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <Button
-                type="submit"
+            )}
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium mb-1">
+                Passwort
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full"
-                disabled={isRegistering}
-              >
-                {isRegistering ? "Registrierung läuft..." : "Registrieren"}
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
-        
-        <div className="mt-4 text-center text-sm">
-          <p>
-            Nur ein Administrator kann neue Admin-Konten erstellen.
-          </p>
-        </div>
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <Spinner className="mr-2 h-4 w-4" /> Laden...
+              </span>
+            ) : (
+              isRegistering ? "Registrieren" : "Anmelden"
+            )}
+          </Button>
+
+          <div className="text-center mt-4">
+            <Button
+              type="button"
+              variant="link"
+              onClick={toggleMode}
+              className="text-sm"
+            >
+              {isRegistering
+                ? "Du hast bereits einen Account? Anmelden"
+                : "Noch keinen Account? Registrieren"}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

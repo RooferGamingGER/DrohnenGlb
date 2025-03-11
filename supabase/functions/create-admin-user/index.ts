@@ -20,6 +20,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Create the admin user
+    console.log("Attempting to create admin user...");
+    
     const { data: userData, error: userError } = await supabase.auth.admin.createUser({
       email: 'info@drohnenvermessung-roofergaming.de',
       password: 'Whktx240482',
@@ -39,6 +41,47 @@ serve(async (req) => {
     }
 
     console.log("Created user:", userData);
+
+    // Verify that the profile was created via trigger
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userData.user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Error verifying profile creation:", profileError);
+      
+      // If the profile wasn't created by the trigger, create it manually
+      if (profileError.code === 'PGRST116') {
+        console.log("Profile not found, creating manually...");
+        
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userData.user.id,
+            username: 'RooferGaming',
+            is_admin: true
+          });
+          
+        if (insertError) {
+          console.error("Error creating profile manually:", insertError);
+          return new Response(
+            JSON.stringify({ error: "User created but profile creation failed: " + insertError.message }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
+        }
+        
+        console.log("Profile created manually successfully");
+      } else {
+        return new Response(
+          JSON.stringify({ error: "Error verifying profile: " + profileError.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+    } else {
+      console.log("Profile created successfully by trigger:", profileData);
+    }
 
     return new Response(
       JSON.stringify({ message: "Admin user created successfully", user: userData }),

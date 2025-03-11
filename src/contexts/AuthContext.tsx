@@ -167,12 +167,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Register function
   const register = async (email: string, username: string, password: string, isAdmin: boolean = false) => {
     try {
+      // Important: The data object must include username in the raw_user_meta_data
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username,
+            username: username, // This is critical - ensure username is provided
             is_admin: isAdmin,
           },
         },
@@ -183,6 +184,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message };
       }
 
+      // For debugging
+      console.log('Registration successful, user data:', data);
+      
       return { success: true };
     } catch (error: any) {
       console.error('Registration error:', error.message);
@@ -196,7 +200,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: "Nur Administratoren können Benutzer erstellen" };
     }
 
-    return await register(email, username, password, isAdmin);
+    try {
+      // Check that all required fields are provided
+      if (!email || !username || !password) {
+        return { success: false, error: "E-Mail, Benutzername und Passwort sind erforderlich" };
+      }
+
+      // Call the register function to create the user
+      return await register(email, username, password, isAdmin);
+    } catch (error: any) {
+      console.error('Create user error:', error.message);
+      return { success: false, error: error.message };
+    }
   };
 
   // Admin: Delete user function
