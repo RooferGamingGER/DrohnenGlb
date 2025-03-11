@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     const usersList = await getAllUsers();
     const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid);
-    return !!userInfo?.isAdmin;
+    return Boolean(userInfo?.isAdmin);
   };
 
   const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
