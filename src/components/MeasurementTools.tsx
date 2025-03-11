@@ -59,8 +59,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
   };
 
+  // Add a click handler to the entire tools panel to prevent propagation
+  const handleContainerClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+  };
+
   return (
-    <div className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg">
+    <div 
+      className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg"
+      onClick={handleContainerClick}
+    >
       <div className="flex flex-col gap-2">
         <TooltipProvider>
           <div className="flex flex-col items-center gap-2">

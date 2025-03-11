@@ -45,6 +45,11 @@ const ModelViewer: React.FC = () => {
     });
   };
 
+  // Add a handler to stop propagation of clicks on the tools panel
+  const handleToolsPanelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
       <div 
@@ -88,7 +93,10 @@ const ModelViewer: React.FC = () => {
         
         {loadedModel && (
           <>
-            <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20">
+            <div 
+              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
+              onClick={handleToolsPanelClick}
+            >
               <MeasurementTools 
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
