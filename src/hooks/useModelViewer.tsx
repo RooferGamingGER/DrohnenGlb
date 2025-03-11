@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { loadGLBModel, centerModel, loadTexture, BackgroundOption } from '@/utils/modelUtils';
+import { loadGLBModel, centerModel, loadTexture, BackgroundOption, backgroundOptions } from '@/utils/modelUtils';
 
 interface UseModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -29,7 +28,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     { id: 'neutral', name: 'Neutral', color: '#f5f5f7', texture: null }
   );
 
-  // Three.js references
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -41,21 +39,17 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const requestRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
 
-  // Initialize the scene
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Setup scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Setup camera
     const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
     const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
     camera.position.z = 5;
     cameraRef.current = camera;
 
-    // Setup renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -64,7 +58,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Setup lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
@@ -77,7 +70,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       ambient: ambientLight
     };
 
-    // Setup controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
@@ -87,7 +79,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     controls.update();
     controlsRef.current = controls;
 
-    // Render loop
     const animate = () => {
       if (controlsRef.current) {
         controlsRef.current.update();
@@ -102,7 +93,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     requestRef.current = requestAnimationFrame(animate);
 
-    // Handle window resize
     const handleResize = () => {
       if (
         containerRef.current &&
@@ -121,7 +111,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
 
-    // Apply initial background
     applyBackground(background);
 
     return () => {
@@ -143,12 +132,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, []);
 
-  // Handle model loading
   const loadModel = async (file: File) => {
     try {
       if (!sceneRef.current) return;
 
-      // Clear previous model
       if (modelRef.current && sceneRef.current) {
         sceneRef.current.remove(modelRef.current);
         modelRef.current = null;
@@ -161,7 +148,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: null,
       });
 
-      // Load model
       const model = await loadGLBModel(
         file,
         (event) => {
@@ -172,26 +158,21 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         }
       );
 
-      // Center model
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
 
-      // Adjust camera and controls
       if (cameraRef.current && controlsRef.current) {
-        // Position camera based on model size
         const distance = size * 2;
         cameraRef.current.position.copy(center);
         cameraRef.current.position.z += distance;
         cameraRef.current.lookAt(center);
 
-        // Update controls target
         controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
       }
 
-      // Add model to scene
       sceneRef.current.add(model);
       modelRef.current = model;
 
@@ -213,16 +194,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
-  // Update light rotation
   useEffect(() => {
     if (lightsRef.current) {
       const { directional } = lightsRef.current;
       
-      // Convert degrees to radians
       const radX = (lightRotation.x * Math.PI) / 180;
       const radY = (lightRotation.y * Math.PI) / 180;
       
-      // Calculate new light position
       const distance = 5;
       directional.position.x = Math.sin(radY) * Math.cos(radX) * distance;
       directional.position.y = Math.sin(radX) * distance;
@@ -230,18 +208,15 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   }, [lightRotation]);
 
-  // Update light intensity
   useEffect(() => {
     if (lightsRef.current) {
       lightsRef.current.directional.intensity = lightIntensity;
     }
   }, [lightIntensity]);
 
-  // Apply background
   const applyBackground = async (option: BackgroundOption) => {
     if (!sceneRef.current || !rendererRef.current) return;
 
-    // Remove previous background if any
     if (sceneRef.current.background) {
       if (sceneRef.current.background instanceof THREE.Texture) {
         sceneRef.current.background.dispose();
@@ -249,10 +224,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       sceneRef.current.background = null;
     }
 
-    // Set renderer alpha
     rendererRef.current.setClearAlpha(option.id === 'transparent' ? 0 : 1);
 
-    // Apply new background
     if (option.color) {
       sceneRef.current.background = new THREE.Color(option.color);
     } else if (option.texture) {
@@ -270,14 +243,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setBackground(option);
   };
 
-  // Reset controls to default view
   const resetView = () => {
     if (controlsRef.current) {
       controlsRef.current.reset();
     }
   };
 
-  // Reset light to default position
   const resetLight = () => {
     setLightRotation({ x: 0, y: 0 });
     setLightIntensity(1);
