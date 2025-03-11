@@ -167,10 +167,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const center = box.getCenter(new THREE.Vector3());
 
       if (cameraRef.current && controlsRef.current) {
+        // Calculate a better distance that ensures the model is visible but not too far
         const distance = size * 2;
         
-        // Position camera for top-down view
-        cameraRef.current.position.set(center.x, center.y + distance, center.z);
+        // Position camera for a better view (more similar to the original)
+        cameraRef.current.position.set(center.x, center.y, center.z + distance);
         cameraRef.current.lookAt(center);
 
         // Update controls
@@ -260,10 +261,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
       
-      // Reset the camera position
-      const distance = size * 1.5;
-      cameraRef.current.position.copy(center);
-      cameraRef.current.position.z += distance;
+      // Reset the camera position with front view instead of top-down
+      const distance = size * 2;
+      cameraRef.current.position.set(center.x, center.y, center.z + distance);
       cameraRef.current.lookAt(center);
       
       // Reset the controls target to center of model
