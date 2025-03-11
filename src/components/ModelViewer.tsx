@@ -5,7 +5,7 @@ import UploadArea from './UploadArea';
 import ControlPanel from './ControlPanel';
 import MeasurementTools from './MeasurementTools';
 import LoadingOverlay from './LoadingOverlay';
-import { ChevronUp, Info } from 'lucide-react';
+import { ChevronUp, Info, X, Download, Maximize, Minimize } from 'lucide-react';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -14,6 +14,7 @@ const ModelViewer: React.FC = () => {
   const [showControls, setShowControls] = useState(false);
   const [showModelInfo, setShowModelInfo] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const {
     isLoading,
@@ -69,6 +70,33 @@ const ModelViewer: React.FC = () => {
     setShowInstructions(false);
   }, []);
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch(err => {
+        console.error(`Error attempting to exit full-screen mode: ${err.message}`);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
       <div 
@@ -112,6 +140,41 @@ const ModelViewer: React.FC = () => {
         
         {loadedModel && (
           <>
+            {/* New top control bar similar to reference site */}
+            <div className="absolute top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-sm px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">Drohnenaufmaß</span>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={resetView}
+                  className="text-xs flex items-center gap-1 px-3 py-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <span>Ansicht zurücksetzen</span>
+                </button>
+                
+                <button 
+                  onClick={toggleModelInfo}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Modell-Hilfe"
+                >
+                  <Info className="w-4 h-4 text-primary" />
+                </button>
+                
+                <button 
+                  onClick={toggleFullscreen}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Vollbild umschalten"
+                >
+                  {isFullscreen ? 
+                    <Minimize className="w-4 h-4 text-gray-700" /> : 
+                    <Maximize className="w-4 h-4 text-gray-700" />
+                  }
+                </button>
+              </div>
+            </div>
+            
             <div 
               className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
               onClick={handleToolsPanelClick}
@@ -132,32 +195,24 @@ const ModelViewer: React.FC = () => {
             
             <button
               onClick={toggleControls}
-              className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+              className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-white text-primary shadow-lg px-4 py-2 rounded-full hover:bg-gray-50 transition-colors flex items-center gap-2 border border-gray-200"
             >
               <span className="text-sm">Optionen</span>
               <ChevronUp className={`w-4 h-4 transition-transform ${showControls ? 'rotate-180' : ''}`} />
             </button>
             
-            <button 
-              onClick={toggleModelInfo}
-              className="fixed top-4 right-4 z-20 p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-lg"
-              aria-label="Modell-Hilfe"
-            >
-              <Info className="w-5 h-5 text-primary" />
-            </button>
-            
             {showModelInfo && (
-              <div className="fixed top-16 right-4 z-20 bg-background/90 backdrop-blur-sm p-4 rounded-lg shadow-lg max-w-xs">
+              <div className="fixed top-16 right-4 z-20 bg-white shadow-lg p-4 rounded-lg max-w-xs border border-gray-200">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-sm">Modellsteuerung</h3>
                   <button 
                     onClick={toggleModelInfo}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    ✕
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="space-y-2 text-xs text-gray-600">
                   <p>• Klicken und ziehen zum Drehen des Modells</p>
                   <p>• Scrollen oder Pinch-Geste zum Zoomen</p>
                   <p>• Zwei Finger zum Verschieben</p>
@@ -167,7 +222,7 @@ const ModelViewer: React.FC = () => {
               </div>
             )}
             
-            <div className={`fixed bottom-0 left-0 right-0 z-10 bg-background/90 backdrop-blur-sm transition-all duration-300 ease-in-out transform ${showControls ? 'translate-y-0' : 'translate-y-full'}`}>
+            <div className={`fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 transition-all duration-300 ease-in-out transform ${showControls ? 'translate-y-0' : 'translate-y-full'}`}>
               <div className="max-w-7xl mx-auto p-4 flex flex-col md:flex-row gap-4">
                 <div className="flex-1 flex items-center gap-4">
                   <ControlPanel
@@ -175,15 +230,6 @@ const ModelViewer: React.FC = () => {
                     currentBackground={background}
                     onBackgroundChange={setBackground}
                   />
-                  
-                  <div className="flex-shrink-0">
-                    <button
-                      onClick={resetView}
-                      className="px-3 py-2 text-xs border border-border rounded hover:bg-secondary transition-colors"
-                    >
-                      Ansicht zurücksetzen
-                    </button>
-                  </div>
                 </div>
                 
                 <UploadArea 
