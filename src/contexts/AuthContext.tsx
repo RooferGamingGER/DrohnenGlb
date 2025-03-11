@@ -10,11 +10,12 @@ import {
   getAllUsers
 } from '../services/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export interface User {
   id: string;
   email: string;
-  username?: string; // Add username as optional property
+  username?: string;
   isAdmin?: boolean;
 }
 
@@ -28,6 +29,8 @@ interface AuthContextType {
   updateUser: (userId: string, updates: { email?: string; password?: string }) => Promise<boolean>;
   users: User[];
   isAuthenticated: boolean;
+  setupInitialAdmin: (email: string, password: string) => Promise<boolean>;
+  needsInitialAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +38,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [needsInitialAdmin, setNeedsInitialAdmin] = useState<boolean>(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Firebase Auth Status überwachen
@@ -56,14 +61,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    // Überprüfen, ob ein Initial-Admin benötigt wird
+    const checkForInitialAdmin = async () => {
+      const usersList = await getAllUsers();
+      setNeedsInitialAdmin(usersList.length === 0);
+    };
+
+    checkForInitialAdmin();
+  }, []);
+
+  useEffect(() => {
     // Benutzerliste aktualisieren
     const loadUsers = async () => {
       const usersList = await getAllUsers();
       const formattedUsers = usersList.map(user => ({
-        ...user,
-        username: user.email || '' // Map emails to usernames for display
+        id: user.id,
+        email: user.email || '',
+        username: user.email || '', // Map emails to usernames for display
+        isAdmin: user.isAdmin || false
       }));
-      setUsers(formattedUsers as User[]);
+      setUsers(formattedUsers);
     };
 
     if (user?.isAdmin) {
@@ -75,6 +92,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const usersList = await getAllUsers();
     const userInfo = usersList.find(u => u.id === uid);
     return userInfo?.isAdmin || false;
+  };
+
+  const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
+    // Prüfen, ob bereits Benutzer existieren
+    const usersList = await getAllUsers();
+    if (usersList.length > 0) {
+      toast({
+        title: "Fehler",
+        description: "Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Admin-Benutzer erstellen
+    const firebaseUser = await createUserInFirebase(email, password, true);
+    if (firebaseUser) {
+      toast({
+        title: "Erfolg",
+        description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
+      });
+      setNeedsInitialAdmin(false);
+      return true;
+    }
+    
+    return false;
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -101,10 +144,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (firebaseUser) {
       const updatedUsers = await getAllUsers();
       const formattedUsers = updatedUsers.map(user => ({
-        ...user,
-        username: user.email || '' // Map emails to usernames
+        id: user.id,
+        email: user.email || '',
+        username: user.email || '', // Map emails to usernames
+        isAdmin: user.isAdmin || false
       }));
-      setUsers(formattedUsers as User[]);
+      setUsers(formattedUsers);
     }
     return !!firebaseUser;
   };
@@ -115,10 +160,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (success) {
       const updatedUsers = await getAllUsers();
       const formattedUsers = updatedUsers.map(user => ({
-        ...user,
-        username: user.email || '' // Map emails to usernames
+        id: user.id,
+        email: user.email || '',
+        username: user.email || '', // Map emails to usernames
+        isAdmin: user.isAdmin || false
       }));
-      setUsers(formattedUsers as User[]);
+      setUsers(formattedUsers);
     }
     return success;
   };
@@ -132,10 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (success && updates.email) {
       const updatedUsers = await getAllUsers();
       const formattedUsers = updatedUsers.map(user => ({
-        ...user,
-        username: user.email || '' // Map emails to usernames
+        id: user.id,
+        email: user.email || '',
+        username: user.email || '', // Map emails to usernames
+        isAdmin: user.isAdmin || false
       }));
-      setUsers(formattedUsers as User[]);
+      setUsers(formattedUsers);
     }
     return success;
   };
@@ -152,6 +201,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUser,
         users,
         isAuthenticated: !!user,
+        setupInitialAdmin,
+        needsInitialAdmin,
       }}
     >
       {children}

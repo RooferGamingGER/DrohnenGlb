@@ -5,13 +5,18 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, needsInitialAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Wenn wir noch in der Ersteinrichtung sind, zeigen wir keinen Header an
+  if (needsInitialAdmin) {
+    return null;
+  }
 
   return (
     <header className="border-b bg-background p-4">
@@ -24,7 +29,7 @@ const Header = () => {
           {isAuthenticated ? (
             <>
               <span className="text-sm">
-                Angemeldet als: <b>{user?.username || user?.email}</b>
+                Angemeldet als: <b>{user?.email}</b>
               </span>
               {user?.isAdmin && (
                 <Button variant="outline" asChild>
