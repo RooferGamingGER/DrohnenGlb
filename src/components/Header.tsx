@@ -40,9 +40,7 @@ const Header = () => {
               <Button variant="outline" asChild>
                 <Link to="/login">Anmelden</Link>
               </Button>
-              <Button asChild>
-                <Link to="/register">Registrieren</Link>
-              </Button>
+              {/* Register button removed */}
             </>
           )}
         </div>

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,8 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Automatisch zur Hauptseite umleiten, wenn bereits eingeloggt
-  React.useEffect(() => {
+  // Redirect to homepage if already logged in
+  useEffect(() => {
     if (isAuthenticated) {
       navigate('/');
     }
@@ -25,21 +25,20 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Login versuchen
     const success = login(username, password);
     
     setIsLoading(false);
     
     if (success) {
       toast({
-        title: "Erfolgreich angemeldet",
-        description: `Willkommen zurück, ${username}!`,
+        title: "Anmeldung erfolgreich",
+        description: "Sie wurden erfolgreich angemeldet.",
       });
       navigate('/');
     } else {
       toast({
         title: "Anmeldung fehlgeschlagen",
-        description: "Benutzername oder Passwort ist falsch.",
+        description: "Ungültiger Benutzername oder Passwort.",
         variant: "destructive",
       });
     }
@@ -51,7 +50,7 @@ const Login = () => {
         <div className="text-center">
           <h1 className="text-3xl font-bold">Anmelden</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Melden Sie sich an, um fortzufahren
+            Melden Sie sich mit Ihrem Konto an
           </p>
         </div>
         
@@ -94,10 +93,7 @@ const Login = () => {
         
         <div className="mt-4 text-center text-sm">
           <p>
-            Noch kein Konto?{" "}
-            <Link to="/register" className="text-primary hover:underline">
-              Registrieren
-            </Link>
+            Nur ein Administrator kann neue Konten erstellen.
           </p>
         </div>
       </div>
