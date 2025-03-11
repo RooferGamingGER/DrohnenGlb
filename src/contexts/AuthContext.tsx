@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from '@supabase/supabase-js';
@@ -17,7 +16,6 @@ interface AuthContextType {
   session: Session | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  register: (email: string, username: string, password: string, isAdmin?: boolean) => Promise<{ success: boolean; error?: string }>;
   createUser: (email: string, username: string, password: string, isAdmin: boolean) => Promise<{ success: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
   updateUser: (userId: string, updates: { username?: string; password?: string; email?: string }) => Promise<{ success: boolean; error?: string }>;
@@ -93,33 +91,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Fetch all users (for admin dashboard)
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (user?.isAdmin) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*');
+  const fetchUsers = async () => {
+    if (user?.isAdmin) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
 
-          if (error) {
-            console.error('Error fetching users:', error);
-            return;
-          }
-
-          if (data) {
-            setUsers(data.map(profile => ({
-              id: profile.id,
-              username: profile.username,
-              isAdmin: profile.is_admin
-            })));
-          }
-        } catch (error) {
+        if (error) {
           console.error('Error fetching users:', error);
+          return;
         }
-      }
-    };
 
-    fetchUsers();
+        if (data) {
+          setUsers(data.map(profile => ({
+            id: profile.id,
+            username: profile.username,
+            isAdmin: profile.is_admin
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (user?.isAdmin) {
+      fetchUsers();
+    }
   }, [user?.isAdmin]);
 
   // Login function
@@ -131,13 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        console.error('Login error:', error.message);
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error: any) {
-      console.error('Login error:', error.message);
       return { success: false, error: error.message };
     }
   };
@@ -147,7 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Logout error:', error.message);
         toast({
           title: "Fehler beim Abmelden",
           description: error.message,
@@ -155,42 +152,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error: any) {
-      console.error('Logout error:', error.message);
       toast({
         title: "Fehler beim Abmelden",
         description: error.message,
         variant: "destructive",
       });
-    }
-  };
-
-  // Register function
-  const register = async (email: string, username: string, password: string, isAdmin: boolean = false) => {
-    try {
-      // Important: The data object must include username in the raw_user_meta_data
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username, // This is critical - ensure username is provided
-            is_admin: isAdmin,
-          },
-        },
-      });
-
-      if (error) {
-        console.error('Registration error:', error.message);
-        return { success: false, error: error.message };
-      }
-
-      // For debugging
-      console.log('Registration successful, user data:', data);
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('Registration error:', error.message);
-      return { success: false, error: error.message };
     }
   };
 
@@ -201,15 +167,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Check that all required fields are provided
-      if (!email || !username || !password) {
-        return { success: false, error: "E-Mail, Benutzername und Passwort sind erforderlich" };
+      const { data: { user: newUser }, error: createError } = await supabase.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          username: username,
+          is_admin: isAdmin
+        }
+      });
+
+      if (createError) {
+        return { success: false, error: createError.message };
       }
 
-      // Call the register function to create the user
-      return await register(email, username, password, isAdmin);
+      toast({
+        title: "Benutzer erstellt",
+        description: `Benutzer ${username} wurde erfolgreich erstellt.`,
+      });
+
+      // Refresh users list
+      fetchUsers();
+      
+      return { success: true };
     } catch (error: any) {
-      console.error('Create user error:', error.message);
       return { success: false, error: error.message };
     }
   };
@@ -220,16 +201,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: "Nur Administratoren können Benutzer löschen" };
     }
 
-    if (userId === user.id) {
-      return { success: false, error: "Sie können Ihren eigenen Account nicht löschen" };
-    }
-
     try {
-      // This would typically involve an admin function in Supabase
-      // For now, we'll return a placeholder success
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Refresh users list
+      fetchUsers();
+      
       return { success: true };
     } catch (error: any) {
-      console.error('Delete user error:', error.message);
       return { success: false, error: error.message };
     }
   };
@@ -241,24 +224,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // This would typically involve an admin function in Supabase
-      // For now, we'll update only the username in the profiles table
+      let updateData: any = {};
+      
+      if (updates.email) {
+        updateData.email = updates.email;
+      }
+      
+      if (updates.password) {
+        updateData.password = updates.password;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: authError } = await supabase.auth.admin.updateUserById(
+          userId,
+          updateData
+        );
+
+        if (authError) {
+          return { success: false, error: authError.message };
+        }
+      }
+
       if (updates.username) {
-        const { error } = await supabase
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({ username: updates.username })
           .eq('id', userId);
 
-        if (error) {
-          console.error('Update user error:', error.message);
-          return { success: false, error: error.message };
+        if (profileError) {
+          return { success: false, error: profileError.message };
         }
       }
 
-      // Password and email updates would require admin functions
+      // Refresh users list
+      fetchUsers();
+      
       return { success: true };
     } catch (error: any) {
-      console.error('Update user error:', error.message);
       return { success: false, error: error.message };
     }
   };
@@ -270,7 +272,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         login,
         logout,
-        register,
         createUser,
         deleteUser,
         updateUser,
@@ -284,7 +285,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Hook for easy access to the Auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
