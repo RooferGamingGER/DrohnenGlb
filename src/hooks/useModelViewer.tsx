@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -169,13 +170,20 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
 
       if (cameraRef.current && controlsRef.current) {
-        // Improved camera positioning for better centering
-        const distance = size * 1.5; // Reduced from 2 to 1.5 to show model bigger
+        // Improved camera positioning for better model centering
+        const distance = size * 1.5;
+        
+        // Reset camera position completely before setting new position
+        cameraRef.current.position.set(0, 0, 0);
+        
+        // Position camera directly in front of the model
         cameraRef.current.position.copy(center);
-        cameraRef.current.position.z += distance; // Position camera to front for a better initial view
+        cameraRef.current.position.z += distance;
+        
+        // Make sure camera is looking directly at the center
         cameraRef.current.lookAt(center);
 
-        // Set controls to look at center of model
+        // Reset and update controls
         controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
