@@ -1,16 +1,13 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 
-// Benutzertyp-Definition
 export interface User {
   id: string;
   username: string;
   isAdmin?: boolean;
 }
 
-// AuthContext Typdefinition
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -24,19 +21,7 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-// Auth-Kontext erstellen
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Import der bestehenden lokalen Benutzer
-const USERS_STORAGE_KEY = 'app_users';
-const defaultUsers = [
-  {
-    id: '1',
-    username: 'admin',
-    password: 'admin123',
-    isAdmin: true,
-  },
-];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -44,53 +29,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Prüfen, ob bestehende lokale Benutzer vorhanden sind und diese zu Supabase migrieren
-  useEffect(() => {
-    const migrateLocalUsers = async () => {
-      try {
-        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-        const localUsers = storedUsers ? JSON.parse(storedUsers) : defaultUsers;
-        
-        // Nur ausführen, wenn wir einen Administrator gefunden haben
-        const adminUser = localUsers.find(u => u.isAdmin);
-        if (adminUser) {
-          // Prüfen, ob bereits Benutzer in Supabase existieren
-          const { data: existingUsers } = await supabase.from('app_users').select('*');
-          
-          if (!existingUsers || existingUsers.length === 0) {
-            // Erstelle den Admin-Benutzer in Supabase mit der benutzerdefinierten Funktion
-            const { data, error } = await supabase.rpc('create_admin_user', {
-              email: adminUser.username,
-              password: adminUser.password
-            });
-            
-            if (error) {
-              console.error('Fehler beim Erstellen des Admin-Benutzers:', error);
-            } else {
-              console.log('Admin-Benutzer erfolgreich migriert:', data);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Fehler bei der Migration der lokalen Benutzer:', error);
-      }
-    };
-
-    // Führe Migration durch
-    migrateLocalUsers();
-  }, []);
-
-  // Überprüfen des Authentifizierungsstatus beim Laden
   useEffect(() => {
     const checkAuth = async () => {
       try {
         setIsLoading(true);
         
-        // Prüfen, ob der Benutzer angemeldet ist
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Benutzerinformationen abrufen
           const { data: userData, error } = await supabase
             .from('app_users')
             .select('*')
@@ -111,7 +57,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
         
-        // Benutzer aus Supabase abrufen
         await fetchUsers();
       } catch (error) {
         console.error('Fehler beim Überprüfen der Authentifizierung:', error);
@@ -122,10 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkAuth();
     
-    // Auth-Status-Änderungen überwachen
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        // Benutzerinformationen abrufen
         const { data: userData, error } = await supabase
           .from('app_users')
           .select('*')
@@ -143,16 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
       }
       
-      // Benutzer neu laden
-      fetchUsers();
+      await fetchUsers();
     });
     
     return () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
-  
-  // Funktion zum Abrufen der Benutzerliste
+
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase.from('app_users').select('*');
@@ -172,7 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Login-Funktion mit Supabase
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -182,15 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Anmeldefehler:', error.message);
-        toast({
-          title: "Anmeldung fehlgeschlagen",
-          description: error.message,
-          variant: "destructive",
-        });
         return false;
       }
       
-      // Bei erfolgreicher Anmeldung werden die Benutzerinformationen im Auth-Listener aktualisiert
       return true;
     } catch (error) {
       console.error('Unerwarteter Fehler bei der Anmeldung:', error);
@@ -198,17 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Logout-Funktion mit Supabase
-  const logout = async (): Promise<void> => {
-    try {
-      await supabase.auth.signOut();
-      // Benutzer wird im Auth-Listener auf null gesetzt
-    } catch (error) {
-      console.error('Fehler beim Abmelden:', error);
-    }
-  };
-
-  // Registrierungsfunktion mit Supabase
   const register = async (email: string, password: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -218,22 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Registrierungsfehler:', error.message);
-        toast({
-          title: "Registrierung fehlgeschlagen",
-          description: error.message,
-          variant: "destructive",
-        });
         return false;
-      }
-      
-      toast({
-        title: "Registrierung erfolgreich",
-        description: "Ihr Konto wurde erfolgreich erstellt.",
-      });
-      
-      // Benutzer automatisch anmelden, wenn die E-Mail-Bestätigung deaktiviert ist
-      if (data.session) {
-        return true;
       }
       
       return true;
@@ -243,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Admin-Funktion zum Erstellen von Benutzern
   const createUser = async (email: string, password: string, isAdmin: boolean): Promise<boolean> => {
     if (!user?.isAdmin) {
       toast({
@@ -255,7 +162,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Benutzer in Supabase Auth erstellen
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -276,8 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Die app_users-Tabelle wird automatisch über den Trigger aktualisiert
-      // Admin-Status aktualisieren
       const { error: updateError } = await supabase
         .from('app_users')
         .update({ is_admin: isAdmin })
@@ -288,7 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Benutzerliste aktualisieren
       await fetchUsers();
       
       return true;
@@ -298,7 +201,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Admin-Funktion zum Aktualisieren von Benutzern
   const updateUser = async (
     userId: string,
     updates: { username?: string; password?: string }
@@ -313,7 +215,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Benutzernamen aktualisieren, falls vorhanden
       if (updates.username) {
         const { error: updateError } = await supabase
           .from('app_users')
@@ -326,7 +227,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Passwort aktualisieren, falls vorhanden
       if (updates.password) {
         const { error: passwordError } = await supabase.auth.admin.updateUserById(
           userId,
@@ -339,7 +239,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Benutzerliste aktualisieren
       await fetchUsers();
       
       return true;
@@ -349,7 +248,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Admin-Funktion zum Löschen von Benutzern
   const deleteUser = async (userId: string): Promise<boolean> => {
     if (!user?.isAdmin) {
       toast({
@@ -370,7 +268,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Benutzer aus Supabase Auth löschen
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) {
@@ -383,13 +280,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Benutzerliste aktualisieren
       await fetchUsers();
       
       return true;
     } catch (error) {
       console.error('Unerwarteter Fehler beim Löschen des Benutzers:', error);
       return false;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Fehler beim Abmelden:', error);
     }
   };
 
@@ -413,7 +317,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Hook für einfachen Zugriff auf den Auth-Kontext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
