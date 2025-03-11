@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,10 +27,7 @@ const Login = () => {
   }, []);
 
   useEffect(() => {
-    // Redirect to homepage if user is already authenticated
     if (isAuthenticated) {
-      console.log("User is authenticated, redirecting to homepage");
-      // Force navigation with replace to avoid history issues
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -52,14 +48,6 @@ const Login = () => {
           localStorage.removeItem('savedPassword');
         }
         
-        toast({
-          title: "Anmeldung erfolgreich",
-          description: "Sie wurden erfolgreich angemeldet.",
-        });
-        
-        // Explicitly navigate to the homepage after successful login
-        console.log("Login successful, navigating to homepage");
-        // Force navigation with replace to avoid history issues
         navigate('/', { replace: true });
       } else {
         toast({
