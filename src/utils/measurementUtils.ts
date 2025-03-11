@@ -77,9 +77,33 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   const sprite = new THREE.Sprite(material);
   sprite.position.copy(position);
   
-  // Scale the sprite - adjusted for better visibility
-  sprite.scale.set(0.4, 0.2, 1); // Increased scale for better readability
+  // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
+  sprite.scale.set(0.6, 0.3, 1); // Increased base scale for better readability
+  
+  // Add custom property to store base scale for dynamic scaling
+  sprite.userData = {
+    baseScale: { x: 0.6, y: 0.3, z: 1 },
+    isLabel: true
+  };
   
   return sprite;
 };
 
+// Update sprite scale based on camera distance
+export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): void => {
+  if (!sprite.userData.baseScale) return;
+  
+  // Get distance from camera to sprite
+  const distance = camera.position.distanceTo(sprite.position);
+  
+  // Calculate scale factor based on distance
+  // This ensures labels maintain readable size regardless of zoom level
+  const scaleFactor = Math.max(0.7, distance * 0.12);
+  
+  // Apply scale based on base scale and distance
+  sprite.scale.set(
+    sprite.userData.baseScale.x * scaleFactor,
+    sprite.userData.baseScale.y * scaleFactor,
+    1
+  );
+};

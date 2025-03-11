@@ -15,7 +15,8 @@ import {
   calculateDistance,
   calculateHeight,
   createMeasurementId,
-  createTextSprite
+  createTextSprite,
+  updateLabelScale
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -229,7 +230,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
+            // Keep sprites facing the camera
             child.quaternion.copy(cameraRef.current!.quaternion);
+          
+            // Dynamically scale labels based on distance
+            if (child.userData && child.userData.isLabel) {
+              updateLabelScale(child, cameraRef.current);
+            }
           }
         });
       }
@@ -375,7 +382,18 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.y += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
+          const labelSprite = createTextSprite(labelText, midPoint, activeTool === 'length' ? 0x00ff00 : 0x0000ff);
+          
+          // Make sure new sprites are correctly initialized for dynamic scaling
+          labelSprite.userData = {
+            ...labelSprite.userData,
+            isLabel: true,
+            baseScale: { x: 0.6, y: 0.3, z: 1 }
+          };
+          
+          if (cameraRef.current) {
+            updateLabelScale(labelSprite, cameraRef.current);
+          }
           
           measurementGroupRef.current.add(labelSprite);
           
@@ -394,7 +412,18 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.x += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
+          const labelSprite = createTextSprite(labelText, midPoint, activeTool === 'length' ? 0x00ff00 : 0x0000ff);
+          
+          // Make sure new sprites are correctly initialized for dynamic scaling
+          labelSprite.userData = {
+            ...labelSprite.userData,
+            isLabel: true,
+            baseScale: { x: 0.6, y: 0.3, z: 1 }
+          };
+          
+          if (cameraRef.current) {
+            updateLabelScale(labelSprite, cameraRef.current);
+          }
           
           measurementGroupRef.current.add(labelSprite);
           

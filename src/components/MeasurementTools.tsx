@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
@@ -34,15 +35,30 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
+  // Automatically disable measurement tool when editing a description
+  useEffect(() => {
+    if (editingId !== null && activeTool !== 'none') {
+      onToolChange('none');
+    }
+  }, [editingId, activeTool, onToolChange]);
+
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
+    // Disable measurement tool after deleting
+    if (activeTool !== 'none') {
+      onToolChange('none');
+    }
   };
 
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    // Disable measurement tool when starting to edit
+    if (activeTool !== 'none') {
+      onToolChange('none');
+    }
     setEditingId(id);
     setEditValue(currentDescription);
   };
@@ -66,6 +82,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleContainerClick = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    // Disable measurement tool when clicking anywhere in the container
+    if (activeTool !== 'none') {
+      onToolChange('none');
+    }
   };
 
   return (

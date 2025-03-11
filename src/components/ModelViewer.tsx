@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
@@ -47,6 +48,10 @@ const ModelViewer: React.FC = () => {
   const handleToolsPanelClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Ensure that any ongoing measurement is cancelled when interacting with the tools panel
+    if (activeTool !== 'none') {
+      setActiveTool('none');
+    }
   };
 
   return (
