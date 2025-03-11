@@ -4,7 +4,7 @@ import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
 import ControlPanel from './ControlPanel';
 import LoadingOverlay from './LoadingOverlay';
-import { AlertCircle, ChevronUp, Info } from 'lucide-react';
+import { ChevronUp, Info } from 'lucide-react';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,6 +12,7 @@ const ModelViewer: React.FC = () => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showControls, setShowControls] = useState(false);
   const [showModelInfo, setShowModelInfo] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const {
     isLoading,
@@ -26,14 +27,22 @@ const ModelViewer: React.FC = () => {
   } = useModelViewer({ containerRef: viewerRef });
 
   const handleFileSelected = (file: File) => {
-    loadModel(file);
-    setShowInstructions(true);
+    setIsUploading(true);
+    loadModel(file).then(() => {
+      setIsUploading(false);
+      setShowInstructions(true);
+    }).catch(() => {
+      setIsUploading(false);
+    });
   };
 
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
-      <div className="flex-1 relative overflow-hidden" ref={viewerRef}>
-        {!loadedModel && !isLoading && (
+      <div 
+        className={`flex-1 relative overflow-hidden ${loadedModel ? 'bg-gray-100' : 'bg-white'}`} 
+        ref={viewerRef}
+      >
+        {!loadedModel && !isLoading && !isUploading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10">
             <div className="max-w-md w-full animate-fade-in">
               <h2 className="text-2xl font-semibold text-center mb-6">
@@ -41,24 +50,24 @@ const ModelViewer: React.FC = () => {
               </h2>
               <UploadArea 
                 onFileSelected={handleFileSelected}
-                isLoading={isLoading}
+                isLoading={isUploading}
                 progress={progress}
               />
             </div>
           </div>
         )}
         
-        {(isLoading || showInstructions) && loadedModel && (
+        {(isLoading || isUploading || (showInstructions && loadedModel)) && (
           <LoadingOverlay
             progress={progress}
-            showInstructions={showInstructions}
+            showInstructions={showInstructions && loadedModel && !isUploading}
+            isUploading={isUploading}
             onCloseInstructions={() => setShowInstructions(false)}
           />
         )}
         
         {error && (
           <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 glass p-3 rounded-lg flex items-center gap-2 z-20 animate-fade-in">
-            <AlertCircle className="w-5 h-5 text-destructive" />
             <span className="text-sm">{error}</span>
           </div>
         )}
@@ -105,7 +114,7 @@ const ModelViewer: React.FC = () => {
               <div className="max-w-7xl mx-auto p-4 flex flex-col md:flex-row gap-4">
                 <div className="flex-1 flex items-center gap-4">
                   <ControlPanel
-                    backgroundOptions={backgroundOptions.filter(opt => opt.id !== 'sky')}
+                    backgroundOptions={backgroundOptions}
                     currentBackground={background}
                     onBackgroundChange={setBackground}
                   />
@@ -122,7 +131,7 @@ const ModelViewer: React.FC = () => {
                 
                 <UploadArea 
                   onFileSelected={handleFileSelected}
-                  isLoading={isLoading}
+                  isLoading={isUploading}
                   progress={progress}
                 />
               </div>

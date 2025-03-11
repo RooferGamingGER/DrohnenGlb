@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -32,8 +31,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   });
   
   const [background, setBackground] = useState<BackgroundOption>(
-    // Set dark as default background
-    { id: 'dark', name: 'Dunkel', color: '#1d1d1f', texture: null }
+    backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]
   );
 
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -119,9 +117,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
 
-    // Apply dark background as default
-    applyBackground({ id: 'dark', name: 'Dunkel', color: '#1d1d1f', texture: null });
-
     return () => {
       window.removeEventListener('resize', handleResize);
       
@@ -196,12 +191,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
+      // Apply dark background
+      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+
       toast({
         title: "Modell geladen",
         description: "Das 3D-Modell wurde erfolgreich geladen. Sie können es jetzt von allen Seiten betrachten.",
         duration: 3000,
       });
 
+      return model;
     } catch (error) {
       console.error('Error loading model:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -218,6 +217,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         variant: "destructive",
         duration: 5000,
       });
+
+      throw error;
     }
   };
 
