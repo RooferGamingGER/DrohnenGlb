@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Progress } from '@/components/ui/progress';
 import { Info, Upload } from 'lucide-react';
 
 interface LoadingOverlayProps {
@@ -27,14 +26,12 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
                   <Upload className="w-5 h-5 animate-pulse" />
                   <h3 className="text-lg font-semibold">Datei wird hochgeladen</h3>
                 </div>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
+                <p className="text-sm text-center text-muted-foreground">Bitte warten Sie, während die Datei hochgeladen wird...</p>
               </>
             ) : progress < 100 ? (
               <>
-                <h3 className="text-lg font-semibold text-center">Modell wird geladen</h3>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
+                <h3 className="text-lg font-semibold text-center">Modell wird verarbeitet</h3>
+                <p className="text-sm text-center text-muted-foreground">Das Modell wird vorbereitet für die Anzeige...</p>
               </>
             ) : showInstructions ? (
               <>
