@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -75,16 +74,28 @@ console.log(`Total Firebase initialization time: ${performance.now() - initStart
 // Optimierter Login mit Performance-Messung
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   const startTime = performance.now();
-  console.log("loginWithFirebase started");
+  console.log("Firebase Login Start");
   
   try {
-    const authResult = await signInWithEmailAndPassword(auth, email, password);
+    // Optimierte Login-Sequenz
+    const authResult = await Promise.race([
+      signInWithEmailAndPassword(auth, email, password),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Login Timeout")), 10000)
+      )
+    ]) as UserCredential;
+    
     const endTime = performance.now();
-    console.log(`Firebase auth completed in ${endTime - startTime}ms`);
+    console.log(`Firebase Login komplett in ${endTime - startTime}ms`);
     return authResult;
   } catch (error) {
     const errorTime = performance.now();
-    console.error(`Login error after ${errorTime - startTime}ms:`, error);
+    console.error(`Login Fehler nach ${errorTime - startTime}ms:`, error);
+    
+    if (error instanceof Error && error.message === "Login Timeout") {
+      console.error("Login Timeout - Server antwortet nicht");
+    }
+    
     throw error;
   }
 };
