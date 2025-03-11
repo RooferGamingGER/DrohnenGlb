@@ -44,10 +44,15 @@ const ModelViewer: React.FC = () => {
       >
         {!loadedModel && !isLoading && !isUploading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10">
-            <div className="max-w-md w-full animate-fade-in">
-              <h2 className="text-2xl font-semibold text-center mb-6">
-                Drohnenaufmaß by RooferGaming
-              </h2>
+            <div className="max-w-md w-full animate-fade-in space-y-6">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-center">
+                  Drohnenaufmaß by RooferGaming
+                </h1>
+                <p className="text-center text-muted-foreground">
+                  Willkommen bei Drohnenaufmaß! Laden Sie ein 3D-Modell im GLB-Format hoch, um es zu betrachten.
+                </p>
+              </div>
               <UploadArea 
                 onFileSelected={handleFileSelected}
                 isLoading={isUploading}
