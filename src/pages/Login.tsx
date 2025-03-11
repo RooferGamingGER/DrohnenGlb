@@ -1,87 +1,52 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const Login: React.FC = () => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, register, isAuthenticated } = useAuth();
-  const { toast } = useToast();
+  const { login, register, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { toast } = useToast();
 
-  const from = location.state?.from?.pathname || '/';
-
+  // Redirect to homepage if already logged in
   useEffect(() => {
-    // Redirect if already authenticated
-    if (isAuthenticated) {
-      navigate(from, { replace: true });
+    if (isAuthenticated && !authLoading) {
+      navigate('/');
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, authLoading, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    
     try {
-      if (isRegistering) {
-        // Registration
-        if (!username.trim()) {
-          toast({
-            title: "Fehler",
-            description: "Bitte gib einen Benutzernamen ein.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('Registering with:', { email, username, password });
-        const { success, error } = await register(email, username, password);
-
-        if (success) {
-          toast({
-            title: "Registrierung erfolgreich",
-            description: "Dein Account wurde erstellt. Du kannst dich jetzt anmelden.",
-          });
-          setIsRegistering(false);
-        } else {
-          toast({
-            title: "Registrierung fehlgeschlagen",
-            description: error || "Ein unbekannter Fehler ist aufgetreten.",
-            variant: "destructive",
-          });
-        }
+      const success = await login(email, password);
+      
+      if (success) {
+        toast({
+          title: "Anmeldung erfolgreich",
+          description: "Sie wurden erfolgreich angemeldet.",
+        });
+        navigate('/');
       } else {
-        // Login
-        const { success, error } = await login(email, password);
-
-        if (success) {
-          toast({
-            title: "Anmeldung erfolgreich",
-            description: "Du wirst weitergeleitet...",
-          });
-          navigate(from, { replace: true });
-        } else {
-          toast({
-            title: "Anmeldung fehlgeschlagen",
-            description: error || "E-Mail oder Passwort falsch.",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Anmeldung fehlgeschlagen",
+          description: "Ungültige E-Mail oder Passwort.",
+          variant: "destructive",
+        });
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Anmeldefehler:', error);
       toast({
         title: "Fehler",
-        description: error.message || "Ein unbekannter Fehler ist aufgetreten.",
+        description: "Bei der Anmeldung ist ein Fehler aufgetreten.",
         variant: "destructive",
       });
     } finally {
@@ -89,104 +54,153 @@ const Login: React.FC = () => {
     }
   };
 
-  const toggleMode = () => {
-    setIsRegistering(!isRegistering);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const success = await register(email, password);
+      
+      if (success) {
+        toast({
+          title: "Registrierung erfolgreich",
+          description: "Ihr Konto wurde erfolgreich erstellt.",
+        });
+        // Nach erfolgreicher Registrierung automatisch einloggen
+        await login(email, password);
+        navigate('/');
+      } else {
+        toast({
+          title: "Registrierung fehlgeschlagen",
+          description: "Diese E-Mail-Adresse ist bereits registriert oder es ist ein Fehler aufgetreten.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Registrierungsfehler:', error);
+      toast({
+        title: "Fehler",
+        description: "Bei der Registrierung ist ein Fehler aufgetreten.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <div className="container mx-auto h-full flex items-center justify-center py-8">
-      <div className="w-full max-w-md space-y-8">
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">
-            {isRegistering ? "Registrierung" : "Anmeldung"}
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {isRegistering
-              ? "Erstelle einen neuen Account"
-              : "Melde dich mit deinen Zugangsdaten an"}
-          </p>
+          <p>Lade...</p>
         </div>
+      </div>
+    );
+  }
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6 bg-card p-8 rounded-lg border shadow-sm">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1">
-                E-Mail-Adresse
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="deine@email.de"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full"
-              />
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="w-full max-w-md space-y-6 rounded-lg border p-8 shadow-md">
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Anmelden</TabsTrigger>
+            <TabsTrigger value="register">Registrieren</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="login">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold">Anmelden</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Melden Sie sich mit Ihrem Konto an
+              </p>
             </div>
-
-            {isRegistering && (
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium mb-1">
-                  Benutzername
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="login-email" className="text-sm font-medium">
+                  E-Mail
                 </label>
                 <Input
-                  id="username"
-                  name="username"
-                  type="text"
+                  id="login-email"
+                  type="email"
+                  placeholder="E-Mail-Adresse eingeben"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="Dein Benutzername"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full"
                 />
               </div>
-            )}
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-1">
-                Passwort
-              </label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+              
+              <div className="space-y-2">
+                <label htmlFor="login-password" className="text-sm font-medium">
+                  Passwort
+                </label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="Passwort eingeben"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <Button
+                type="submit"
                 className="w-full"
-              />
+                disabled={isLoading}
+              >
+                {isLoading ? "Anmeldung läuft..." : "Anmelden"}
+              </Button>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="register">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold">Registrieren</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Erstellen Sie ein neues Konto
+              </p>
             </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <Spinner className="mr-2 h-4 w-4" /> Laden...
-              </span>
-            ) : (
-              isRegistering ? "Registrieren" : "Anmelden"
-            )}
-          </Button>
-
-          <div className="text-center mt-4">
-            <Button
-              type="button"
-              variant="link"
-              onClick={toggleMode}
-              className="text-sm"
-            >
-              {isRegistering
-                ? "Du hast bereits einen Account? Anmelden"
-                : "Noch keinen Account? Registrieren"}
-            </Button>
-          </div>
-        </form>
+            
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="register-email" className="text-sm font-medium">
+                  E-Mail
+                </label>
+                <Input
+                  id="register-email"
+                  type="email"
+                  placeholder="E-Mail-Adresse eingeben"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="register-password" className="text-sm font-medium">
+                  Passwort
+                </label>
+                <Input
+                  id="register-password"
+                  type="password"
+                  placeholder="Passwort eingeben"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? "Registrierung läuft..." : "Registrieren"}
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
