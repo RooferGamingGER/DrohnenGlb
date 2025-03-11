@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -179,8 +178,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         // Calculate a better distance that ensures the model is visible but not too far
         const distance = size * 2;
         
-        // Position camera for a front view
-        cameraRef.current.position.set(center.x, center.y, center.z + distance);
+        // Position camera for a front view instead of top-down
+        cameraRef.current.position.set(center.x, center.z + distance, center.y);
         cameraRef.current.lookAt(center);
 
         // Update controls
@@ -280,7 +279,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       
       // Reset the camera position with front view instead of top-down
       const distance = size * 2;
-      cameraRef.current.position.set(center.x, center.y, center.z + distance);
+      cameraRef.current.position.set(center.x, center.z + distance, center.y);
       cameraRef.current.lookAt(center);
       
       // Reset the controls target to center of model
