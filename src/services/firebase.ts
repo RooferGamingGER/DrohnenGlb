@@ -7,7 +7,7 @@ import {
   Auth,
   UserCredential,
   setPersistence,
-  browserSessionPersistence
+  browserLocalPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -22,7 +22,8 @@ import {
   enableIndexedDbPersistence,
   Firestore,
   initializeFirestore,
-  CACHE_SIZE_UNLIMITED
+  CACHE_SIZE_UNLIMITED,
+  memoryLocalCache 
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -37,35 +38,31 @@ const firebaseConfig = {
 
 // Initialize Firebase mit optimierter Konfiguration
 const app = initializeApp(firebaseConfig);
-export const auth: Auth = getAuth(app);
 
-// Optimiere Firestore-Initialisierung für bessere Performance
+// Auth mit lokaler Persistenz für schnelleren Zugriff
+export const auth: Auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence)
+  .catch((error) => {
+    console.error("Auth persistence error:", error);
+  });
+
+// Optimierte Firestore-Initialisierung
 export const db: Firestore = initializeFirestore(app, {
-  cacheSizeBytes: CACHE_SIZE_UNLIMITED
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+  localCache: memoryLocalCache()
 });
 
-// Setze Authentifizierungs-Persistenz für schnelleren Zugriff
-setPersistence(auth, browserSessionPersistence)
-  .catch((error) => {
-    console.error("Fehler beim Setzen der Authentifizierungs-Persistenz:", error);
-  });
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch((err) => {
+  console.error("Firestore persistence error:", err);
+});
 
-// Enable offline persistence mit verbessertem Error-Handling
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.error('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    } else if (err.code === 'unimplemented') {
-      console.error('The current browser does not support persistence.');
-    }
-  });
-
-// Optimierter Login mit reduziertem Overhead
+// Optimierter Login
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    console.error("Login Fehler:", error);
+    console.error("Login error:", error);
     throw error;
   }
 };
@@ -75,7 +72,7 @@ export const logoutFromFirebase = async (): Promise<boolean> => {
     await signOut(auth);
     return true;
   } catch (error) {
-    console.error("Logout Fehler:", error);
+    console.error("Logout error:", error);
     return false;
   }
 };

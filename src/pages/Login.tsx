@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,49 +8,29 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [email, setEmail] = useState(() => localStorage.getItem('savedEmail') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
+  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('savedEmail'));
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Lade gespeicherte Anmeldedaten nur einmal beim ersten Rendern
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('savedEmail');
-    const savedPassword = localStorage.getItem('savedPassword');
-    
-    if (savedEmail && savedPassword) {
-      setEmail(savedEmail);
-      setPassword(savedPassword);
-      setRememberMe(true);
-    }
-  }, []);
-
-  // Optimierte Weiterleitung mit useCallback
-  const redirectToHome = useCallback(() => {
-    navigate('/', { replace: true });
-  }, [navigate]);
-
-  // Weiterleitung nur ausführen, wenn isAuthenticated wahr ist
   useEffect(() => {
     if (isAuthenticated) {
-      redirectToHome();
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, redirectToHome]);
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (isLoading) return;
-    setIsLoading(true);
     
+    setIsLoading(true);
     try {
       const success = await login(email, password);
       
       if (success) {
-        // Speichere Anmeldedaten nur wenn nötig
         if (rememberMe) {
           localStorage.setItem('savedEmail', email);
           localStorage.setItem('savedPassword', password);
@@ -58,9 +38,6 @@ const Login = () => {
           localStorage.removeItem('savedEmail');
           localStorage.removeItem('savedPassword');
         }
-        
-        // Direkte Navigation ohne zu warten
-        redirectToHome();
       } else {
         toast({
           title: "Anmeldung fehlgeschlagen",
@@ -98,10 +75,11 @@ const Login = () => {
             <Input
               id="email"
               type="email"
-              placeholder="E-Mail eingeben"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
+              placeholder="E-Mail eingeben"
             />
           </div>
           
@@ -112,10 +90,11 @@ const Login = () => {
             <Input
               id="password"
               type="password"
-              placeholder="Passwort eingeben"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
+              placeholder="Passwort eingeben"
             />
           </div>
           
@@ -124,6 +103,7 @@ const Login = () => {
               id="rememberMe" 
               checked={rememberMe} 
               onCheckedChange={(checked) => setRememberMe(checked === true)}
+              disabled={isLoading}
             />
             <label
               htmlFor="rememberMe"
