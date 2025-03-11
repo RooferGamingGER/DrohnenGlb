@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
@@ -35,32 +34,37 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Prevent new point placement when a measurement is deleted
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
-    // Stop event propagation to prevent new point placement when clicking delete
+    event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
   };
 
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
+    event.preventDefault();
     event.stopPropagation();
     setEditingId(id);
     setEditValue(currentDescription);
   };
 
   const handleEditSave = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
     event.stopPropagation();
     onUpdateMeasurement(id, { description: editValue });
     setEditingId(null);
   };
 
   const handleInputClick = (event: React.MouseEvent) => {
-    // Stop propagation to prevent new point placement when clicking the input
+    event.preventDefault();
     event.stopPropagation();
   };
 
-  // Add a click handler to the entire tools panel to prevent propagation
+  const handleInputKeyDown = (event: React.KeyboardEvent) => {
+    event.stopPropagation();
+  };
+
   const handleContainerClick = (event: React.MouseEvent) => {
+    event.preventDefault();
     event.stopPropagation();
   };
 
@@ -68,6 +72,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     <div 
       className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg"
       onClick={handleContainerClick}
+      onMouseDown={handleContainerClick}
+      onMouseUp={handleContainerClick}
     >
       <div className="flex flex-col gap-2">
         <TooltipProvider>
@@ -204,6 +210,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onClick={handleInputClick}
+                    onKeyDown={handleInputKeyDown}
                     placeholder="Beschreibung hinzufügen"
                     className="h-7 text-xs"
                     autoFocus

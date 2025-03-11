@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
@@ -45,8 +44,8 @@ const ModelViewer: React.FC = () => {
     });
   };
 
-  // Add a handler to stop propagation of clicks on the tools panel
   const handleToolsPanelClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
   };
 
@@ -96,6 +95,8 @@ const ModelViewer: React.FC = () => {
             <div 
               className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
               onClick={handleToolsPanelClick}
+              onMouseDown={handleToolsPanelClick}
+              onMouseUp={handleToolsPanelClick}
             >
               <MeasurementTools 
                 activeTool={activeTool}

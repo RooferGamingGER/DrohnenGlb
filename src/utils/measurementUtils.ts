@@ -49,16 +49,16 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   
   if (!context) throw new Error("Could not get canvas context");
   
-  canvas.width = 160; // Increased from 128
-  canvas.height = 40;  // Increased from 32
+  canvas.width = 256; // Increased for better text clarity
+  canvas.height = 64;  // Increased for better text clarity
   
   // Set a semi-transparent background
-  context.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  context.fillStyle = 'rgba(0, 0, 0, 0.85)';
   context.roundRect(0, 0, canvas.width, canvas.height, 8);
   context.fill();
   
   // Set text properties
-  context.font = 'bold 20px Inter'; // Increased from 16px
+  context.font = 'bold 32px Inter'; // Increased font size
   context.fillStyle = 'white';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
@@ -78,7 +78,8 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - adjusted for better visibility
-  sprite.scale.set(0.25, 0.12, 1); // Increased from 0.18, 0.09
+  sprite.scale.set(0.4, 0.2, 1); // Increased scale for better readability
   
   return sprite;
 };
+
