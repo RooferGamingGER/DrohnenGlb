@@ -64,7 +64,6 @@ export const db: Firestore = getFirestore(app);
 console.log(`Firestore initialized in ${performance.now() - dbStartTime}ms`);
 
 // Enable offline persistence with optimized settings
-// Remove the synchronizeTabs property as it's not valid for the PersistenceSettings type
 const persistenceDbStartTime = performance.now();
 enableIndexedDbPersistence(db)
   .then(() => {
@@ -251,30 +250,5 @@ export const updateUserInFirebase = async (
   } catch (error) {
     console.error("Fehler beim Aktualisieren des Benutzers:", error);
     return false;
-  }
-};
-
-// Optimierte User-Abfrage mit Caching
-let cachedUsers: any[] = [];
-let lastFetchTime = 0;
-const CACHE_EXPIRY = 60000; // 1 Minute Cache-Gültigkeit
-
-export const getAllUsers = async () => {
-  try {
-    const now = Date.now();
-    // Verwende Cache, wenn dieser noch gültig ist
-    if (cachedUsers.length > 0 && now - lastFetchTime < CACHE_EXPIRY) {
-      return cachedUsers;
-    }
-    
-    const usersCollection = collection(db, "users");
-    const q = query(usersCollection);
-    const querySnapshot = await getDocs(q);
-    cachedUsers = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    lastFetchTime = now;
-    return cachedUsers;
-  } catch (error) {
-    console.error("Fehler beim Abrufen der Benutzer:", error);
-    return [];
   }
 };
