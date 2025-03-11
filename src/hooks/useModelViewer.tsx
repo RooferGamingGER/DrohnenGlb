@@ -382,7 +382,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.y += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, activeTool === 'length' ? 0x00ff00 : 0x0000ff);
+          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
           
           // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
@@ -412,7 +412,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.x += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, activeTool === 'length' ? 0x00ff00 : 0x0000ff);
+          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
           
           // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
