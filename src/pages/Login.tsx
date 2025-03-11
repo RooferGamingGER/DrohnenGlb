@@ -1,76 +1,42 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
+import { useLoginForm } from '@/hooks/useLoginForm';
+import PerformanceMetrics from '@/components/PerformanceMetrics';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    email,
+    setEmail,
+    password,
+    setPassword,
+    rememberMe,
+    setRememberMe,
+    isLoading,
+    progress,
+    performanceMetrics,
+    handleSubmit
+  } = useLoginForm();
 
-  // Check for saved credentials on component mount
-  useEffect(() => {
-    const savedUsername = localStorage.getItem('savedUsername');
-    const savedPassword = localStorage.getItem('savedPassword');
-    
-    if (savedUsername && savedPassword) {
-      setUsername(savedUsername);
-      setPassword(savedPassword);
-      setRememberMe(true);
-    }
-  }, []);
-
-  // Redirect to homepage if already logged in
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    const success = login(username, password);
-    
-    setIsLoading(false);
-    
-    if (success) {
-      // Save login credentials if Remember Me is checked
-      if (rememberMe) {
-        localStorage.setItem('savedUsername', username);
-        localStorage.setItem('savedPassword', password);
-      } else {
-        // Remove saved credentials if Remember Me is unchecked
-        localStorage.removeItem('savedUsername');
-        localStorage.removeItem('savedPassword');
-      }
-      
-      toast({
-        title: "Anmeldung erfolgreich",
-        description: "Sie wurden erfolgreich angemeldet.",
-      });
-      navigate('/');
-    } else {
-      toast({
-        title: "Anmeldung fehlgeschlagen",
-        description: "Ungültiger Benutzername oder Passwort.",
-        variant: "destructive",
-      });
-    }
+  // Optimierte Statusnachrichten mit feingranularen Übergängen
+  const getProgressStatus = (progress: number) => {
+    if (progress < 10) return "Anmeldung wird initialisiert...";
+    if (progress < 25) return "Verbindung wird hergestellt...";
+    if (progress < 40) return "Benutzerinformationen werden gesendet...";
+    if (progress < 60) return "Authentifizierung läuft...";
+    if (progress < 85) return "Berechtigungen werden überprüft...";
+    if (progress < 95) return "Benutzerinformationen werden geladen...";
+    return "Anmeldung abgeschlossen";
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-6 rounded-lg border p-8 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md space-y-6 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold">Anmelden</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -80,15 +46,18 @@ const Login = () => {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="text-sm font-medium">
-              Benutzername
+            <label htmlFor="email" className="text-sm font-medium">
+              E-Mail
             </label>
             <Input
-              id="username"
-              placeholder="Benutzername eingeben"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading}
+              placeholder="E-Mail eingeben"
+              className="w-full"
             />
           </div>
           
@@ -99,10 +68,12 @@ const Login = () => {
             <Input
               id="password"
               type="password"
-              placeholder="Passwort eingeben"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoading}
+              placeholder="Passwort eingeben"
+              className="w-full"
             />
           </div>
           
@@ -111,6 +82,7 @@ const Login = () => {
               id="rememberMe" 
               checked={rememberMe} 
               onCheckedChange={(checked) => setRememberMe(checked === true)}
+              disabled={isLoading}
             />
             <label
               htmlFor="rememberMe"
@@ -120,21 +92,33 @@ const Login = () => {
             </label>
           </div>
           
+          {isLoading && (
+            <div className="space-y-2">
+              <Progress value={progress} className="h-2 w-full" />
+              <p className="text-xs text-center text-muted-foreground">
+                {getProgressStatus(progress)}
+              </p>
+            </div>
+          )}
+          
           <Button
             type="submit"
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Anmeldung läuft..." : "Anmelden"}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Anmeldung läuft...
+              </span>
+            ) : "Anmelden"}
           </Button>
         </form>
-        
-        <div className="mt-4 text-center text-sm">
-          <p>
-            Nur ein Administrator kann neue Konten erstellen.
-          </p>
-        </div>
-      </div>
+
+        {Object.keys(performanceMetrics).length > 0 && (
+          <PerformanceMetrics metrics={performanceMetrics} />
+        )}
+      </Card>
     </div>
   );
 };

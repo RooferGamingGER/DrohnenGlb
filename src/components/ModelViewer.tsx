@@ -1,5 +1,5 @@
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
 import ControlPanel from './ControlPanel';
@@ -35,7 +35,8 @@ const ModelViewer: React.FC = () => {
     canUndo,
   } = useModelViewer({ containerRef: viewerRef });
 
-  const handleFileSelected = (file: File) => {
+  // Fix infinite loop by memoizing the file selection handler
+  const handleFileSelected = useCallback((file: File) => {
     setIsUploading(true);
     loadModel(file).then(() => {
       setIsUploading(false);
@@ -43,16 +44,30 @@ const ModelViewer: React.FC = () => {
     }).catch(() => {
       setIsUploading(false);
     });
-  };
+  }, [loadModel]);
 
-  const handleToolsPanelClick = (e: React.MouseEvent) => {
+  // Memoize event handler to prevent re-renders
+  const handleToolsPanelClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // Ensure that any ongoing measurement is cancelled when interacting with the tools panel
     if (activeTool !== 'none') {
       setActiveTool('none');
     }
-  };
+  }, [activeTool, setActiveTool]);
+
+  // Memoize toggle functions to prevent re-renders
+  const toggleControls = useCallback(() => {
+    setShowControls(prev => !prev);
+  }, []);
+
+  const toggleModelInfo = useCallback(() => {
+    setShowModelInfo(prev => !prev);
+  }, []);
+
+  const closeInstructions = useCallback(() => {
+    setShowInstructions(false);
+  }, []);
 
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
@@ -85,7 +100,7 @@ const ModelViewer: React.FC = () => {
             progress={progress}
             showInstructions={showInstructions && loadedModel && !isUploading}
             isUploading={isUploading}
-            onCloseInstructions={() => setShowInstructions(false)}
+            onCloseInstructions={closeInstructions}
           />
         )}
         
@@ -116,7 +131,7 @@ const ModelViewer: React.FC = () => {
             </div>
             
             <button
-              onClick={() => setShowControls(!showControls)}
+              onClick={toggleControls}
               className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
             >
               <span className="text-sm">Optionen</span>
@@ -124,7 +139,7 @@ const ModelViewer: React.FC = () => {
             </button>
             
             <button 
-              onClick={() => setShowModelInfo(!showModelInfo)} 
+              onClick={toggleModelInfo}
               className="fixed top-4 right-4 z-20 p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-lg"
               aria-label="Modell-Hilfe"
             >
@@ -136,7 +151,7 @@ const ModelViewer: React.FC = () => {
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-sm">Modellsteuerung</h3>
                   <button 
-                    onClick={() => setShowModelInfo(false)}
+                    onClick={toggleModelInfo}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     ✕
