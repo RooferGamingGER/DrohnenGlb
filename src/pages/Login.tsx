@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Lade gespeicherte Anmeldedaten nur einmal beim ersten Rendern
   useEffect(() => {
     const savedEmail = localStorage.getItem('savedEmail');
     const savedPassword = localStorage.getItem('savedPassword');
@@ -26,20 +28,29 @@ const Login = () => {
     }
   }, []);
 
+  // Optimierte Weiterleitung mit useCallback
+  const redirectToHome = useCallback(() => {
+    navigate('/', { replace: true });
+  }, [navigate]);
+
+  // Weiterleitung nur ausführen, wenn isAuthenticated wahr ist
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true });
+      redirectToHome();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, redirectToHome]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) return;
     setIsLoading(true);
     
     try {
       const success = await login(email, password);
       
       if (success) {
+        // Speichere Anmeldedaten nur wenn nötig
         if (rememberMe) {
           localStorage.setItem('savedEmail', email);
           localStorage.setItem('savedPassword', password);
@@ -48,7 +59,8 @@ const Login = () => {
           localStorage.removeItem('savedPassword');
         }
         
-        navigate('/', { replace: true });
+        // Direkte Navigation ohne zu warten
+        redirectToHome();
       } else {
         toast({
           title: "Anmeldung fehlgeschlagen",

@@ -5,7 +5,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   Auth,
-  UserCredential
+  UserCredential,
+  setPersistence,
+  browserSessionPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -18,7 +20,9 @@ import {
   deleteDoc,
   updateDoc,
   enableIndexedDbPersistence,
-  Firestore 
+  Firestore,
+  initializeFirestore,
+  CACHE_SIZE_UNLIMITED
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -31,12 +35,22 @@ const firebaseConfig = {
   measurementId: "G-NVMJMDXDLK"
 };
 
-// Initialize Firebase
+// Initialize Firebase mit optimierter Konfiguration
 const app = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
-export const db: Firestore = getFirestore(app);
 
-// Enable offline persistence
+// Optimiere Firestore-Initialisierung für bessere Performance
+export const db: Firestore = initializeFirestore(app, {
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED
+});
+
+// Setze Authentifizierungs-Persistenz für schnelleren Zugriff
+setPersistence(auth, browserSessionPersistence)
+  .catch((error) => {
+    console.error("Fehler beim Setzen der Authentifizierungs-Persistenz:", error);
+  });
+
+// Enable offline persistence mit verbessertem Error-Handling
 enableIndexedDbPersistence(db)
   .catch((err) => {
     if (err.code === 'failed-precondition') {
@@ -46,7 +60,7 @@ enableIndexedDbPersistence(db)
     }
   });
 
-// Firebase Auth Funktionen
+// Optimierter Login mit reduziertem Overhead
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
@@ -125,23 +139,47 @@ export const updateUserInFirebase = async (
   }
 };
 
+// Optimierte User-Abfrage mit Caching
+let cachedUsers: any[] = [];
+let lastFetchTime = 0;
+const CACHE_EXPIRY = 60000; // 1 Minute Cache-Gültigkeit
+
 export const getAllUsers = async () => {
   try {
+    const now = Date.now();
+    // Verwende Cache, wenn dieser noch gültig ist
+    if (cachedUsers.length > 0 && now - lastFetchTime < CACHE_EXPIRY) {
+      return cachedUsers;
+    }
+    
     const usersCollection = collection(db, "users");
     const q = query(usersCollection);
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    cachedUsers = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    lastFetchTime = now;
+    return cachedUsers;
   } catch (error) {
     console.error("Fehler beim Abrufen der Benutzer:", error);
     return [];
   }
 };
 
+// Cache für Admin-Check Status
+let adminNeededStatus: boolean | null = null;
+let adminCheckTime = 0;
+
 export const checkIfInitialAdminNeeded = async (): Promise<boolean> => {
   try {
+    const now = Date.now();
+    if (adminNeededStatus !== null && now - adminCheckTime < CACHE_EXPIRY) {
+      return adminNeededStatus;
+    }
+    
     const usersCollection = collection(db, "users");
     const querySnapshot = await getDocs(usersCollection);
-    return querySnapshot.empty;
+    adminNeededStatus = querySnapshot.empty;
+    adminCheckTime = now;
+    return adminNeededStatus;
   } catch (error) {
     console.error("Fehler beim Prüfen des initialen Admin-Status:", error);
     return true;

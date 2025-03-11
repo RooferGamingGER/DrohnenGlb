@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   auth,
   loginWithFirebase, 
@@ -49,6 +49,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsInitialAdmin, setNeedsInitialAdmin] = useState<boolean>(false);
   const { toast } = useToast();
 
+  const checkIfUserIsAdmin = useCallback(async (uid: string): Promise<boolean> => {
+    try {
+      const usersList = await getAllUsers();
+      const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid) as FirestoreUser | undefined;
+      return userInfo?.isAdmin || false;
+    } catch (error) {
+      console.error("Fehler beim Prüfen des Admin-Status:", error);
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
@@ -66,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [checkIfUserIsAdmin]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -178,7 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkForInitialAdmin = async () => {
       try {
         const needsAdmin = await checkIfInitialAdminNeeded();
-        console.log("Prüfung auf initialen Admin. Wird benötigt:", needsAdmin);
         setNeedsInitialAdmin(needsAdmin);
       } catch (error) {
         console.error("Fehler bei der Prüfung auf initialen Admin:", error);
@@ -201,7 +211,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAdmin: user.isAdmin || false
           }));
           setUsers(formattedUsers);
-          console.log("Benutzer geladen:", formattedUsers.length);
         } catch (error) {
           console.error("Fehler beim Laden der Benutzer:", error);
         }
@@ -211,24 +220,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
-    try {
-      const usersList = await getAllUsers();
-      const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid) as FirestoreUser | undefined;
-      return userInfo?.isAdmin || false;
-    } catch (error) {
-      console.error("Fehler beim Prüfen des Admin-Status:", error);
-      return false;
-    }
-  };
-
   const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Starte Einrichtung des initialen Admins:", email);
-      
       const needsAdmin = await checkIfInitialAdminNeeded();
       if (!needsAdmin) {
-        console.log("Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.");
         toast({
           title: "Fehler",
           description: "Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.",
@@ -237,12 +232,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      console.log("Erstelle initialen Admin-Benutzer:", email);
       const userCredential = await createUserInFirebase(email, password, true);
       
       if (userCredential) {
-        const newUserId = userCredential.user.uid;
-        console.log("Admin-Benutzer erfolgreich erstellt:", newUserId);
         toast({
           title: "Erfolg",
           description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
@@ -250,7 +242,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setNeedsInitialAdmin(false);
         return true;
       } else {
-        console.error("Konnte Admin-Benutzer nicht erstellen");
         toast({
           title: "Fehler",
           description: "Admin-Benutzer konnte nicht erstellt werden. Bitte überprüfen Sie die Firebase-Konfiguration.",
