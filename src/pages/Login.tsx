@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,18 +26,29 @@ const Login = () => {
     if (isLoading) return;
     
     setIsLoading(true);
+    
     try {
+      const previousEmail = localStorage.getItem('savedEmail');
+      const previousPassword = localStorage.getItem('savedPassword');
+      
+      if (rememberMe) {
+        localStorage.setItem('savedEmail', email);
+        localStorage.setItem('savedPassword', password);
+      }
+      
       const success = await login(email, password);
       
       if (success) {
-        if (rememberMe) {
-          localStorage.setItem('savedEmail', email);
-          localStorage.setItem('savedPassword', password);
-        } else {
-          localStorage.removeItem('savedEmail');
-          localStorage.removeItem('savedPassword');
-        }
+        navigate('/', { replace: true });
       } else {
+        if (rememberMe) {
+          if (previousEmail) localStorage.setItem('savedEmail', previousEmail);
+          else localStorage.removeItem('savedEmail');
+          
+          if (previousPassword) localStorage.setItem('savedPassword', previousPassword);
+          else localStorage.removeItem('savedPassword');
+        }
+        
         toast({
           title: "Anmeldung fehlgeschlagen",
           description: "Ungültige E-Mail oder Passwort.",
@@ -52,6 +62,11 @@ const Login = () => {
         description: "Ein unerwarteter Fehler ist aufgetreten.",
         variant: "destructive",
       });
+      
+      if (!rememberMe) {
+        localStorage.removeItem('savedEmail');
+        localStorage.removeItem('savedPassword');
+      }
     } finally {
       setIsLoading(false);
     }

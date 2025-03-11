@@ -22,7 +22,6 @@ import {
   enableIndexedDbPersistence,
   Firestore,
   initializeFirestore,
-  CACHE_SIZE_UNLIMITED,
   memoryLocalCache 
 } from "firebase/firestore";
 
@@ -36,19 +35,18 @@ const firebaseConfig = {
   measurementId: "G-NVMJMDXDLK"
 };
 
-// Initialize Firebase mit optimierter Konfiguration
+// Initialize Firebase with optimized configuration
 const app = initializeApp(firebaseConfig);
 
-// Auth mit lokaler Persistenz für schnelleren Zugriff
+// Auth with local persistence for faster access
 export const auth: Auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence)
   .catch((error) => {
     console.error("Auth persistence error:", error);
   });
 
-// Optimierte Firestore-Initialisierung
+// Fix the Firestore initialization - remove the conflicting cacheSizeBytes
 export const db: Firestore = initializeFirestore(app, {
-  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
   localCache: memoryLocalCache()
 });
 
