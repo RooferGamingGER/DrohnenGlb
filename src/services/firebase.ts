@@ -7,7 +7,9 @@ import {
   Auth,
   UserCredential,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -33,18 +35,19 @@ const firebaseConfig = {
   measurementId: "G-NVMJMDXDLK"
 };
 
-console.log("Firebase initialization starting...");
+console.log("Firebase initialization starting with optimized settings...");
 const initStartTime = performance.now();
 
 // Initialize Firebase with optimized configuration
 const app = initializeApp(firebaseConfig);
 console.log(`Firebase app initialized in ${performance.now() - initStartTime}ms`);
 
-// Auth with local persistence for faster access
+// Auth with efficient persistence
 const authStartTime = performance.now();
 export const auth: Auth = getAuth(app);
 console.log(`Auth service initialized in ${performance.now() - authStartTime}ms`);
 
+// Use local persistence for better performance when remembering user
 const persistenceStartTime = performance.now();
 setPersistence(auth, browserLocalPersistence)
   .then(() => {
@@ -54,48 +57,80 @@ setPersistence(auth, browserLocalPersistence)
     console.error("Auth persistence error:", error);
   });
 
-// Initialize Firestore
+// Initialize Firestore with optimized settings
 const dbStartTime = performance.now();
 export const db: Firestore = getFirestore(app);
 console.log(`Firestore initialized in ${performance.now() - dbStartTime}ms`);
 
-// Enable offline persistence
+// Enable offline persistence with optimized settings
 const persistenceDbStartTime = performance.now();
-enableIndexedDbPersistence(db)
+enableIndexedDbPersistence(db, {
+  synchronizeTabs: false // Disable multi-tab synchronization for better performance
+})
   .then(() => {
     console.log(`Firestore persistence enabled in ${performance.now() - persistenceDbStartTime}ms`);
   })
   .catch((err) => {
-    console.error("Firestore persistence error:", err);
+    if (err.code === 'failed-precondition') {
+      // Multiple tabs open, persistence can only be enabled in one tab at a time
+      console.warn("Firestore persistence unavailable - multiple tabs detected");
+    } else if (err.code === 'unimplemented') {
+      // The current browser does not support all of the features required for persistence
+      console.warn("Firestore persistence not supported in this browser");
+    } else {
+      console.error("Firestore persistence error:", err);
+    }
   });
 
 console.log(`Total Firebase initialization time: ${performance.now() - initStartTime}ms`);
 
-// Optimierter Login mit Performance-Messung
+// Optimized login with better error handling and performance tracking
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   const startTime = performance.now();
-  console.log("Firebase Login Start");
+  console.log("Firebase Login Start", startTime);
   
   try {
-    // Optimierte Login-Sequenz
+    // Use a timeout to prevent hanging requests
     const authResult = await Promise.race([
       signInWithEmailAndPassword(auth, email, password),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Login Timeout")), 10000)
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Login Timeout nach 8 Sekunden")), 8000)
       )
     ]) as UserCredential;
     
     const endTime = performance.now();
-    console.log(`Firebase Login komplett in ${endTime - startTime}ms`);
-    return authResult;
-  } catch (error) {
-    const errorTime = performance.now();
-    console.error(`Login Fehler nach ${errorTime - startTime}ms:`, error);
+    const duration = endTime - startTime;
     
-    if (error instanceof Error && error.message === "Login Timeout") {
-      console.error("Login Timeout - Server antwortet nicht");
+    console.log(`Firebase Login erfolgreich in ${duration.toFixed(2)}ms`);
+    
+    // Report slow logins for debugging
+    if (duration > 2000) {
+      console.warn(`Langsames Login detektiert: ${duration.toFixed(2)}ms`);
     }
     
+    return authResult;
+  } catch (error: any) {
+    const errorTime = performance.now();
+    const duration = errorTime - startTime;
+    
+    if (error.message === "Login Timeout nach 8 Sekunden") {
+      console.error(`Login Timeout nach ${duration.toFixed(2)}ms - Server antwortet nicht`);
+      throw new Error("Die Anmeldung dauert zu lange. Bitte versuchen Sie es später erneut.");
+    }
+    
+    // Provide more helpful error messages
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      console.warn(`Login fehlgeschlagen (${error.code}) nach ${duration.toFixed(2)}ms`);
+      throw new Error("E-Mail oder Passwort falsch");
+    } else if (error.code === 'auth/too-many-requests') {
+      console.error(`Login blockiert (${error.code}) nach ${duration.toFixed(2)}ms`);
+      throw new Error("Zu viele Anmeldeversuche. Bitte versuchen Sie es später erneut.");
+    } else if (error.code === 'auth/network-request-failed') {
+      console.error(`Netzwerkfehler (${error.code}) nach ${duration.toFixed(2)}ms`);
+      throw new Error("Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.");
+    }
+    
+    console.error(`Login Fehler (${error.code || 'unbekannt'}) nach ${duration.toFixed(2)}ms:`, error);
     throw error;
   }
 };

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
@@ -25,56 +25,107 @@ export const useLoginForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
+  const memoizedNavigation = useCallback(() => {
     if (isAuthenticated) {
+      console.log('User is authenticated, navigating to home');
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    memoizedNavigation();
+  }, [isAuthenticated, memoizedNavigation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
     
     setIsLoading(true);
-    setProgress(10);
+    setProgress(0); // Start from 0
+    
+    // Quick progress bump to give immediate feedback
+    setTimeout(() => setProgress(15), 10);
     
     const metrics: Record<string, number> = {};
     const startTime = performance.now();
     
     try {
-      // Sofort auf 20% springen für besseres Feedback
-      setProgress(20);
+      console.log("Login sequence started");
       
-      // Login-Credentials speichern wenn gewünscht
+      // Progress markers with faster initial feedback
+      setTimeout(() => setProgress(25), 100);
+      
+      // Save credentials before network request if needed
       if (rememberMe) {
-        localStorage.setItem('savedEmail', email);
-        localStorage.setItem('savedPassword', password);
+        try {
+          localStorage.setItem('savedEmail', email);
+          localStorage.setItem('savedPassword', password);
+        } catch (storageError) {
+          console.warn("LocalStorage error:", storageError);
+          // Non-blocking, continue with login
+        }
       } else {
-        localStorage.removeItem('savedEmail');
-        localStorage.removeItem('savedPassword');
+        try {
+          localStorage.removeItem('savedEmail');
+          localStorage.removeItem('savedPassword');
+        } catch (storageError) {
+          console.warn("LocalStorage error:", storageError);
+        }
       }
       
-      metrics.vorbereitungZeit = performance.now() - startTime;
+      metrics.preparationTime = performance.now() - startTime;
+      console.log("Login preparation complete in", metrics.preparationTime, "ms");
       
-      // Direkt auf 40% springen vor Login
-      setProgress(40);
-      console.log("Login Start:", performance.now() - startTime, "ms");
+      // Additional progress bump before network request
+      setTimeout(() => setProgress(40), 150);
       
+      // Login with timeout and detailed logging
       const loginStartTime = performance.now();
-      const success = await login(email, password);
+      console.log("Firebase login request starting at", loginStartTime - startTime, "ms");
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.error("Login request timed out after 10 seconds");
+      }, 10000);
+      
+      // Use Promise.race to handle timeouts
+      const loginPromise = login(email, password);
+      
+      // Show progress during network request
+      let progressInterval = setInterval(() => {
+        setProgress(prev => {
+          // Increment slowly until 85%, leaving room for completion steps
+          return prev < 85 ? prev + 1 : prev;
+        });
+      }, 100);
+      
+      const success = await loginPromise;
+      clearTimeout(timeoutId);
+      clearInterval(progressInterval);
+      
       const loginEndTime = performance.now();
+      metrics.loginDuration = loginEndTime - loginStartTime;
+      console.log("Firebase login completed in", metrics.loginDuration, "ms");
       
-      metrics.loginDauer = loginEndTime - loginStartTime;
-      console.log("Login Dauer:", metrics.loginDauer, "ms");
-      
-      // Sofort auf 75% nach Login
-      setProgress(75);
+      // Jump to near completion
+      setProgress(90);
       
       if (success) {
-        setProgress(90);
-        console.log("Login erfolgreich, Navigation Start:", performance.now() - startTime, "ms");
-        navigate('/', { replace: true });
+        setProgress(95);
+        console.log("Login successful, navigation starting at", performance.now() - startTime, "ms");
+        const navigationStartTime = performance.now();
+        
+        // Set a small timeout before navigation to allow UI to update
+        setTimeout(() => {
+          navigate('/', { replace: true });
+          metrics.navigationTime = performance.now() - navigationStartTime;
+          console.log("Navigation completed in", metrics.navigationTime, "ms");
+        }, 100);
       } else {
+        console.error("Login failed but no error was thrown");
+        setProgress(100);
         toast({
           title: "Anmeldung fehlgeschlagen",
           description: "Ungültige E-Mail oder Passwort.",
@@ -83,8 +134,8 @@ export const useLoginForm = () => {
       }
       
     } catch (error) {
-      console.error("Login-Fehler:", error);
-      metrics.fehlerZeit = performance.now() - startTime;
+      console.error("Login error:", error);
+      metrics.errorTime = performance.now() - startTime;
       
       toast({
         title: "Fehler",
@@ -93,14 +144,24 @@ export const useLoginForm = () => {
       });
       
       if (!rememberMe) {
-        localStorage.removeItem('savedEmail');
-        localStorage.removeItem('savedPassword');
+        try {
+          localStorage.removeItem('savedEmail');
+          localStorage.removeItem('savedPassword');
+        } catch (storageError) {
+          console.warn("LocalStorage error during cleanup:", storageError);
+        }
       }
     } finally {
       setProgress(100);
-      metrics.gesamtDauer = performance.now() - startTime;
+      metrics.totalDuration = performance.now() - startTime;
       setPerformanceMetrics(metrics);
-      setIsLoading(false);
+      
+      // Set timeout to reset loading state to prevent UI flashing if navigation happens quickly
+      setTimeout(() => {
+        if (!isAuthenticated) {
+          setIsLoading(false);
+        }
+      }, 500);
     }
   };
 
