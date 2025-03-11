@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'none';
+export type MeasurementType = 'length' | 'height' | 'area' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -19,6 +19,7 @@ export interface Measurement {
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
+  areaObject?: THREE.Mesh; // Reference to the 3D area plane
 }
 
 // Calculate distance between two points in 3D space
@@ -31,8 +32,75 @@ export const calculateHeight = (p1: THREE.Vector3, p2: THREE.Vector3): number =>
   return Math.abs(p2.y - p1.y);
 };
 
+// Calculate area of a polygon defined by an array of points
+export const calculateArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  // Project points onto a plane for area calculation
+  // For roofs, we'll use the XZ plane (ignoring Y/height differences)
+  let area = 0;
+  
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    // Cross product of vectors to get area contribution
+    // Using the Shoelace formula for polygon area
+    area += points[i].x * points[j].z;
+    area -= points[j].x * points[i].z;
+  }
+  
+  return Math.abs(area) / 2;
+};
+
+// Create a polygon mesh from points
+export const createAreaMesh = (
+  points: THREE.Vector3[], 
+  color: number = 0x3b82f6,
+  opacity: number = 0.4
+): THREE.Mesh => {
+  // Create a shape from the points
+  const shape = new THREE.Shape();
+  
+  // Start the shape at the first point
+  shape.moveTo(points[0].x, points[0].z);
+  
+  // Add lines to each subsequent point
+  for (let i = 1; i < points.length; i++) {
+    shape.lineTo(points[i].x, points[i].z);
+  }
+  
+  // Close the shape
+  shape.lineTo(points[0].x, points[0].z);
+  
+  // Create geometry from the shape
+  const geometry = new THREE.ShapeGeometry(shape);
+  
+  // Rotate to lay flat on the XZ plane
+  geometry.rotateX(-Math.PI / 2);
+  
+  // Calculate average height of all points for Y position
+  const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  
+  // Create material with transparency
+  const material = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  
+  // Create and position the mesh
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = avgY + 0.01; // Slightly above the surface to avoid z-fighting
+  
+  return mesh;
+};
+
 // Format measurement value with appropriate unit
 export const formatMeasurement = (value: number, type: MeasurementType): string => {
+  if (type === 'area') {
+    return `${value.toFixed(2)} m²`;
+  }
   return `${value.toFixed(2)} m`;
 };
 
@@ -138,3 +206,26 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
   });
 };
 
+// Create a material for preview lines during measurement
+export const createPreviewLineMaterial = (type: MeasurementType): THREE.LineBasicMaterial => {
+  const color = type === 'length' ? 0x00ff00 : 
+               type === 'height' ? 0x0000ff : 
+               0x3b82f6; // blue for area
+               
+  return new THREE.LineBasicMaterial({ 
+    color: color,
+    linewidth: 2,
+    transparent: true,
+    opacity: 0.7
+  });
+};
+
+// Get the color for a measurement type
+export const getMeasurementColor = (type: MeasurementType): number => {
+  switch (type) {
+    case 'length': return 0x00ff00; // green
+    case 'height': return 0x0000ff; // blue
+    case 'area': return 0x3b82f6;   // blue
+    default: return 0xffffff;       // white
+  }
+};

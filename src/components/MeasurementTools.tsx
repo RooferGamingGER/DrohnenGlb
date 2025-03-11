@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Square } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -79,21 +79,22 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
   };
 
-  const handleContainerClick = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    // Disable measurement tool when clicking anywhere in the container
-    if (activeTool !== 'none') {
-      onToolChange('none');
+  const getMeasurementIcon = (type: MeasurementType) => {
+    switch (type) {
+      case 'length': return <Ruler size={14} />;
+      case 'height': return <ArrowUpDown size={14} />;
+      case 'area': return <Square size={14} />;
+      default: return null;
     }
+  };
+
+  const getMeasurementUnit = (type: MeasurementType) => {
+    return type === 'area' ? 'm²' : 'm';
   };
 
   return (
     <div 
       className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg"
-      onClick={handleContainerClick}
-      onMouseDown={handleContainerClick}
-      onMouseUp={handleContainerClick}
     >
       <div className="flex flex-col gap-2">
         <TooltipProvider>
@@ -157,6 +158,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('area')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'area' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Fläche messen"
+                >
+                  <Square size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Fläche messen</p>
+              </TooltipContent>
+            </Tooltip>
             
             {canUndo && (
               <Tooltip>
@@ -203,9 +224,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               <li key={m.id} className="bg-background/40 p-2 rounded">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
-                    {m.type === 'length' && <Ruler size={14} />}
-                    {m.type === 'height' && <ArrowUpDown size={14} />}
-                    <span>{m.value.toFixed(2)} {m.unit}</span>
+                    {getMeasurementIcon(m.type)}
+                    <span>{m.value.toFixed(2)} {getMeasurementUnit(m.type)}</span>
                   </span>
                   <div className="flex items-center">
                     <button 
