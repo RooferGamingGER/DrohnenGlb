@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Ruler, Move, MinusSquare, AreaChart, Trash, Undo, X } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { 
@@ -85,31 +86,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   )}
                   aria-label="Höhe messen"
                 >
-                  <MinusSquare size={18} />
+                  <ArrowUpDown size={18} />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
                 <p>Höhe messen</p>
-              </TooltipContent>
-            </Tooltip>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onToolChange('area')}
-                  className={cn(
-                    "p-2 rounded-md transition-colors",
-                    activeTool === 'area' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-secondary"
-                  )}
-                  aria-label="Fläche messen"
-                >
-                  <AreaChart size={18} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Fläche messen</p>
               </TooltipContent>
             </Tooltip>
             
@@ -158,8 +139,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               <li key={m.id} className="flex items-center justify-between bg-background/50 p-2 rounded">
                 <span className="flex items-center gap-2">
                   {m.type === 'length' && <Ruler size={14} />}
-                  {m.type === 'height' && <MinusSquare size={14} />}
-                  {m.type === 'area' && <AreaChart size={14} />}
+                  {m.type === 'height' && <ArrowUpDown size={14} />}
                   <span>{m.value.toFixed(2)} {m.unit}</span>
                 </span>
                 <button 
