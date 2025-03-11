@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -63,10 +64,9 @@ export const db: Firestore = getFirestore(app);
 console.log(`Firestore initialized in ${performance.now() - dbStartTime}ms`);
 
 // Enable offline persistence with optimized settings
+// Remove the synchronizeTabs property as it's not valid for the PersistenceSettings type
 const persistenceDbStartTime = performance.now();
-enableIndexedDbPersistence(db, {
-  synchronizeTabs: false // Disable multi-tab synchronization for better performance
-})
+enableIndexedDbPersistence(db)
   .then(() => {
     console.log(`Firestore persistence enabled in ${performance.now() - persistenceDbStartTime}ms`);
   })
