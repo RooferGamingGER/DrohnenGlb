@@ -46,11 +46,15 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleToolsPanelClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (activeTool !== 'none') {
-      setActiveTool('none');
+    // Only stop propagation and prevent default when we're NOT clicking on a point
+    // This allows clicks on points to pass through for dragging operations
+    if (activeTool !== 'move') {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (activeTool !== 'none') {
+        setActiveTool('none');
+      }
     }
   };
 
