@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -32,51 +31,42 @@ export const calculateHeight = (p1: THREE.Vector3, p2: THREE.Vector3): number =>
   return Math.abs(p2.y - p1.y);
 };
 
-// Calculate area of a polygon defined by points
+// Calculate area of a polygon defined by points in 3D space
 export const calculateArea = (points: THREE.Vector3[]): number => {
   if (points.length < 3) return 0;
   
-  // Use 3D coordinates for proper area calculation
-  // This uses the Shoelace formula (Gauss's area formula) adapted for 3D
-  let area = 0;
-  const n = points.length;
+  // Use 3D triangulation for proper area calculation
+  let totalArea = 0;
+  const firstPoint = points[0];
   
-  // Create a normal vector for the polygon plane
-  const normal = new THREE.Vector3();
-  const tempVec1 = new THREE.Vector3();
-  const tempVec2 = new THREE.Vector3();
-  
-  // Calculate an approximate normal by taking cross product of two edges
-  tempVec1.subVectors(points[1], points[0]);
-  tempVec2.subVectors(points[2], points[0]);
-  normal.crossVectors(tempVec1, tempVec2).normalize();
-  
-  // Create a coordinate system on the plane
-  const tangent = new THREE.Vector3().copy(tempVec1).normalize();
-  const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-  
-  // Project points onto this coordinate system
-  const projectedPoints = points.map(p => {
-    const projPoint = new THREE.Vector3();
-    // Use the original point's position relative to the first point
-    const relativePoint = new THREE.Vector3().subVectors(p, points[0]);
+  // Triangulate the polygon (fan triangulation from first point)
+  for (let i = 1; i < points.length - 1; i++) {
+    const triangle = [
+      firstPoint,
+      points[i],
+      points[i + 1]
+    ];
     
-    // Project onto the tangent and bitangent
-    const u = relativePoint.dot(tangent);
-    const v = relativePoint.dot(bitangent);
-    
-    projPoint.set(u, v, 0);
-    return projPoint;
-  });
-  
-  // Apply Shoelace formula to the projected 2D points
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    area += projectedPoints[i].x * projectedPoints[j].y;
-    area -= projectedPoints[j].x * projectedPoints[i].y;
+    // Calculate the area of this 3D triangle
+    totalArea += calculate3DTriangleArea(triangle);
   }
   
-  return Math.abs(area) / 2;
+  return totalArea;
+};
+
+// Helper function to calculate the area of a 3D triangle using cross product
+const calculate3DTriangleArea = (triangle: THREE.Vector3[]): number => {
+  if (triangle.length !== 3) return 0;
+  
+  // Create vectors for two sides of the triangle
+  const v1 = new THREE.Vector3().subVectors(triangle[1], triangle[0]);
+  const v2 = new THREE.Vector3().subVectors(triangle[2], triangle[0]);
+  
+  // Cross product gives a vector whose length is 2x the area
+  const crossProduct = new THREE.Vector3().crossVectors(v1, v2);
+  
+  // Half the magnitude of the cross product is the area
+  return crossProduct.length() / 2;
 };
 
 // Format measurement value with appropriate unit
@@ -219,3 +209,4 @@ export const createAreaMaterial = (): THREE.MeshBasicMaterial => {
     depthWrite: false
   });
 };
+
