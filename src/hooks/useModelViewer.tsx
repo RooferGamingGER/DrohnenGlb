@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -97,10 +96,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     // Handle dragging of measurement points
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
-      
-      // Calculate mouse movement delta
-      const deltaX = mouseRef.current.x - previousMouseRef.current.x;
-      const deltaY = mouseRef.current.y - previousMouseRef.current.y;
       
       // Update raycaster with current mouse position
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
