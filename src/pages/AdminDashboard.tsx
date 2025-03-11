@@ -69,21 +69,25 @@ const AdminDashboard = () => {
     setEditingUser(userItem.id);
     setEditForm({
       username: userItem.username,
-      password: '', // Passwort leer lassen, da es nicht angezeigt wird
+      password: '',
       id: userItem.id,
     });
   };
 
   const handleSaveEdit = (userId: string) => {
     const updates: { username?: string; password?: string; id?: string } = {};
+    const currentUser = users.find(u => u.id === userId);
     
-    if (editForm.username !== users.find(u => u.id === userId)?.username) {
+    if (!currentUser) return;
+
+    // Nur Änderungen hinzufügen, die tatsächlich geändert wurden
+    if (editForm.username && editForm.username !== currentUser.username) {
       updates.username = editForm.username;
     }
     if (editForm.password) {
       updates.password = editForm.password;
     }
-    if (editForm.id !== userId) {
+    if (editForm.id && editForm.id !== userId) {
       updates.id = editForm.id;
     }
 
@@ -214,6 +218,7 @@ const AdminDashboard = () => {
                       <td className="px-4 py-3 text-sm">
                         {editingUser === userItem.id ? (
                           <Input
+                            type="text"
                             value={editForm.id}
                             onChange={(e) => setEditForm({ ...editForm, id: e.target.value })}
                             className="w-full"
