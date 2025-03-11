@@ -19,6 +19,13 @@ export interface User {
   isAdmin?: boolean;
 }
 
+interface FirestoreUser {
+  id: string;
+  uid?: string;
+  email?: string;
+  isAdmin?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -74,8 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Benutzerliste aktualisieren
     const loadUsers = async () => {
       const usersList = await getAllUsers();
-      const formattedUsers = usersList.map(user => ({
-        id: user.id,
+      const formattedUsers = usersList.map((user: FirestoreUser) => ({
+        id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '', // Map emails to usernames for display
         isAdmin: user.isAdmin || false
@@ -90,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     const usersList = await getAllUsers();
-    const userInfo = usersList.find(u => u.id === uid);
+    const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid);
     return userInfo?.isAdmin || false;
   };
 
@@ -143,8 +150,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const firebaseUser = await createUserInFirebase(email, password, isAdmin);
     if (firebaseUser) {
       const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map(user => ({
-        id: user.id,
+      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
+        id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '', // Map emails to usernames
         isAdmin: user.isAdmin || false
@@ -159,8 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const success = await deleteUserFromFirebase(userId);
     if (success) {
       const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map(user => ({
-        id: user.id,
+      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
+        id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '', // Map emails to usernames
         isAdmin: user.isAdmin || false
@@ -178,8 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const success = await updateUserInFirebase(userId, updates);
     if (success && updates.email) {
       const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map(user => ({
-        id: user.id,
+      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
+        id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '', // Map emails to usernames
         isAdmin: user.isAdmin || false
