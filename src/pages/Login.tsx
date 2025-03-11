@@ -31,7 +31,8 @@ const Login = () => {
     // Redirect to homepage if user is already authenticated
     if (isAuthenticated) {
       console.log("User is authenticated, redirecting to homepage");
-      navigate('/');
+      // Force navigation with replace to avoid history issues
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -57,8 +58,9 @@ const Login = () => {
         });
         
         // Explicitly navigate to the homepage after successful login
-        console.log("Login successful, redirecting to homepage");
-        navigate('/');
+        console.log("Login successful, navigating to homepage");
+        // Force navigation with replace to avoid history issues
+        navigate('/', { replace: true });
       } else {
         toast({
           title: "Anmeldung fehlgeschlagen",

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   auth,
@@ -55,13 +56,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         try {
           const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
-          setUser({
+          const userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             username: firebaseUser.email || '',
             isAdmin: isAdmin
-          });
-          console.log(`Benutzer authentifiziert: ${firebaseUser.uid}, isAdmin: ${isAdmin}`);
+          };
+          setUser(userData);
+          console.log(`Benutzer authentifiziert: ${firebaseUser.uid}, isAdmin: ${isAdmin}`, userData);
         } catch (error) {
           console.error("Fehler beim Setzen der Benutzerdaten:", error);
           setUser(null);
@@ -175,6 +177,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Attempting login with:", email);
       const firebaseUser = await loginWithFirebase(email, password);
       console.log("Login result:", !!firebaseUser);
+      
+      if (firebaseUser) {
+        // Ensure user state is updated immediately
+        const isAdmin = await checkIfUserIsAdmin(firebaseUser.user.uid);
+        setUser({
+          id: firebaseUser.user.uid,
+          email: firebaseUser.user.email || '',
+          username: firebaseUser.user.email || '',
+          isAdmin: isAdmin
+        });
+      }
+      
       return !!firebaseUser;
     } catch (error) {
       console.error("Login error in AuthContext:", error);
