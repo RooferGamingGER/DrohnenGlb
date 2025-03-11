@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     try {
       const usersList = await getAllUsers();
-      const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid);
+      const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid) as FirestoreUser | undefined;
       return userInfo?.isAdmin || false;
     } catch (error) {
       console.error("Fehler beim Prüfen des Admin-Status:", error);
