@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
@@ -45,16 +44,7 @@ const ModelViewer: React.FC = () => {
     });
   };
 
-  // Ich ändere diese Funktion, um die Ereignisse nicht zu stoppen, wenn wir im "move" Modus sind
-  // und ermögliche damit das Greifen und Verschieben von Messpunkten
   const handleToolsPanelClick = (e: React.MouseEvent) => {
-    // Wenn wir im Verschiebenmodus sind, lassen wir das Ereignis an die unterliegenden Elemente durch
-    // So können wir auf Messpunkte klicken und sie greifen
-    if (activeTool === 'move') {
-      return; // Wir tun nichts, um die Ereignisse durchzulassen
-    }
-    
-    // Für andere Modi stoppen wir die Ereignisausbreitung wie bisher
     e.preventDefault();
     e.stopPropagation();
     
@@ -121,12 +111,6 @@ const ModelViewer: React.FC = () => {
                 canUndo={canUndo}
               />
             </div>
-            
-            {activeTool === 'move' && (
-              <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm p-3 rounded-lg z-50 shadow-lg animate-fade-in">
-                <p className="text-sm">Klicken Sie auf einen Messpunkt, um ihn zu verschieben</p>
-              </div>
-            )}
             
             <button
               onClick={() => setShowControls(!showControls)}

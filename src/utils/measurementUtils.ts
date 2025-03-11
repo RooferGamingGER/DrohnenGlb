@@ -1,7 +1,6 @@
-
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'move' | 'none';
+export type MeasurementType = 'length' | 'height' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
