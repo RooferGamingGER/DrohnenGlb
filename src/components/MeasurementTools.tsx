@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Ruler, Move, MinusSquare, AreaChart, Trash } from 'lucide-react';
+import { Ruler, Move, MinusSquare, AreaChart, Trash, Undo, X } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { 
@@ -14,14 +13,20 @@ interface MeasurementToolsProps {
   activeTool: MeasurementType;
   onToolChange: (tool: MeasurementType) => void;
   onClearMeasurements: () => void;
+  onDeleteMeasurement: (id: string) => void;
+  onUndoLastPoint: () => void;
   measurements: Measurement[];
+  canUndo: boolean;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   activeTool,
   onToolChange,
   onClearMeasurements,
-  measurements
+  onDeleteMeasurement,
+  onUndoLastPoint,
+  measurements,
+  canUndo
 }) => {
   return (
     <div className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg">
@@ -108,13 +113,30 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </TooltipContent>
             </Tooltip>
             
+            {canUndo && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onUndoLastPoint}
+                    className="p-2 rounded-md hover:bg-secondary transition-colors"
+                    aria-label="Letzten Punkt rückgängig machen"
+                  >
+                    <Undo size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Letzten Punkt rückgängig machen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
             {measurements.length > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClearMeasurements}
                     className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label="Messungen löschen"
+                    aria-label="Alle Messungen löschen"
                   >
                     <Trash size={18} />
                   </button>
@@ -129,17 +151,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       </div>
       
       {measurements.length > 0 && (
-        <div className="text-xs space-y-1 max-w-[150px]">
+        <div className="text-xs space-y-1 max-w-[200px]">
           <h3 className="font-medium">Messungen:</h3>
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="flex items-center justify-between">
-                <span>
-                  {m.type === 'length' && 'Länge:'}
-                  {m.type === 'height' && 'Höhe:'}
-                  {m.type === 'area' && 'Fläche:'}
+              <li key={m.id} className="flex items-center justify-between bg-background/50 p-2 rounded">
+                <span className="flex items-center gap-2">
+                  {m.type === 'length' && <Ruler size={14} />}
+                  {m.type === 'height' && <MinusSquare size={14} />}
+                  {m.type === 'area' && <AreaChart size={14} />}
+                  <span>{m.value.toFixed(2)} {m.unit}</span>
                 </span>
-                <span className="font-medium">{m.value.toFixed(2)} {m.unit}</span>
+                <button 
+                  onClick={() => onDeleteMeasurement(m.id)}
+                  className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                  aria-label="Messung löschen"
+                >
+                  <X size={14} />
+                </button>
               </li>
             ))}
           </ul>

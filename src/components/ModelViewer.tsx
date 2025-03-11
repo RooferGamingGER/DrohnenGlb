@@ -29,6 +29,9 @@ const ModelViewer: React.FC = () => {
     setActiveTool,
     measurements,
     clearMeasurements,
+    undoLastPoint,
+    deleteMeasurement,
+    canUndo,
   } = useModelViewer({ containerRef: viewerRef });
 
   const handleFileSelected = (file: File) => {
@@ -84,13 +87,15 @@ const ModelViewer: React.FC = () => {
         
         {loadedModel && (
           <>
-            {/* Measurement tools panel */}
             <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20">
               <MeasurementTools 
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
                 onClearMeasurements={clearMeasurements}
+                onDeleteMeasurement={deleteMeasurement}
+                onUndoLastPoint={undoLastPoint}
                 measurements={measurements}
+                canUndo={canUndo}
               />
             </div>
             

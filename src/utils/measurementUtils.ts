@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -14,6 +13,7 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
+  isActive?: boolean;
 }
 
 // Calculate distance between two points in 3D space

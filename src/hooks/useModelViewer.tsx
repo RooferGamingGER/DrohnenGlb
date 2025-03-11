@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -72,6 +71,134 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     lines: THREE.Line[];
     labels: THREE.Sprite[];
   } | null>(null);
+
+  const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  
+  // Handle mouse move for showing potential measurement points
+  const handleMouseMove = (event: MouseEvent) => {
+    if (!containerRef.current || !modelRef.current || !cameraRef.current || activeTool === 'none') {
+      if (hoverPoint) setHoverPoint(null);
+      return;
+    }
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+    const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+    
+    if (intersects.length > 0) {
+      setHoverPoint(intersects[0].point.clone());
+    } else {
+      setHoverPoint(null);
+    }
+  };
+
+  // Handle right click to cancel measurement
+  const handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    if (activeTool !== 'none' && temporaryPoints.length > 0) {
+      setTemporaryPoints([]);
+      if (currentMeasurementRef.current) {
+        currentMeasurementRef.current.lines.forEach(line => 
+          measurementGroupRef.current?.remove(line)
+        );
+        currentMeasurementRef.current.labels.forEach(label => 
+          measurementGroupRef.current?.remove(label)
+        );
+        currentMeasurementRef.current = null;
+      }
+      toast({
+        title: "Messung abgebrochen",
+        description: "Die aktuelle Messung wurde abgebrochen.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Function to undo last point
+  const undoLastPoint = () => {
+    if (temporaryPoints.length > 0) {
+      const newPoints = temporaryPoints.slice(0, -1);
+      setTemporaryPoints(newPoints);
+      
+      if (measurementGroupRef.current) {
+        // Remove last point visualization
+        const lastPoint = measurementGroupRef.current.children.find(
+          child => child instanceof THREE.Mesh && 
+          child.position.equals(temporaryPoints[temporaryPoints.length - 1].position)
+        );
+        if (lastPoint) measurementGroupRef.current.remove(lastPoint);
+        
+        // Remove last line if it exists
+        if (currentMeasurementRef.current?.lines.length) {
+          const lastLine = currentMeasurementRef.current.lines[currentMeasurementRef.current.lines.length - 1];
+          measurementGroupRef.current.remove(lastLine);
+          currentMeasurementRef.current.lines.pop();
+        }
+        
+        // Remove last label if it exists
+        if (currentMeasurementRef.current?.labels.length) {
+          const lastLabel = currentMeasurementRef.current.labels[currentMeasurementRef.current.labels.length - 1];
+          measurementGroupRef.current.remove(lastLabel);
+          currentMeasurementRef.current.labels.pop();
+        }
+      }
+      
+      // Update area preview if applicable
+      if (activeTool === 'area' && newPoints.length >= 2) {
+        updateAreaPreview(newPoints);
+      }
+    }
+  };
+
+  // Function to delete individual measurement
+  const deleteMeasurement = (id: string) => {
+    const measurementToDelete = measurements.find(m => m.id === id);
+    if (measurementToDelete && measurementGroupRef.current) {
+      // Remove visualization for this measurement
+      const pointsToRemove = measurementToDelete.points.map(p => p.position);
+      measurementGroupRef.current.children.forEach(child => {
+        if (child instanceof THREE.Mesh && pointsToRemove.some(p => p.equals(child.position))) {
+          measurementGroupRef.current?.remove(child);
+        }
+      });
+      
+      setMeasurements(prev => prev.filter(m => m.id !== id));
+      toast({
+        title: "Messung gelöscht",
+        description: "Die ausgewählte Messung wurde entfernt.",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Show hover point
+  useEffect(() => {
+    if (hoverPoint && measurementGroupRef.current && activeTool !== 'none') {
+      const hoverGeometry = new THREE.SphereGeometry(0.03);
+      const hoverMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.5
+      });
+      const hoverMesh = new THREE.Mesh(hoverGeometry, hoverMaterial);
+      hoverMesh.position.copy(hoverPoint);
+      hoverMesh.name = 'hoverPoint';
+      
+      // Remove any existing hover point
+      const existingHoverPoint = measurementGroupRef.current.children.find(
+        child => child.name === 'hoverPoint'
+      );
+      if (existingHoverPoint) {
+        measurementGroupRef.current.remove(existingHoverPoint);
+      }
+      
+      measurementGroupRef.current.add(hoverMesh);
+    }
+  }, [hoverPoint, activeTool]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -481,6 +608,24 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, [activeTool, temporaryPoints]);
 
+  // Set up event listeners
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    containerRef.current.addEventListener('mousemove', handleMouseMove);
+    containerRef.current.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      containerRef.current?.removeEventListener('mousemove', handleMouseMove);
+      containerRef.current?.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [activeTool, temporaryPoints]);
+
+  // Update canUndo state
+  useEffect(() => {
+    setCanUndo(temporaryPoints.length > 0);
+  }, [temporaryPoints]);
+
   const loadModel = async (file: File) => {
     try {
       if (!sceneRef.current) return;
@@ -667,5 +812,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setActiveTool,
     measurements,
     clearMeasurements,
+    undoLastPoint,
+    deleteMeasurement,
+    canUndo,
   };
 };
