@@ -28,7 +28,9 @@ const Login = () => {
   }, []);
 
   useEffect(() => {
+    // Redirect to homepage if user is already authenticated
     if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to homepage");
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
@@ -53,6 +55,9 @@ const Login = () => {
           title: "Anmeldung erfolgreich",
           description: "Sie wurden erfolgreich angemeldet.",
         });
+        
+        // Explicitly navigate to the homepage after successful login
+        console.log("Login successful, redirecting to homepage");
         navigate('/');
       } else {
         toast({
@@ -62,6 +67,7 @@ const Login = () => {
         });
       }
     } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",

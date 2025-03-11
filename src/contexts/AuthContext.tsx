@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log("Setting up auth state listener");
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -170,8 +171,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const firebaseUser = await loginWithFirebase(email, password);
-    return !!firebaseUser;
+    try {
+      console.log("Attempting login with:", email);
+      const firebaseUser = await loginWithFirebase(email, password);
+      console.log("Login result:", !!firebaseUser);
+      return !!firebaseUser;
+    } catch (error) {
+      console.error("Login error in AuthContext:", error);
+      return false;
+    }
   };
 
   const logout = async (): Promise<boolean> => {
