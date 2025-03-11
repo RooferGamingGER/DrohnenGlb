@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Hand } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
+  // Automatisches Deaktivieren des Messwerkzeugs, wenn eine Beschreibung bearbeitet wird
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
@@ -44,6 +46,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
+    // Messwerkzeug nach dem Löschen deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -52,6 +55,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    // Messwerkzeug beim Starten der Bearbeitung deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -76,6 +80,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
+    // Nur im Verschiebenmodus lassen wir das Ereignis passieren
     if (activeTool === 'move') {
       return;
     }
@@ -83,6 +88,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     
+    // Messwerkzeug beim Klicken irgendwo im Container deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -155,6 +161,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Höhe messen</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('move')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'move' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Messpunkte verschieben"
+                >
+                  <Hand size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Messpunkte verschieben</p>
               </TooltipContent>
             </Tooltip>
             
