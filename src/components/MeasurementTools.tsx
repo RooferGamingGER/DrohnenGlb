@@ -90,7 +90,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   return (
     <div 
-      className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg"
+      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg"
       onClick={handleContainerClick}
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
@@ -200,7 +200,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <h3 className="font-medium">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="bg-background/50 p-2 rounded">
+              <li key={m.id} className="bg-background/40 p-2 rounded">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
                     {m.type === 'length' && <Ruler size={14} />}
