@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Benutzertyp-Definition
@@ -89,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     localStorage.removeItem('currentUser');
+    // Don't clear saved credentials here to keep them for next login
   };
 
   // Registrierungsfunktion
@@ -220,4 +220,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

@@ -5,14 +5,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check for saved credentials on component mount
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('savedUsername');
+    const savedPassword = localStorage.getItem('savedPassword');
+    
+    if (savedUsername && savedPassword) {
+      setUsername(savedUsername);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Redirect to homepage if already logged in
   useEffect(() => {
@@ -30,6 +44,16 @@ const Login = () => {
     setIsLoading(false);
     
     if (success) {
+      // Save login credentials if Remember Me is checked
+      if (rememberMe) {
+        localStorage.setItem('savedUsername', username);
+        localStorage.setItem('savedPassword', password);
+      } else {
+        // Remove saved credentials if Remember Me is unchecked
+        localStorage.removeItem('savedUsername');
+        localStorage.removeItem('savedPassword');
+      }
+      
       toast({
         title: "Anmeldung erfolgreich",
         description: "Sie wurden erfolgreich angemeldet.",
@@ -80,6 +104,20 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="rememberMe" 
+              checked={rememberMe} 
+              onCheckedChange={(checked) => setRememberMe(checked === true)}
+            />
+            <label
+              htmlFor="rememberMe"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Anmeldedaten speichern
+            </label>
           </div>
           
           <Button
