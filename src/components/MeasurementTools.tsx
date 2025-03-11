@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, MinusSquare } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -90,23 +90,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   return (
     <div 
-      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg"
+      className="flex flex-col gap-4 bg-white border border-gray-200 rounded-lg shadow-sm"
       onClick={handleContainerClick}
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
     >
-      <div className="flex flex-col gap-2">
+      <div className="p-2 border-b border-gray-200">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Messwerkzeuge</h3>
         <TooltipProvider>
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => onToolChange('none')}
                   className={cn(
-                    "p-2 rounded-md transition-colors",
+                    "p-2 rounded border transition-colors",
                     activeTool === 'none' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-secondary"
+                      ? "bg-blue-50 border-blue-300 text-blue-700" 
+                      : "border-gray-200 hover:bg-gray-50"
                   )}
                   aria-label="Navigieren"
                 >
@@ -123,18 +124,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <button
                   onClick={() => onToolChange('length')}
                   className={cn(
-                    "p-2 rounded-md transition-colors",
+                    "p-2 rounded border transition-colors",
                     activeTool === 'length' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-secondary"
+                      ? "bg-blue-50 border-blue-300 text-blue-700" 
+                      : "border-gray-200 hover:bg-gray-50"
                   )}
-                  aria-label="Länge messen"
+                  aria-label="Distanz messen"
                 >
                   <Ruler size={18} />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Länge messen</p>
+                <p>Distanz messen</p>
               </TooltipContent>
             </Tooltip>
             
@@ -143,10 +144,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <button
                   onClick={() => onToolChange('height')}
                   className={cn(
-                    "p-2 rounded-md transition-colors",
+                    "p-2 rounded border transition-colors",
                     activeTool === 'height' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-secondary"
+                      ? "bg-blue-50 border-blue-300 text-blue-700" 
+                      : "border-gray-200 hover:bg-gray-50"
                   )}
                   aria-label="Höhe messen"
                 >
@@ -158,12 +159,32 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </TooltipContent>
             </Tooltip>
             
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('area')}
+                  className={cn(
+                    "p-2 rounded border transition-colors",
+                    activeTool === 'area' 
+                      ? "bg-blue-50 border-blue-300 text-blue-700" 
+                      : "border-gray-200 hover:bg-gray-50"
+                  )}
+                  aria-label="Fläche messen"
+                >
+                  <MinusSquare size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Fläche messen</p>
+              </TooltipContent>
+            </Tooltip>
+            
             {canUndo && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={onUndoLastPoint}
-                    className="p-2 rounded-md hover:bg-secondary transition-colors"
+                    className="p-2 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
                     aria-label="Letzten Punkt rückgängig machen"
                   >
                     <Undo size={18} />
@@ -180,7 +201,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClearMeasurements}
-                    className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                    className="p-2 rounded border border-gray-200 text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
                     aria-label="Alle Messungen löschen"
                   >
                     <Trash size={18} />
@@ -196,28 +217,29 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       </div>
       
       {measurements.length > 0 && (
-        <div className="text-xs space-y-1 max-w-[200px]">
-          <h3 className="font-medium">Messungen:</h3>
+        <div className="px-3 pb-3 pt-1 max-h-[300px] overflow-y-auto">
+          <h3 className="text-xs font-medium text-gray-700 mb-2">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="bg-background/40 p-2 rounded">
+              <li key={m.id} className="bg-white border border-gray-200 p-2 rounded">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
-                    {m.type === 'length' && <Ruler size={14} />}
-                    {m.type === 'height' && <ArrowUpDown size={14} />}
-                    <span>{m.value.toFixed(2)} {m.unit}</span>
+                    {m.type === 'length' && <Ruler size={14} className="text-blue-600" />}
+                    {m.type === 'height' && <ArrowUpDown size={14} className="text-blue-600" />}
+                    {m.type === 'area' && <MinusSquare size={14} className="text-blue-600" />}
+                    <span className="text-sm">{m.value.toFixed(2)} {m.unit}</span>
                   </span>
                   <div className="flex items-center">
                     <button 
                       onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
-                      className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                      className="text-blue-600 hover:bg-blue-50 p-1 rounded mr-1"
                       aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
                     >
                       {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
                     </button>
                     <button 
                       onClick={(e) => handleDeleteMeasurement(m.id, e)}
-                      className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                      className="text-red-600 hover:bg-red-50 p-1 rounded"
                       aria-label="Messung löschen"
                     >
                       <X size={14} />
@@ -237,7 +259,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   />
                 ) : (
                   m.description && (
-                    <p className="text-muted-foreground text-xs break-words">
+                    <p className="text-gray-500 text-xs break-words">
                       {m.description}
                     </p>
                   )

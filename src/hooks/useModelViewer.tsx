@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { 
@@ -14,10 +15,14 @@ import {
   MeasurementPoint,
   calculateDistance,
   calculateHeight,
+  calculateArea,
   createMeasurementId,
   createTextSprite,
   updateLabelScale,
-  createDraggablePointMaterial
+  createDraggablePointMaterial,
+  createMeasurementLineMaterial,
+  createTemporaryLineMaterial,
+  createAreaMaterial
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,7 +47,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   });
   
   const [background, setBackground] = useState<BackgroundOption>(
-    backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]
+    backgroundOptions.find(bg => bg.id === 'light') || backgroundOptions[0]
   );
   
   const [activeTool, setActiveTool] = useState<MeasurementType>('none');
@@ -80,10 +85,63 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     lines: THREE.Line[];
     labels: THREE.Sprite[];
     meshes: THREE.Mesh[];
+    areaMesh?: THREE.Mesh;
   } | null>(null);
+
+  // Preview elements for active measurement
+  const previewLineRef = useRef<THREE.Line | null>(null);
+  const previewPointRef = useRef<THREE.Mesh | null>(null);
 
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
+
+  // Helper to show real-time preview of measurement
+  const updatePreviewLine = useCallback((startPoint: THREE.Vector3, endPoint: THREE.Vector3) => {
+    if (!measurementGroupRef.current) return;
+    
+    // Remove any existing preview line
+    if (previewLineRef.current) {
+      measurementGroupRef.current.remove(previewLineRef.current);
+      previewLineRef.current.geometry.dispose();
+      if (Array.isArray(previewLineRef.current.material)) {
+        previewLineRef.current.material.forEach(m => m.dispose());
+      } else {
+        previewLineRef.current.material.dispose();
+      }
+      previewLineRef.current = null;
+    }
+    
+    const material = createTemporaryLineMaterial();
+    let linePoints: THREE.Vector3[];
+    
+    if (activeTool === 'height') {
+      // For height measurement, create a vertical line
+      const verticalPoint = new THREE.Vector3(
+        startPoint.x,
+        endPoint.y,
+        startPoint.z
+      );
+      linePoints = [startPoint, verticalPoint, endPoint];
+    } else if (activeTool === 'area' && temporaryPoints.length > 1) {
+      // For area, connect all points including current hover point to form a polygon
+      linePoints = [
+        ...temporaryPoints.map(p => p.position),
+        endPoint,
+        temporaryPoints[0].position // Close the loop
+      ];
+    } else {
+      // For length measurement, create a straight line
+      linePoints = [startPoint, endPoint];
+    }
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const line = new THREE.Line(geometry, material);
+    line.frustumCulled = false;
+    
+    // Add preview line to scene
+    measurementGroupRef.current.add(line);
+    previewLineRef.current = line;
+  }, [activeTool, temporaryPoints]);
   
   const handleMouseMove = (event: MouseEvent) => {
     if (!containerRef.current) return;
@@ -96,10 +154,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     // Handle dragging of measurement points
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
-      
-      // Calculate mouse movement delta
-      const deltaX = mouseRef.current.x - previousMouseRef.current.x;
-      const deltaY = mouseRef.current.y - previousMouseRef.current.y;
       
       // Update raycaster with current mouse position
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
@@ -130,9 +184,28 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
       if (intersects.length > 0) {
-        setHoverPoint(intersects[0].point.clone());
+        const newHoverPoint = intersects[0].point.clone();
+        setHoverPoint(newHoverPoint);
+        
+        // Update preview line if we have temporary points
+        if (temporaryPoints.length > 0) {
+          const lastPoint = temporaryPoints[temporaryPoints.length - 1].position;
+          updatePreviewLine(lastPoint, newHoverPoint);
+        }
       } else {
         setHoverPoint(null);
+        
+        // Remove preview line if mouse is not over model
+        if (previewLineRef.current && measurementGroupRef.current) {
+          measurementGroupRef.current.remove(previewLineRef.current);
+          previewLineRef.current.geometry.dispose();
+          if (Array.isArray(previewLineRef.current.material)) {
+            previewLineRef.current.material.forEach(m => m.dispose());
+          } else {
+            previewLineRef.current.material.dispose();
+          }
+          previewLineRef.current = null;
+        }
       }
     }
     // Check if we're hovering over any measurement points
@@ -262,16 +335,49 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
               updatedPoints[0].position,
               updatedPoints[1].position
             );
-          } else { // height
+          } else if (measurement.type === 'height') {
             newValue = calculateHeight(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
+          } else if (measurement.type === 'area') {
+            // Calculate area for polygon
+            newValue = calculateArea(updatedPoints.map(p => p.position));
+            
+            // Update area mesh if it exists
+            if (measurement.areaObject && measurementGroupRef.current) {
+              const positions = updatedPoints.map(p => p.position);
+              const shape = new THREE.Shape();
+              
+              // Create shape from points
+              shape.moveTo(positions[0].x, positions[0].z);
+              for (let i = 1; i < positions.length; i++) {
+                shape.lineTo(positions[i].x, positions[i].z);
+              }
+              shape.closePath();
+              
+              // Create new geometry from shape
+              const geometry = new THREE.ShapeGeometry(shape);
+              
+              // Transform vertices to match 3D space (XZ plane projection)
+              const positionAttribute = geometry.getAttribute('position');
+              for (let i = 0; i < positionAttribute.count; i++) {
+                const y = positions[0].y; // Use Y of first point
+                const x = positionAttribute.getX(i);
+                const z = positionAttribute.getY(i);
+                positionAttribute.setXYZ(i, x, y, z);
+              }
+              geometry.computeVertexNormals();
+              
+              // Update area mesh geometry
+              measurement.areaObject.geometry.dispose();
+              measurement.areaObject.geometry = geometry;
+            }
           }
           
           // Update label position and text
           if (measurement.labelObject) {
-            // Update label position (middle point)
+            // Update label position
             let labelPosition: THREE.Vector3;
             
             if (measurement.type === 'length') {
@@ -280,7 +386,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 updatedPoints[1].position
               ).multiplyScalar(0.5);
               labelPosition.y += 0.1; // Slightly above the line
-            } else { // height
+            } else if (measurement.type === 'height') {
               const midHeight = (
                 updatedPoints[0].position.y + 
                 updatedPoints[1].position.y
@@ -292,19 +398,35 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 updatedPoints[0].position.z
               );
               labelPosition.x += 0.1; // Slightly to the right
+            } else { // area
+              // Calculate centroid for polygon
+              const positions = updatedPoints.map(p => p.position);
+              let sumX = 0, sumY = 0, sumZ = 0;
+              positions.forEach(p => {
+                sumX += p.x;
+                sumY += p.y;
+                sumZ += p.z;
+              });
+              
+              labelPosition = new THREE.Vector3(
+                sumX / positions.length,
+                sumY / positions.length,
+                sumZ / positions.length
+              );
+              labelPosition.y += 0.1; // Slightly above the area
             }
             
             // Update sprite position
             measurement.labelObject.position.copy(labelPosition);
             
             // Update text
-            const labelText = `${newValue.toFixed(2)} ${measurement.unit}`;
+            const unit = measurement.type === 'area' ? 'm²' : 'm';
+            const labelText = `${newValue.toFixed(2)} ${unit}`;
             
             // We need to recreate the sprite with updated text
             const newSprite = createTextSprite(
               labelText, 
-              labelPosition,
-              measurement.type === 'length' ? 0x00ff00 : 0x0000ff
+              labelPosition
             );
             
             // Copy user data and scale
@@ -334,7 +456,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 
                 measurement.lineObjects[0].geometry.dispose();
                 measurement.lineObjects[0].geometry = lineGeometry;
-              } else { // height
+              } else if (measurement.type === 'height') {
                 // For height, we have a vertical line
                 const verticalPoint = new THREE.Vector3(
                   updatedPoints[0].position.x,
@@ -350,6 +472,22 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 
                 measurement.lineObjects[0].geometry.dispose();
                 measurement.lineObjects[0].geometry = lineGeometry;
+              } else if (measurement.type === 'area') {
+                // For area, update all lines to form polygon
+                const positions = updatedPoints.map(p => p.position);
+                
+                for (let i = 0; i < positions.length; i++) {
+                  const nextIndex = (i + 1) % positions.length;
+                  const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                    positions[i],
+                    positions[nextIndex]
+                  ]);
+                  
+                  if (measurement.lineObjects[i]) {
+                    measurement.lineObjects[i].geometry.dispose();
+                    measurement.lineObjects[i].geometry = lineGeometry;
+                  }
+                }
               }
             }
             
@@ -426,22 +564,19 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         });
       }
       
+      if (measurementToDelete.areaObject) {
+        measurementToDelete.areaObject.geometry.dispose();
+        (measurementToDelete.areaObject.material as THREE.Material).dispose();
+        measurementGroupRef.current.remove(measurementToDelete.areaObject);
+      }
+      
       setMeasurements(prev => prev.filter(m => m.id !== id));
     }
   };
 
   useEffect(() => {
     if (hoverPoint && measurementGroupRef.current && activeTool !== 'none') {
-      const hoverGeometry = new THREE.SphereGeometry(0.03);
-      const hoverMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.5
-      });
-      const hoverMesh = new THREE.Mesh(hoverGeometry, hoverMaterial);
-      hoverMesh.position.copy(hoverPoint);
-      hoverMesh.name = 'hoverPoint';
-      
+      // Clear existing hover point
       const existingHoverPoint = measurementGroupRef.current.children.find(
         child => child.name === 'hoverPoint'
       );
@@ -449,7 +584,24 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         measurementGroupRef.current.remove(existingHoverPoint);
       }
       
+      // Create new hover point indicator
+      const hoverGeometry = new THREE.SphereGeometry(0.03);
+      const hoverMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x1e88e5,
+        transparent: true,
+        opacity: 0.7
+      });
+      const hoverMesh = new THREE.Mesh(hoverGeometry, hoverMaterial);
+      hoverMesh.position.copy(hoverPoint);
+      hoverMesh.name = 'hoverPoint';
       measurementGroupRef.current.add(hoverMesh);
+      
+      previewPointRef.current = hoverMesh;
+    } else if (!hoverPoint && previewPointRef.current && measurementGroupRef.current) {
+      measurementGroupRef.current.remove(previewPointRef.current);
+      previewPointRef.current.geometry.dispose();
+      previewPointRef.current.material.dispose();
+      previewPointRef.current = null;
     }
   }, [hoverPoint, activeTool]);
 
@@ -472,7 +624,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -600,9 +752,36 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       
       addMeasurementPoint(point);
       
+      // For length and height measurements, complete after two points
       if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
         const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
         finalizeMeasurement(newPoints);
+      }
+      // For area measurements, require at least 3 points
+      else if (activeTool === 'area' && temporaryPoints.length >= 2) {
+        // If this is double-clicking near the first point, complete the area
+        if (temporaryPoints.length >= 3) {
+          const firstPoint = temporaryPoints[0].position;
+          // Check if the new point is close to the first point to close the polygon
+          if (point.distanceTo(firstPoint) < 0.2) {
+            // Remove the last point (current click) and use the first point to close the polygon
+            const newPoints = [...temporaryPoints];
+            finalizeMeasurement(newPoints);
+            
+            // Clean up the preview line
+            if (previewLineRef.current && measurementGroupRef.current) {
+              measurementGroupRef.current.remove(previewLineRef.current);
+              previewLineRef.current.geometry.dispose();
+              if (Array.isArray(previewLineRef.current.material)) {
+                previewLineRef.current.material.forEach(m => m.dispose());
+              } else {
+                previewLineRef.current.material.dispose();
+              }
+              previewLineRef.current = null;
+            }
+            return;
+          }
+        }
       }
     }
   };
@@ -610,13 +789,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const addMeasurementPoint = (position: THREE.Vector3) => {
     if (!measurementGroupRef.current) return;
     
+    // Create point
     const pointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
     const pointMaterial = createDraggablePointMaterial();
     const point = new THREE.Mesh(pointGeometry, pointMaterial);
     point.position.copy(position);
     
-    // Set a unique name for the point so we can identify it later when dragging
-    // The name will be updated with the measurement ID after finalization
+    // Set a unique name for the point
     point.name = `point-temp-${temporaryPoints.length}`;
     
     measurementGroupRef.current.add(point);
@@ -636,14 +815,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     if (temporaryPoints.length > 0) {
       const prevPoint = temporaryPoints[temporaryPoints.length - 1].position;
       
-      const lineMaterial = new THREE.LineBasicMaterial({ 
-        color: activeTool === 'length' ? 0x00ff00 : 0x0000ff,
-        linewidth: 2
-      });
+      // Create appropriate line material
+      const lineMaterial = createMeasurementLineMaterial(activeTool);
       
       let linePoints: THREE.Vector3[];
       
       if (activeTool === 'height') {
+        // For height measurement, create vertical line
         const verticalPoint = new THREE.Vector3(
           prevPoint.x, 
           position.y,
@@ -651,19 +829,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         );
         
         linePoints = [prevPoint, verticalPoint, position];
+      } else if (activeTool === 'area') {
+        // For area, connect to previous point
+        linePoints = [prevPoint, position];
       } else {
+        // For length measurement, direct line
         linePoints = [prevPoint, position];
       }
       
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
       const line = new THREE.Line(lineGeometry, lineMaterial);
+      line.frustumCulled = false; // Ensure line is always rendered
       measurementGroupRef.current.add(line);
       
       if (currentMeasurementRef.current) {
         currentMeasurementRef.current.lines.push(line);
       }
       
-      if (activeTool === 'length' || activeTool === 'height') {
+      // Create label for length or height measurements after second point
+      if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
         let value: number;
         let unit = 'm';
         
@@ -674,9 +858,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.y += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
+          const labelSprite = createTextSprite(labelText, midPoint);
           
-          // Make sure new sprites are correctly initialized for dynamic scaling
+          // Initialize for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -692,7 +876,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           if (currentMeasurementRef.current) {
             currentMeasurementRef.current.labels.push(labelSprite);
           }
-        } else {
+        } else if (activeTool === 'height') {
           value = calculateHeight(prevPoint, position);
           
           const midHeight = (prevPoint.y + position.y) / 2;
@@ -704,9 +888,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           midPoint.x += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
+          const labelSprite = createTextSprite(labelText, midPoint);
           
-          // Make sure new sprites are correctly initialized for dynamic scaling
+          // Initialize for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -724,11 +908,109 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           }
         }
       }
+      // For area measurements, update area preview after third point
+      else if (activeTool === 'area' && temporaryPoints.length >= 2) {
+        // If we have 3 or more points, create or update area visualization
+        if (currentMeasurementRef.current && currentMeasurementRef.current.areaMesh) {
+          // Remove existing area mesh to update it
+          measurementGroupRef.current.remove(currentMeasurementRef.current.areaMesh);
+          currentMeasurementRef.current.areaMesh.geometry.dispose();
+          if (currentMeasurementRef.current.areaMesh.material instanceof THREE.Material) {
+            currentMeasurementRef.current.areaMesh.material.dispose();
+          }
+        }
+        
+        // Create shape from current points
+        const shape = new THREE.Shape();
+        const allPoints = [
+          ...temporaryPoints.map(p => p.position),
+          position
+        ];
+        
+        shape.moveTo(allPoints[0].x, allPoints[0].z);
+        for (let i = 1; i < allPoints.length; i++) {
+          shape.lineTo(allPoints[i].x, allPoints[i].z);
+        }
+        shape.closePath();
+        
+        // Create geometry from shape
+        const geometry = new THREE.ShapeGeometry(shape);
+        
+        // Transform vertices to match 3D space (XZ plane projection)
+        const positionAttribute = geometry.getAttribute('position');
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const y = allPoints[0].y; // Use Y of first point
+          const x = positionAttribute.getX(i);
+          const z = positionAttribute.getY(i);
+          positionAttribute.setXYZ(i, x, y, z);
+        }
+        geometry.computeVertexNormals();
+        
+        // Create area mesh
+        const areaMaterial = createAreaMaterial();
+        const areaMesh = new THREE.Mesh(geometry, areaMaterial);
+        areaMesh.name = 'area-temp';
+        areaMesh.position.y += 0.01; // Slight offset to avoid z-fighting
+        measurementGroupRef.current.add(areaMesh);
+        
+        if (currentMeasurementRef.current) {
+          currentMeasurementRef.current.areaMesh = areaMesh;
+        }
+        
+        // Create or update area label after 3+ points
+        if (currentMeasurementRef.current) {
+          // Remove existing label if any
+          if (currentMeasurementRef.current.labels.length > 0) {
+            const existingLabel = currentMeasurementRef.current.labels[0];
+            measurementGroupRef.current.remove(existingLabel);
+            if (existingLabel.material instanceof THREE.SpriteMaterial) {
+              existingLabel.material.map?.dispose();
+              existingLabel.material.dispose();
+            }
+            currentMeasurementRef.current.labels = [];
+          }
+          
+          // Calculate area
+          const area = calculateArea(allPoints);
+          
+          // Calculate centroid
+          let sumX = 0, sumY = 0, sumZ = 0;
+          allPoints.forEach(p => {
+            sumX += p.x;
+            sumY += p.y;
+            sumZ += p.z;
+          });
+          
+          const labelPosition = new THREE.Vector3(
+            sumX / allPoints.length,
+            sumY / allPoints.length,
+            sumZ / allPoints.length
+          );
+          labelPosition.y += 0.1; // Slightly above the area
+          
+          const labelText = `${area.toFixed(2)} m²`;
+          const labelSprite = createTextSprite(labelText, labelPosition);
+          
+          // Initialize for dynamic scaling
+          labelSprite.userData = {
+            ...labelSprite.userData,
+            isLabel: true,
+            baseScale: { x: 0.8, y: 0.4, z: 1 }
+          };
+          
+          if (cameraRef.current) {
+            updateLabelScale(labelSprite, cameraRef.current);
+          }
+          
+          measurementGroupRef.current.add(labelSprite);
+          currentMeasurementRef.current.labels.push(labelSprite);
+        }
+      }
     }
   };
   
   const finalizeMeasurement = (points: MeasurementPoint[]) => {
-    if (activeTool === 'none' || points.length < 2) return;
+    if (activeTool === 'none' || points.length < 2 || !measurementGroupRef.current) return;
     
     let value = 0;
     let unit = 'm';
@@ -737,6 +1019,48 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       value = calculateDistance(points[0].position, points[1].position);
     } else if (activeTool === 'height') {
       value = calculateHeight(points[0].position, points[1].position);
+    } else if (activeTool === 'area' && points.length >= 3) {
+      value = calculateArea(points.map(p => p.position));
+      unit = 'm²';
+    } else {
+      // Invalid measurement, cleanup
+      if (currentMeasurementRef.current) {
+        currentMeasurementRef.current.meshes.forEach(mesh => {
+          measurementGroupRef.current?.remove(mesh);
+          mesh.geometry.dispose();
+          mesh.material.dispose();
+        });
+        
+        currentMeasurementRef.current.lines.forEach(line => {
+          measurementGroupRef.current?.remove(line);
+          line.geometry.dispose();
+          if (Array.isArray(line.material)) {
+            line.material.forEach(m => m.dispose());
+          } else {
+            line.material.dispose();
+          }
+        });
+        
+        currentMeasurementRef.current.labels.forEach(label => {
+          measurementGroupRef.current?.remove(label);
+          if (label.material instanceof THREE.SpriteMaterial) {
+            label.material.map?.dispose();
+            label.material.dispose();
+          }
+        });
+        
+        if (currentMeasurementRef.current.areaMesh) {
+          measurementGroupRef.current.remove(currentMeasurementRef.current.areaMesh);
+          currentMeasurementRef.current.areaMesh.geometry.dispose();
+          if (currentMeasurementRef.current.areaMesh.material instanceof THREE.Material) {
+            currentMeasurementRef.current.areaMesh.material.dispose();
+          }
+        }
+      }
+      
+      setTemporaryPoints([]);
+      currentMeasurementRef.current = null;
+      return;
     }
     
     const measurementId = createMeasurementId();
@@ -748,12 +1072,19 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       });
     }
     
-    const measurementObjects = {
+    // Create object with all the measurement objects
+    const measurementObjects: Partial<Measurement> = {
       pointObjects: currentMeasurementRef.current?.meshes || [],
       lineObjects: currentMeasurementRef.current?.lines || [],
       labelObject: currentMeasurementRef.current?.labels[0] || null
     };
     
+    // Add area mesh if present
+    if (activeTool === 'area' && currentMeasurementRef.current?.areaMesh) {
+      measurementObjects.areaObject = currentMeasurementRef.current.areaMesh;
+    }
+    
+    // Create and store the measurement
     const newMeasurement: Measurement = {
       id: measurementId,
       type: activeTool,
@@ -766,7 +1097,29 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setMeasurements(prev => [...prev, newMeasurement]);
     setTemporaryPoints([]);
     
+    // Clean up temp preview line
+    if (previewLineRef.current && measurementGroupRef.current) {
+      measurementGroupRef.current.remove(previewLineRef.current);
+      previewLineRef.current.geometry.dispose();
+      if (Array.isArray(previewLineRef.current.material)) {
+        previewLineRef.current.material.forEach(m => m.dispose());
+      } else {
+        previewLineRef.current.material.dispose();
+      }
+      previewLineRef.current = null;
+    }
+    
     currentMeasurementRef.current = null;
+    
+    // Reset to navigation mode after completing measurement
+    setActiveTool('none');
+    
+    // Show success notification
+    toast({
+      title: "Messung abgeschlossen",
+      description: `${activeTool === 'length' ? 'Längen' : activeTool === 'height' ? 'Höhen' : 'Flächen'}messung: ${value.toFixed(2)} ${unit}`,
+      duration: 3000,
+    });
   };
   
   const clearMeasurements = () => {
@@ -795,6 +1148,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             measurementGroupRef.current?.remove(point);
           });
         }
+        
+        if (measurement.areaObject) {
+          measurement.areaObject.geometry.dispose();
+          if (measurement.areaObject.material instanceof THREE.Material) {
+            measurement.areaObject.material.dispose();
+          }
+          measurementGroupRef.current?.remove(measurement.areaObject);
+        }
       });
       
       const hoverPoint = measurementGroupRef.current.children.find(
@@ -802,6 +1163,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       );
       if (hoverPoint) {
         measurementGroupRef.current.remove(hoverPoint);
+      }
+      
+      // Clean up any temporary elements
+      if (previewLineRef.current) {
+        measurementGroupRef.current.remove(previewLineRef.current);
+        previewLineRef.current.geometry.dispose();
+        if (Array.isArray(previewLineRef.current.material)) {
+          previewLineRef.current.material.forEach(m => m.dispose());
+        } else {
+          previewLineRef.current.material.dispose();
+        }
+        previewLineRef.current = null;
+      }
+      
+      if (previewPointRef.current) {
+        measurementGroupRef.current.remove(previewPointRef.current);
+        previewPointRef.current.geometry.dispose();
+        previewPointRef.current.material.dispose();
+        previewPointRef.current = null;
       }
     }
     
@@ -818,11 +1198,50 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     );
   };
 
+  const takeScreenshot = () => {
+    if (!rendererRef.current) return;
+    
+    try {
+      // Render scene
+      if (sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+      
+      // Convert to image
+      const dataURL = rendererRef.current.domElement.toDataURL('image/png');
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = `dronenaufmass_${new Date().toISOString().slice(0, 10)}.png`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Screenshot erstellt",
+        description: "Das Bild wurde heruntergeladen.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error taking screenshot:", error);
+      toast({
+        title: "Fehler",
+        description: "Screenshot konnte nicht erstellt werden.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
     
     if (activeTool !== 'none') {
       containerRef.current.addEventListener('click', handleMeasurementClick);
+      containerRef.current.addEventListener('mousemove', handleMouseMove);
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = false;
@@ -831,6 +1250,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
       setTemporaryPoints([]);
       
+      // Clean up preview elements
+      if (previewLineRef.current && measurementGroupRef.current) {
+        measurementGroupRef.current.remove(previewLineRef.current);
+        previewLineRef.current.geometry.dispose();
+        if (Array.isArray(previewLineRef.current.material)) {
+          previewLineRef.current.material.forEach(m => m.dispose());
+        } else {
+          previewLineRef.current.material.dispose();
+        }
+        previewLineRef.current = null;
+      }
+      
+      if (previewPointRef.current && measurementGroupRef.current) {
+        measurementGroupRef.current.remove(previewPointRef.current);
+        previewPointRef.current.geometry.dispose();
+        previewPointRef.current.material.dispose();
+        previewPointRef.current = null;
+      }
+      
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
       }
@@ -838,6 +1276,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     return () => {
       containerRef.current?.removeEventListener('click', handleMeasurementClick);
+      containerRef.current?.removeEventListener('mousemove', handleMouseMove);
     };
   }, [activeTool, temporaryPoints]);
 
@@ -849,7 +1288,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     return () => {
       containerRef.current?.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [activeTool, temporaryPoints, isDraggingPoint, hoveredPointId]);
+  }, [isDraggingPoint, hoveredPointId]);
 
   useEffect(() => {
     setCanUndo(temporaryPoints.length > 0);
@@ -948,7 +1387,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+      applyBackground(backgroundOptions.find(bg => bg.id === 'light') || backgroundOptions[0]);
 
       return model;
     } catch (error) {
@@ -1038,5 +1477,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    takeScreenshot,
   };
 };
