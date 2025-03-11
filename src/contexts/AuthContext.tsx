@@ -16,14 +16,15 @@ export interface User {
   id: string;
   email: string;
   username?: string;
-  isAdmin?: boolean;
+  isAdmin: boolean;
 }
 
 interface FirestoreUser {
   id: string;
-  uid?: string;
-  email?: string;
-  isAdmin?: boolean;
+  uid: string;
+  email: string;
+  isAdmin: boolean;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -57,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             username: firebaseUser.email || '',
-            isAdmin
+            isAdmin: isAdmin
           });
           console.log(`Benutzer authentifiziert: ${firebaseUser.uid}, isAdmin: ${isAdmin}`);
         } catch (error) {
@@ -93,11 +94,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const loadUsers = async () => {
         try {
           const usersList = await getAllUsers();
-          const formattedUsers = usersList.map((user: FirestoreUser) => ({
+          const formattedUsers: User[] = usersList.map((user: FirestoreUser) => ({
             id: user.uid || user.id,
             email: user.email || '',
             username: user.email || '',
-            isAdmin: !!user.isAdmin
+            isAdmin: user.isAdmin || false
           }));
           setUsers(formattedUsers);
           console.log("Benutzer geladen:", formattedUsers.length);
@@ -113,8 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     try {
       const usersList = await getAllUsers();
-      const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid);
-      return userInfo?.isAdmin === true;
+      const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid);
+      return userInfo?.isAdmin || false;
     } catch (error) {
       console.error("Fehler beim Prüfen des Admin-Status:", error);
       return false;
@@ -137,10 +138,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log("Erstelle initialen Admin-Benutzer:", email);
-      const firebaseUser = await createUserInFirebase(email, password, true);
+      const userCredential = await createUserInFirebase(email, password, true);
       
-      if (firebaseUser) {
-        console.log("Admin-Benutzer erfolgreich erstellt:", firebaseUser.uid);
+      if (userCredential) {
+        const newUserId = userCredential.user.uid;
+        console.log("Admin-Benutzer erfolgreich erstellt:", newUserId);
         toast({
           title: "Erfolg",
           description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
@@ -208,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '',
-        isAdmin: !!user.isAdmin
+        isAdmin: user.isAdmin || false
       }));
       setUsers(formattedUsers);
       return true;
