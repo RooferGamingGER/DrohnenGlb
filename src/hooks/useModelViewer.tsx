@@ -179,7 +179,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         // Calculate a better distance that ensures the model is visible but not too far
         const distance = size * 2;
         
-        // Position camera for a better view (more similar to the original)
+        // Position camera for a front view
         cameraRef.current.position.set(center.x, center.y, center.z + distance);
         cameraRef.current.lookAt(center);
 
