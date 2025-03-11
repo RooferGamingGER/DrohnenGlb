@@ -828,4 +828,112 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         child => child.name === 'hoverPoint'
       );
       if (hoverPoint) {
-        measurementGroupRef.current
+        measurementGroupRef.current.remove(hoverPoint);
+      }
+      
+      setMeasurements([]);
+      setTemporaryPoints([]);
+      
+      if (currentMeasurementRef.current) {
+        currentMeasurementRef.current = null;
+      }
+    }
+  };
+
+  const loadModel = async (file: File): Promise<void> => {
+    if (modelRef.current && sceneRef.current) {
+      sceneRef.current.remove(modelRef.current);
+      modelRef.current = null;
+    }
+    
+    setState({
+      isLoading: true,
+      progress: 0,
+      error: null,
+      loadedModel: null,
+    });
+    
+    try {
+      processingStartTimeRef.current = Date.now();
+      
+      // Simulate upload progress
+      processingIntervalRef.current = window.setInterval(() => {
+        if (uploadProgressRef.current < 90) {
+          uploadProgressRef.current += 5;
+          setState(prev => ({ ...prev, progress: uploadProgressRef.current }));
+        }
+      }, 300);
+      
+      const model = await loadGLBModel(file, (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setState(prev => ({ ...prev, progress }));
+        }
+      });
+      
+      clearInterval(processingIntervalRef.current);
+      processingIntervalRef.current = null;
+      
+      if (!sceneRef.current) return;
+      
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.material) {
+            // Enable shadows
+            child.castShadow = true;
+            child.receiveShadow = true;
+            
+            // If material is an array, process each material
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => {
+                if (mat.map) mat.map.anisotropy = 16;
+              });
+            } else {
+              // Single material
+              if (child.material.map) child.material.map.anisotropy = 16;
+            }
+          }
+        }
+      });
+      
+      const box = centerModel(model);
+      
+      // Calculate size for camera positioning
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = cameraRef.current?.fov || 45;
+      const cameraZ = maxDim / (2 * Math.tan((fov * Math.PI) / 360));
+      
+      // Position camera to fit model
+      if (cameraRef.current) {
+        cameraRef.current.position.z = cameraZ * 1.5;
+        cameraRef.current.updateProjectionMatrix();
+      }
+      
+      // Reset controls
+      if (controlsRef.current) {
+        controlsRef.current.reset();
+        controlsRef.current.target.set(0, 0, 0);
+      }
+      
+      clearMeasurements();
+      
+      if (sceneRef.current) {
+        sceneRef.current.add(model);
+        modelRef.current = model;
+      }
+      
+      setState({
+        isLoading: false,
+        progress: 100,
+        error: null,
+        loadedModel: model,
+      });
+      
+    } catch (error) {
+      console.error("Error loading model:", error);
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
