@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -40,7 +39,11 @@ export const db: Firestore = getFirestore(app);
 // Enable offline persistence
 enableIndexedDbPersistence(db)
   .catch((err) => {
-    console.error("Firebase Persistence Fehler:", err);
+    if (err.code === 'failed-precondition') {
+      console.error('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    } else if (err.code === 'unimplemented') {
+      console.error('The current browser does not support persistence.');
+    }
   });
 
 // Firebase Auth Funktionen
@@ -81,8 +84,17 @@ export const createUserInFirebase = async (
 
     console.log("Benutzer erfolgreich erstellt:", userCredential.user.uid);
     return userCredential;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Fehler beim Erstellen des Benutzers:", error);
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error('Diese E-Mail-Adresse wird bereits verwendet.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Ungültige E-Mail-Adresse.');
+    } else if (error.code === 'auth/operation-not-allowed') {
+      throw new Error('E-Mail/Passwort Anmeldung ist nicht aktiviert. Bitte überprüfen Sie die Firebase Console.');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('Das Passwort ist zu schwach.');
+    }
     throw error;
   }
 };
@@ -135,4 +147,3 @@ export const checkIfInitialAdminNeeded = async (): Promise<boolean> => {
     return true;
   }
 };
-
