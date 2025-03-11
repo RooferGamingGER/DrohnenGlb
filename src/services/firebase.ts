@@ -45,10 +45,8 @@ setPersistence(auth, browserLocalPersistence)
     console.error("Auth persistence error:", error);
   });
 
-// Fix the Firestore initialization - remove the conflicting cacheSizeBytes
-export const db: Firestore = initializeFirestore(app, {
-  localCache: memoryLocalCache()
-});
+// Initialize Firestore without conflicting cache configurations
+export const db: Firestore = getFirestore(app);
 
 // Enable offline persistence
 enableIndexedDbPersistence(db).catch((err) => {
