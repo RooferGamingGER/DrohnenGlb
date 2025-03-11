@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
 import ControlPanel from './ControlPanel';
+import MeasurementTools from './MeasurementTools';
 import LoadingOverlay from './LoadingOverlay';
 import { ChevronUp, Info } from 'lucide-react';
 
@@ -24,6 +25,14 @@ const ModelViewer: React.FC = () => {
     setBackground,
     backgroundOptions,
     resetView,
+    activeTool,
+    setActiveTool,
+    measurements,
+    clearMeasurements,
+    undoLastPoint,
+    deleteMeasurement,
+    updateMeasurement,
+    canUndo,
   } = useModelViewer({ containerRef: viewerRef });
 
   const handleFileSelected = (file: File) => {
@@ -34,6 +43,15 @@ const ModelViewer: React.FC = () => {
     }).catch(() => {
       setIsUploading(false);
     });
+  };
+
+  const handleToolsPanelClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Ensure that any ongoing measurement is cancelled when interacting with the tools panel
+    if (activeTool !== 'none') {
+      setActiveTool('none');
+    }
   };
 
   return (
@@ -79,6 +97,24 @@ const ModelViewer: React.FC = () => {
         
         {loadedModel && (
           <>
+            <div 
+              className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
+              onClick={handleToolsPanelClick}
+              onMouseDown={handleToolsPanelClick}
+              onMouseUp={handleToolsPanelClick}
+            >
+              <MeasurementTools 
+                activeTool={activeTool}
+                onToolChange={setActiveTool}
+                onClearMeasurements={clearMeasurements}
+                onDeleteMeasurement={deleteMeasurement}
+                onUndoLastPoint={undoLastPoint}
+                onUpdateMeasurement={updateMeasurement}
+                measurements={measurements}
+                canUndo={canUndo}
+              />
+            </div>
+            
             <button
               onClick={() => setShowControls(!showControls)}
               className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
@@ -111,6 +147,7 @@ const ModelViewer: React.FC = () => {
                   <p>• Scrollen oder Pinch-Geste zum Zoomen</p>
                   <p>• Zwei Finger zum Verschieben</p>
                   <p>• Doppelklick zum Zurücksetzen der Ansicht</p>
+                  <p>• Für Messungen: Tool auswählen und auf das Modell klicken</p>
                 </div>
               </div>
             )}
