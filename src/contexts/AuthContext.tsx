@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Benutzertyp-Definition
@@ -15,7 +16,7 @@ interface AuthContextType {
   register: (username: string, password: string) => boolean;
   createUser: (username: string, password: string, isAdmin: boolean) => boolean;
   deleteUser: (userId: string) => boolean;
-  updateUser: (userId: string, updates: { username?: string; password?: string; id?: string }) => boolean;
+  updateUser: (userId: string, updates: { username?: string; password?: string }) => boolean;
   users: Array<{ id: string; username: string; isAdmin?: boolean }>;
   isAuthenticated: boolean;
 }
@@ -136,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Neue Funktion: Benutzer aktualisieren
   const updateUser = (
     userId: string,
-    updates: { username?: string; password?: string; id?: string }
+    updates: { username?: string; password?: string }
   ): boolean => {
     // Prüfen, ob der aktuelle Benutzer Admin-Rechte hat
     if (!user?.isAdmin) {
@@ -150,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const updatedUser = { ...u };
           if (updates.username) updatedUser.username = updates.username;
           if (updates.password) updatedUser.password = updates.password;
-          if (updates.id) updatedUser.id = updates.id;
           return updatedUser;
         }
         return u;
@@ -220,3 +220,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

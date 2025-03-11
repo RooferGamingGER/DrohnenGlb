@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -21,8 +22,7 @@ const AdminDashboard = () => {
   const [editForm, setEditForm] = useState<{
     username: string;
     password: string;
-    id: string;
-  }>({ username: '', password: '', id: '' });
+  }>({ username: '', password: '' });
 
   // Wenn kein Admin-Benutzer, zur Startseite umleiten
   if (!user?.isAdmin) {
@@ -70,12 +70,11 @@ const AdminDashboard = () => {
     setEditForm({
       username: userItem.username,
       password: '',
-      id: userItem.id,
     });
   };
 
   const handleSaveEdit = (userId: string) => {
-    const updates: { username?: string; password?: string; id?: string } = {};
+    const updates: { username?: string; password?: string } = {};
     const currentUser = users.find(u => u.id === userId);
     
     if (!currentUser) return;
@@ -86,9 +85,6 @@ const AdminDashboard = () => {
     }
     if (editForm.password) {
       updates.password = editForm.password;
-    }
-    if (editForm.id && editForm.id !== userId) {
-      updates.id = editForm.id;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -216,16 +212,7 @@ const AdminDashboard = () => {
                   {users.map((userItem) => (
                     <tr key={userItem.id}>
                       <td className="px-4 py-3 text-sm">
-                        {editingUser === userItem.id ? (
-                          <Input
-                            type="text"
-                            value={editForm.id}
-                            onChange={(e) => setEditForm({ ...editForm, id: e.target.value })}
-                            className="w-full"
-                          />
-                        ) : (
-                          userItem.id
-                        )}
+                        {userItem.id}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {editingUser === userItem.id ? (
