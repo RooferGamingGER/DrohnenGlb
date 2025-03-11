@@ -11,8 +11,8 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,36 +35,45 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     
-    const success = login(username, password);
-    
-    setIsLoading(false);
-    
-    if (success) {
-      // Save login credentials if Remember Me is checked
-      if (rememberMe) {
-        localStorage.setItem('savedUsername', username);
-        localStorage.setItem('savedPassword', password);
-      } else {
-        // Remove saved credentials if Remember Me is unchecked
-        localStorage.removeItem('savedUsername');
-        localStorage.removeItem('savedPassword');
-      }
+    try {
+      const success = await login(username, password);
       
-      toast({
-        title: "Anmeldung erfolgreich",
-        description: "Sie wurden erfolgreich angemeldet.",
-      });
-      navigate('/');
-    } else {
+      if (success) {
+        // Save login credentials if Remember Me is checked
+        if (rememberMe) {
+          localStorage.setItem('savedUsername', username);
+          localStorage.setItem('savedPassword', password);
+        } else {
+          // Remove saved credentials if Remember Me is unchecked
+          localStorage.removeItem('savedUsername');
+          localStorage.removeItem('savedPassword');
+        }
+        
+        toast({
+          title: "Anmeldung erfolgreich",
+          description: "Sie wurden erfolgreich angemeldet.",
+        });
+        navigate('/');
+      } else {
+        toast({
+          title: "Anmeldung fehlgeschlagen",
+          description: "Ungültiger Benutzername oder Passwort.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Anmeldung fehlgeschlagen",
-        description: "Ungültiger Benutzername oder Passwort.",
+        description: "Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
         variant: "destructive",
       });
+      console.error("Login error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,6 +98,7 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              disabled={isSubmitting || isLoading}
             />
           </div>
           
@@ -103,6 +113,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isSubmitting || isLoading}
             />
           </div>
           
@@ -111,6 +122,7 @@ const Login = () => {
               id="rememberMe" 
               checked={rememberMe} 
               onCheckedChange={(checked) => setRememberMe(checked === true)}
+              disabled={isSubmitting || isLoading}
             />
             <label
               htmlFor="rememberMe"
@@ -123,9 +135,9 @@ const Login = () => {
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading}
+            disabled={isSubmitting || isLoading}
           >
-            {isLoading ? "Anmeldung läuft..." : "Anmelden"}
+            {isSubmitting || isLoading ? "Anmeldung läuft..." : "Anmelden"}
           </Button>
         </form>
         
