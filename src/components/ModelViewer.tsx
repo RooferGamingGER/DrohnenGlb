@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import UploadArea from './UploadArea';
@@ -27,13 +28,12 @@ const ModelViewer: React.FC = () => {
 
   const handleFileSelected = (file: File) => {
     setIsUploading(true);
-    loadModel(file)
-      .then(() => {
-        setIsUploading(false);
-      })
-      .catch(() => {
-        setIsUploading(false);
-      });
+    loadModel(file).then(() => {
+      setIsUploading(false);
+      setShowInstructions(true);
+    }).catch(() => {
+      setIsUploading(false);
+    });
   };
 
   return (
@@ -57,10 +57,12 @@ const ModelViewer: React.FC = () => {
           </div>
         )}
         
-        {(isLoading || isUploading) && (
+        {(isLoading || isUploading || (showInstructions && loadedModel)) && (
           <LoadingOverlay
             progress={progress}
+            showInstructions={showInstructions && loadedModel && !isUploading}
             isUploading={isUploading}
+            onCloseInstructions={() => setShowInstructions(false)}
           />
         )}
         

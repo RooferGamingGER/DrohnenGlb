@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { loadGLBModel, centerModel, loadTexture, BackgroundOption, backgroundOptions } from '@/utils/modelUtils';
+import { 
+  loadGLBModel, 
+  centerModel, 
+  loadTexture, 
+  BackgroundOption, 
+  backgroundOptions 
+} from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseModelViewerProps {
@@ -70,21 +76,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       ambient: ambientLight
     };
 
-    // Configure orbit controls for better rotation
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.rotateSpeed = 0.7;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
-    
-    // Ensure free rotation on all axes
-    controls.enableRotate = true;
-    controls.minPolarAngle = 0;
-    controls.maxPolarAngle = Math.PI;
-    controls.minAzimuthAngle = -Infinity;
-    controls.maxAzimuthAngle = Infinity;
-    
     controls.update();
     controlsRef.current = controls;
 
@@ -155,43 +152,31 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: null,
       });
 
-      // Load the model with combined upload and loading progress
       const model = await loadGLBModel(
         file,
         (event) => {
           if (event.lengthComputable) {
-            // First 50% for upload progress
-            const uploadProgress = (event.loaded / event.total) * 50;
-            setState(prev => ({ ...prev, progress: Math.round(uploadProgress) }));
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setState(prev => ({ ...prev, progress: percentComplete }));
           }
         }
       );
-
-      // Set progress to 75% during model processing
-      setState(prev => ({ ...prev, progress: 75 }));
 
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
 
+      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
+
       if (cameraRef.current && controlsRef.current) {
-        // Calculate a better distance that ensures the model is visible but not too far
-        const distance = size * 2;
-        
-        // Position camera for a front view instead of top-down
-        cameraRef.current.position.set(center.x, center.z + distance, center.y);
+        // Improved camera positioning for better centering
+        const distance = size * 1.5; // Reduced from 2 to 1.5 to show model bigger
+        cameraRef.current.position.copy(center);
+        cameraRef.current.position.z += distance; // Position camera to front for a better initial view
         cameraRef.current.lookAt(center);
 
-        // Update controls
+        // Set controls to look at center of model
         controlsRef.current.target.copy(center);
-        
-        // Ensure controls allow free rotation
-        controlsRef.current.enableRotate = true;
-        controlsRef.current.minPolarAngle = 0;
-        controlsRef.current.maxPolarAngle = Math.PI;
-        controlsRef.current.minAzimuthAngle = -Infinity;
-        controlsRef.current.maxAzimuthAngle = Infinity;
-        
         controlsRef.current.update();
         controlsRef.current.saveState();
       }
@@ -199,7 +184,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       sceneRef.current.add(model);
       modelRef.current = model;
 
-      // Set progress to 100% when everything is ready
       setState({
         isLoading: false,
         progress: 100,
@@ -207,11 +191,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      // Apply dark background as default
-      const darkBackground = backgroundOptions.find(bg => bg.id === 'dark');
-      if (darkBackground) {
-        applyBackground(darkBackground);
-      }
+      // Apply dark background
+      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
 
       toast({
         title: "Modell geladen",
@@ -277,21 +258,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
       
-      // Reset the camera position with front view instead of top-down
-      const distance = size * 2;
-      cameraRef.current.position.set(center.x, center.z + distance, center.y);
+      // Reset the camera position
+      const distance = size * 1.5;
+      cameraRef.current.position.copy(center);
+      cameraRef.current.position.z += distance;
       cameraRef.current.lookAt(center);
       
       // Reset the controls target to center of model
       controlsRef.current.target.copy(center);
-      
-      // Make sure rotation is enabled on all axes
-      controlsRef.current.enableRotate = true;
-      controlsRef.current.minPolarAngle = 0;
-      controlsRef.current.maxPolarAngle = Math.PI;
-      controlsRef.current.minAzimuthAngle = -Infinity;
-      controlsRef.current.maxAzimuthAngle = Infinity;
-      
       controlsRef.current.update();
     }
   };
