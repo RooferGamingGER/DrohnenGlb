@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { useLoginForm } from '@/hooks/useLoginForm';
 import PerformanceMetrics from '@/components/PerformanceMetrics';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
   const {
@@ -23,11 +24,11 @@ const Login = () => {
   } = useLoginForm();
 
   const getProgressStatus = (progress: number) => {
-    if (progress < 15) return "Initialisiere Anmeldung...";
-    if (progress < 30) return "Lade Anmeldedaten...";
-    if (progress < 45) return "Bereite Anmeldung vor...";
-    if (progress < 65) return "Authentifiziere...";
-    if (progress < 85) return "Überprüfe Berechtigung...";
+    if (progress < 15) return "Anmeldung wird initialisiert...";
+    if (progress < 30) return "Benutzerinformationen werden gesendet...";
+    if (progress < 60) return "Authentifizierung läuft...";
+    if (progress < 85) return "Berechtigungen werden überprüft...";
+    if (progress < 95) return "Benutzerinformationen werden geladen...";
     return "Anmeldung abgeschlossen";
   };
 
@@ -54,6 +55,7 @@ const Login = () => {
               required
               disabled={isLoading}
               placeholder="E-Mail eingeben"
+              className="w-full"
             />
           </div>
           
@@ -69,6 +71,7 @@ const Login = () => {
               required
               disabled={isLoading}
               placeholder="Passwort eingeben"
+              className="w-full"
             />
           </div>
           
@@ -101,7 +104,12 @@ const Login = () => {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Anmeldung läuft..." : "Anmelden"}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Anmeldung läuft...
+              </span>
+            ) : "Anmelden"}
           </Button>
         </form>
 

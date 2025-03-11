@@ -84,17 +84,17 @@ enableIndexedDbPersistence(db)
 
 console.log(`Total Firebase initialization time: ${performance.now() - initStartTime}ms`);
 
-// Optimized login with better error handling and performance tracking
+// Optimierter und schnellerer Login mit verbesserter Fehlerbehandlung
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   const startTime = performance.now();
   console.log("Firebase Login Start", startTime);
   
   try {
-    // Use a timeout to prevent hanging requests
+    // Kürzeres Timeout für schnellere Fehlerdiagnose
     const authResult = await Promise.race([
       signInWithEmailAndPassword(auth, email, password),
       new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Login Timeout nach 8 Sekunden")), 8000)
+        setTimeout(() => reject(new Error("Login Timeout nach 5 Sekunden")), 5000)
       )
     ]) as UserCredential;
     
@@ -104,7 +104,7 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     console.log(`Firebase Login erfolgreich in ${duration.toFixed(2)}ms`);
     
     // Report slow logins for debugging
-    if (duration > 2000) {
+    if (duration > 1000) {
       console.warn(`Langsames Login detektiert: ${duration.toFixed(2)}ms`);
     }
     
@@ -113,7 +113,7 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     const errorTime = performance.now();
     const duration = errorTime - startTime;
     
-    if (error.message === "Login Timeout nach 8 Sekunden") {
+    if (error.message === "Login Timeout nach 5 Sekunden") {
       console.error(`Login Timeout nach ${duration.toFixed(2)}ms - Server antwortet nicht`);
       throw new Error("Die Anmeldung dauert zu lange. Bitte versuchen Sie es später erneut.");
     }

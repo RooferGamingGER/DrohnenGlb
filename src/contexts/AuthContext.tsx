@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   auth,
@@ -57,42 +56,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    let isSubscribed = true;
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
-        const userData = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          username: firebaseUser.email || '',
-          isAdmin: isAdmin
-        };
-        setUser(userData);
-      } else {
+      if (firebaseUser && isSubscribed) {
+        try {
+          console.log("Benutzerauthentifizierung erkannt, prüfe Admin-Status...");
+          const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
+          const userData = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            username: firebaseUser.email || '',
+            isAdmin: isAdmin
+          };
+          console.log("Benutzer erfolgreich geladen:", userData.email);
+          setUser(userData);
+        } catch (error) {
+          console.error("Fehler beim Laden des Benutzers:", error);
+          setUser(null);
+        }
+      } else if (isSubscribed) {
         setUser(null);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, [checkIfUserIsAdmin]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Login-Prozess startet für:", email);
+      const loginStartTime = performance.now();
+      
       const firebaseUser = await loginWithFirebase(email, password);
       
       if (firebaseUser) {
+        console.log("Firebase-Authentifizierung erfolgreich, lade Admin-Status...");
+        
+        const adminCheckStartTime = performance.now();
         const isAdmin = await checkIfUserIsAdmin(firebaseUser.user.uid);
+        console.log(`Admin-Status geprüft in ${performance.now() - adminCheckStartTime}ms: ${isAdmin ? "Admin" : "Kein Admin"}`);
+        
         setUser({
           id: firebaseUser.user.uid,
           email: firebaseUser.user.email || '',
           username: firebaseUser.user.email || '',
           isAdmin: isAdmin
         });
+        
+        console.log(`Gesamter Login-Prozess abgeschlossen in ${performance.now() - loginStartTime}ms`);
         return true;
       }
       return false;
     } catch (error) {
-      console.error("Login error in AuthContext:", error);
-      return false;
+      console.error("Login-Fehler in AuthContext:", error);
+      throw error;
     }
   };
 
