@@ -95,8 +95,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
 
-  // Add the missing functions that are referenced in the code
-
   // Function to update measurement point position
   const updateMeasurementPointPosition = useCallback((
     measurementId: string, 
@@ -147,16 +145,19 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
               const geometry = line.geometry as THREE.BufferGeometry;
               const positions = geometry.getAttribute('position');
               
-              // For each line, we need to update one of its endpoints
-              if (i === pointIndex) {
-                // This line ends at the modified point
-                positions.setXYZ(1, newPosition.x, newPosition.y, newPosition.z);
-              } else {
-                // This line starts at the modified point
-                positions.setXYZ(0, newPosition.x, newPosition.y, newPosition.z);
+              // Fix for TypeScript error: Check the type and cast to Float32BufferAttribute
+              if (positions instanceof THREE.Float32BufferAttribute) {
+                // For each line, we need to update one of its endpoints
+                if (i === pointIndex) {
+                  // This line ends at the modified point
+                  positions.setXYZ(1, newPosition.x, newPosition.y, newPosition.z);
+                } else {
+                  // This line starts at the modified point
+                  positions.setXYZ(0, newPosition.x, newPosition.y, newPosition.z);
+                }
+                
+                positions.needsUpdate = true;
               }
-              
-              positions.needsUpdate = true;
             }
           }
           
@@ -165,8 +166,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             const lastLine = measurement.lineObjects[measurement.lineObjects.length - 1];
             const geometry = lastLine.geometry as THREE.BufferGeometry;
             const positions = geometry.getAttribute('position');
-            positions.setXYZ(0, newPosition.x, newPosition.y, newPosition.z);
-            positions.needsUpdate = true;
+            
+            // Fix for TypeScript error: Check the type and cast to Float32BufferAttribute
+            if (positions instanceof THREE.Float32BufferAttribute) {
+              positions.setXYZ(0, newPosition.x, newPosition.y, newPosition.z);
+              positions.needsUpdate = true;
+            }
           }
           
           // Update area mesh if it exists
@@ -360,7 +365,212 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         previewLineRef.current = null;
       }
     }
+    
+    // Update canUndo state
+    setCanUndo(temporaryPoints.length > 1);
   }, [temporaryPoints]);
+
+  // Function to update a measurement description
+  const updateMeasurement = useCallback((id: string, updates: Partial<Measurement>) => {
+    setMeasurements(prev => 
+      prev.map(measurement => 
+        measurement.id === id 
+          ? { ...measurement, ...updates } 
+          : measurement
+      )
+    );
+  }, []);
+
+  // Function to clear all measurements
+  const clearMeasurements = useCallback(() => {
+    if (!measurementGroupRef.current) return;
+    
+    // Clear all measurements from the scene
+    measurements.forEach(measurement => {
+      // Dispose label
+      if (measurement.labelObject) {
+        if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+          measurement.labelObject.material.map?.dispose();
+          measurement.labelObject.material.dispose();
+        }
+        measurementGroupRef.current?.remove(measurement.labelObject);
+      }
+      
+      // Dispose lines
+      if (measurement.lineObjects) {
+        measurement.lineObjects.forEach(line => {
+          line.geometry.dispose();
+          if (Array.isArray(line.material)) {
+            line.material.forEach(m => m.dispose());
+          } else {
+            line.material.dispose();
+          }
+          measurementGroupRef.current?.remove(line);
+        });
+      }
+      
+      // Dispose points
+      if (measurement.pointObjects) {
+        measurement.pointObjects.forEach(point => {
+          point.geometry.dispose();
+          if (Array.isArray(point.material)) {
+            point.material.forEach(m => m.dispose());
+          } else {
+            point.material.dispose();
+          }
+          measurementGroupRef.current?.remove(point);
+        });
+      }
+      
+      // Dispose area mesh
+      if (measurement.areaObject) {
+        measurement.areaObject.geometry.dispose();
+        if (Array.isArray(measurement.areaObject.material)) {
+          measurement.areaObject.material.forEach(m => m.dispose());
+        } else {
+          measurement.areaObject.material.dispose();
+        }
+        measurementGroupRef.current.remove(measurement.areaObject);
+      }
+    });
+    
+    // Clear measurements state
+    setMeasurements([]);
+    
+    // Reset active tool
+    setActiveTool('none');
+    
+    // Clear temporary points
+    setTemporaryPoints([]);
+    
+    // Reset undo state
+    setCanUndo(false);
+  }, [measurements]);
+
+  // Function to load a 3D model
+  const loadModel = useCallback(async (file: File): Promise<void> => {
+    if (!sceneRef.current) return Promise.reject('Scene not initialized');
+    
+    // Initialize loading state
+    setState(prev => ({ ...prev, isLoading: true, progress: 0, error: null }));
+    uploadProgressRef.current = 0;
+    
+    try {
+      // Start a timer to track processing time
+      processingStartTimeRef.current = Date.now();
+      
+      // Load the model
+      const { model, boundingBox } = await loadGLBModel(file, (progress) => {
+        // Update progress state
+        setState(prev => ({ ...prev, progress }));
+        uploadProgressRef.current = progress;
+      });
+      
+      // If there's an existing model, remove it
+      if (modelRef.current && sceneRef.current) {
+        sceneRef.current.remove(modelRef.current);
+      }
+      
+      if (!model) {
+        throw new Error('Failed to load model');
+      }
+      
+      // Add model to scene
+      sceneRef.current.add(model);
+      modelRef.current = model;
+      
+      // Center the model
+      centerModel(model, boundingBox);
+      
+      // Reset camera and controls
+      resetView();
+      
+      // Update state
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadedModel: model
+      }));
+      
+      // Show a success toast
+      toast({
+        title: "Modell geladen",
+        description: "Das 3D-Modell wurde erfolgreich geladen.",
+      });
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error loading model:', error);
+      
+      // Update error state
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load model'
+      }));
+      
+      // Show an error toast
+      toast({
+        title: "Fehler beim Laden",
+        description: "Das 3D-Modell konnte nicht geladen werden.",
+        variant: "destructive",
+      });
+      
+      return Promise.reject(error);
+    }
+  }, [toast]);
+
+  // Function to reset the camera view
+  const resetView = useCallback(() => {
+    if (!cameraRef.current || !controlsRef.current || !modelRef.current) return;
+    
+    // Reset camera position
+    cameraRef.current.position.set(0, 2, 5);
+    
+    // Reset camera target
+    controlsRef.current.target.set(0, 0, 0);
+    
+    // Update controls
+    controlsRef.current.update();
+  }, []);
+
+  // Function to take a screenshot
+  const takeScreenshot = useCallback(() => {
+    if (!rendererRef.current) return;
+    
+    try {
+      // Render the scene
+      if (sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+      
+      // Get image data URL
+      const imageURL = rendererRef.current.domElement.toDataURL('image/png');
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = imageURL;
+      link.download = `drohnenaufmass-${new Date().toISOString().split('T')[0]}.png`;
+      
+      // Trigger download
+      link.click();
+      
+      // Show success toast
+      toast({
+        title: "Screenshot erstellt",
+        description: "Der Screenshot wurde erfolgreich erstellt.",
+      });
+    } catch (error) {
+      console.error('Error taking screenshot:', error);
+      
+      // Show error toast
+      toast({
+        title: "Fehler beim Screenshot",
+        description: "Der Screenshot konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -546,7 +756,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     hoveredPointId,
     temporaryPoints,
     hoverPoint,
-    updateMeasurementPointPosition
+    updateMeasurementPointPosition,
+    updatePreviewLine
   ]);
 
   useEffect(() => {
@@ -667,6 +878,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   }, [background]);
 
+  // Update canUndo state whenever temporaryPoints changes
+  useEffect(() => {
+    setCanUndo(temporaryPoints.length > 0);
+  }, [temporaryPoints]);
+
   return {
     isLoading: state.isLoading,
     progress: state.progress,
@@ -681,8 +897,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setActiveTool,
     measurements,
     clearMeasurements,
-    undoLastPoint,  // Now properly defined
-    deleteMeasurement,  // Now properly defined
+    undoLastPoint,
+    deleteMeasurement,
     updateMeasurement,
     canUndo,
     takeScreenshot
