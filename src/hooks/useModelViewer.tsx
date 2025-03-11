@@ -30,8 +30,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     loadedModel: null,
   });
   
+  const [lightRotation, setLightRotation] = useState({ x: 0, y: 0 });
+  const [lightIntensity, setLightIntensity] = useState(1);
   const [background, setBackground] = useState<BackgroundOption>(
-    backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]
+    { id: 'neutral', name: 'Neutral', color: '#f5f5f7', texture: null }
   );
 
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -67,7 +69,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, lightIntensity);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
@@ -117,6 +119,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
 
+    applyBackground(background);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       
@@ -156,32 +160,29 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         file,
         (event) => {
           if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 50);
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
             setState(prev => ({ ...prev, progress: percentComplete }));
           }
         }
       );
 
-      setState(prev => ({ ...prev, progress: 75 }));
-
-      const box = new THREE.Box3().setFromObject(model);
+      const box = centerModel(model);
+      const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
 
-      model.position.x = -center.x;
-      model.position.y = -center.y;
-      model.position.z = -center.z;
-
-      setState(prev => ({ ...prev, progress: 90 }));
+      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
 
       if (cameraRef.current && controlsRef.current) {
-        const maxDimension = Math.max(size.x, size.y, size.z);
-        const distance = maxDimension * 2;
-        
-        cameraRef.current.position.set(0, 0, distance);
-        cameraRef.current.lookAt(0, 0, 0);
+        const distance = size * 2;
+        cameraRef.current.position.copy(center);
+        cameraRef.current.position.y += distance; // Position camera above for top-down view
+        cameraRef.current.lookAt(center);
 
-        controlsRef.current.target.set(0, 0, 0);
+        // Enable all rotation axes
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.minPolarAngle = 0;
+        controlsRef.current.maxPolarAngle = Math.PI;
+        controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
       }
@@ -196,15 +197,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
-
       toast({
         title: "Modell geladen",
         description: "Das 3D-Modell wurde erfolgreich geladen. Sie können es jetzt von allen Seiten betrachten.",
         duration: 3000,
       });
 
-      return model;
     } catch (error) {
       console.error('Error loading model:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -221,10 +219,28 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         variant: "destructive",
         duration: 5000,
       });
-
-      throw error;
     }
   };
+
+  useEffect(() => {
+    if (lightsRef.current) {
+      const { directional } = lightsRef.current;
+      
+      const radX = (lightRotation.x * Math.PI) / 180;
+      const radY = (lightRotation.y * Math.PI) / 180;
+      
+      const distance = 5;
+      directional.position.x = Math.sin(radY) * Math.cos(radX) * distance;
+      directional.position.y = Math.sin(radX) * distance;
+      directional.position.z = Math.cos(radY) * Math.cos(radX) * distance;
+    }
+  }, [lightRotation]);
+
+  useEffect(() => {
+    if (lightsRef.current) {
+      lightsRef.current.directional.intensity = lightIntensity;
+    }
+  }, [lightIntensity]);
 
   const applyBackground = async (option: BackgroundOption) => {
     if (!sceneRef.current || !rendererRef.current) return;
@@ -256,27 +272,27 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   };
 
   const resetView = () => {
-    if (controlsRef.current && modelRef.current && cameraRef.current) {
-      const box = new THREE.Box3().setFromObject(modelRef.current);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3()).length();
-      
-      const distance = size * 1.5;
-      cameraRef.current.position.copy(center);
-      cameraRef.current.position.z += distance;
-      cameraRef.current.lookAt(center);
-      
-      controlsRef.current.target.copy(center);
-      controlsRef.current.update();
+    if (controlsRef.current) {
+      controlsRef.current.reset();
     }
+  };
+
+  const resetLight = () => {
+    setLightRotation({ x: 0, y: 0 });
+    setLightIntensity(1);
   };
 
   return {
     ...state,
     loadModel,
+    lightRotation,
+    setLightRotation,
+    lightIntensity,
+    setLightIntensity,
     background,
     setBackground: applyBackground,
     backgroundOptions,
     resetView,
+    resetLight,
   };
 };

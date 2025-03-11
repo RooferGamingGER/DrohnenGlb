@@ -1,19 +1,17 @@
 
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Info, Upload } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 interface LoadingOverlayProps {
   progress: number;
   showInstructions: boolean;
-  isUploading: boolean;
   onCloseInstructions: () => void;
 }
 
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   progress,
   showInstructions,
-  isUploading,
   onCloseInstructions,
 }) => {
   return (
@@ -21,22 +19,13 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       <div className="max-w-md w-full mx-4">
         <div className="bg-card p-6 rounded-lg shadow-lg">
           <div className="space-y-4">
-            {isUploading ? (
-              <>
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <Upload className="w-5 h-5 animate-pulse" />
-                  <h3 className="text-lg font-semibold">Datei wird hochgeladen</h3>
-                </div>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
-              </>
-            ) : progress < 100 ? (
+            {progress < 100 ? (
               <>
                 <h3 className="text-lg font-semibold text-center">Modell wird geladen</h3>
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-center text-muted-foreground">{progress}% abgeschlossen</p>
               </>
-            ) : showInstructions ? (
+            ) : (
               <>
                 <div className="flex items-center justify-center gap-2 text-primary">
                   <Info className="w-5 h-5" />
@@ -55,7 +44,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
                   Verstanden
                 </button>
               </>
-            ) : null}
+            )}
           </div>
         </div>
       </div>

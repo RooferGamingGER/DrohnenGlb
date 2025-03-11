@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -11,9 +10,10 @@ export type BackgroundOption = {
 };
 
 export const backgroundOptions: BackgroundOption[] = [
-  { id: 'neutral', name: 'Weiß', color: '#ffffff', texture: null },
+  { id: 'neutral', name: 'Hell', color: '#f5f5f7', texture: null },
   { id: 'dark', name: 'Dunkel', color: '#1d1d1f', texture: null },
   { id: 'gray', name: 'Grau', color: '#404040', texture: null },
+  { id: 'sky', name: 'Himmel', color: null, texture: '/sky-background.jpg' },
 ];
 
 // Load GLB model
