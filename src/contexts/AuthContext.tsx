@@ -6,7 +6,8 @@ import {
   createUserInFirebase,
   deleteUserFromFirebase,
   updateUserInFirebase,
-  getAllUsers
+  getAllUsers,
+  checkIfInitialAdminNeeded
 } from '../services/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -58,13 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: firebaseUser.email || '',
             isAdmin
           });
-          console.log(`User authenticated: ${firebaseUser.uid}, isAdmin: ${isAdmin}`);
+          console.log(`Benutzer authentifiziert: ${firebaseUser.uid}, isAdmin: ${isAdmin}`);
         } catch (error) {
-          console.error("Error setting user data:", error);
+          console.error("Fehler beim Setzen der Benutzerdaten:", error);
           setUser(null);
         }
       } else {
-        console.log("No authenticated user");
+        console.log("Kein authentifizierter Benutzer");
         setUser(null);
       }
     });
@@ -75,11 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkForInitialAdmin = async () => {
       try {
-        const usersList = await getAllUsers();
-        console.log("Checking for initial admin. Users count:", usersList.length);
-        setNeedsInitialAdmin(usersList.length === 0);
+        const needsAdmin = await checkIfInitialAdminNeeded();
+        console.log("Prüfung auf initialen Admin. Wird benötigt:", needsAdmin);
+        setNeedsInitialAdmin(needsAdmin);
       } catch (error) {
-        console.error("Error checking for initial admin:", error);
+        console.error("Fehler bei der Prüfung auf initialen Admin:", error);
         setNeedsInitialAdmin(true);
       }
     };
@@ -99,9 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAdmin: !!user.isAdmin
           }));
           setUsers(formattedUsers);
-          console.log("Users loaded:", formattedUsers.length);
+          console.log("Benutzer geladen:", formattedUsers.length);
         } catch (error) {
-          console.error("Error loading users:", error);
+          console.error("Fehler beim Laden der Benutzer:", error);
         }
       };
 
@@ -112,36 +113,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     try {
       const usersList = await getAllUsers();
-      const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid) as FirestoreUser | undefined;
+      const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid);
       return userInfo?.isAdmin === true;
     } catch (error) {
-      console.error("Error checking admin status:", error);
+      console.error("Fehler beim Prüfen des Admin-Status:", error);
       return false;
     }
   };
 
   const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
-    const usersList = await getAllUsers();
-    if (usersList.length > 0) {
+    try {
+      console.log("Starte Einrichtung des initialen Admins:", email);
+      
+      const needsAdmin = await checkIfInitialAdminNeeded();
+      if (!needsAdmin) {
+        console.log("Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.");
+        toast({
+          title: "Fehler",
+          description: "Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      console.log("Erstelle initialen Admin-Benutzer:", email);
+      const firebaseUser = await createUserInFirebase(email, password, true);
+      
+      if (firebaseUser) {
+        console.log("Admin-Benutzer erfolgreich erstellt:", firebaseUser.uid);
+        toast({
+          title: "Erfolg",
+          description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
+        });
+        setNeedsInitialAdmin(false);
+        return true;
+      } else {
+        console.error("Konnte Admin-Benutzer nicht erstellen");
+        toast({
+          title: "Fehler",
+          description: "Admin-Benutzer konnte nicht erstellt werden. Bitte überprüfen Sie die Firebase-Konfiguration.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Fehler bei der Einrichtung des Admin-Benutzers:", error);
       toast({
         title: "Fehler",
-        description: "Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.",
+        description: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
         variant: "destructive",
       });
       return false;
     }
-
-    const firebaseUser = await createUserInFirebase(email, password, true);
-    if (firebaseUser) {
-      toast({
-        title: "Erfolg",
-        description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
-      });
-      setNeedsInitialAdmin(false);
-      return true;
-    }
-    
-    return false;
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {

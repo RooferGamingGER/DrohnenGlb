@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
 
 const InitialAdminSetup = () => {
   const { setupInitialAdmin, needsInitialAdmin } = useAuth();
@@ -13,17 +14,20 @@ const InitialAdminSetup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // If no admin is needed, don't show anything
+  // Wenn kein Admin benötigt wird, nichts anzeigen
   if (!needsInitialAdmin) {
     return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (password !== confirmPassword) {
+      setError("Die Passwörter stimmen nicht überein.");
       toast({
         title: "Fehler",
         description: "Die Passwörter stimmen nicht überein.",
@@ -33,6 +37,7 @@ const InitialAdminSetup = () => {
     }
 
     if (password.length < 6) {
+      setError("Das Passwort muss mindestens 6 Zeichen lang sein.");
       toast({
         title: "Fehler",
         description: "Das Passwort muss mindestens 6 Zeichen lang sein.",
@@ -43,27 +48,32 @@ const InitialAdminSetup = () => {
 
     setIsLoading(true);
     try {
-      console.log("Setting up initial admin:", email);
+      console.log("Richte initialen Admin ein:", email);
       const success = await setupInitialAdmin(email, password);
       if (success) {
         toast({
           title: "Erfolg",
           description: "Admin-Konto erfolgreich erstellt. Sie können sich jetzt anmelden.",
         });
-        console.log("Initial admin setup successful");
+        console.log("Einrichtung des initialen Admins erfolgreich");
+        setError(null);
       } else {
+        const errorMsg = "Admin-Konto konnte nicht erstellt werden. Bitte überprüfen Sie die Firebase-Konfiguration.";
+        setError(errorMsg);
         toast({
           title: "Fehler",
-          description: "Admin-Konto konnte nicht erstellt werden. Bitte versuchen Sie es später erneut.",
+          description: errorMsg,
           variant: "destructive",
         });
-        console.log("Initial admin setup failed");
+        console.log("Einrichtung des initialen Admins fehlgeschlagen");
       }
     } catch (error) {
-      console.error("Error during admin setup:", error);
+      console.error("Fehler während der Admin-Einrichtung:", error);
+      const errorMsg = "Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die Firebase-Konfiguration.";
+      setError(errorMsg);
       toast({
         title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
@@ -82,6 +92,12 @@ const InitialAdminSetup = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="bg-destructive/10 p-3 rounded-md flex items-start gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-Mail</Label>
               <Input
