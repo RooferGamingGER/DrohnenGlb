@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -46,10 +45,8 @@ setPersistence(auth, browserLocalPersistence)
     console.error("Auth persistence error:", error);
   });
 
-// Initialize Firestore with optimized cache for better performance
-export const db: Firestore = initializeFirestore(app, {
-  localCache: memoryLocalCache()
-});
+// Initialize Firestore without conflicting cache configurations
+export const db: Firestore = getFirestore(app);
 
 // Enable offline persistence
 enableIndexedDbPersistence(db).catch((err) => {
@@ -59,10 +56,7 @@ enableIndexedDbPersistence(db).catch((err) => {
 // Optimierter Login
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
   try {
-    console.time('firebase-login');
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    console.timeEnd('firebase-login');
-    return result;
+    return await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     console.error("Login error:", error);
     throw error;

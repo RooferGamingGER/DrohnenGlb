@@ -6,34 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 
 const Login = () => {
   const [email, setEmail] = useState(() => localStorage.getItem('savedEmail') || '');
   const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('savedEmail'));
   const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Fortschrittsanzeige während des Ladens
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isLoading) {
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          // Max bei 90%, damit es nicht komplett voll aussieht, bevor der Login abgeschlossen ist
-          const newProgress = prev + (90 - prev) * 0.1;
-          return newProgress > 90 ? 90 : newProgress;
-        });
-      }, 200);
-    } else {
-      setProgress(0);
-    }
-    return () => clearInterval(interval);
-  }, [isLoading]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -43,35 +24,32 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || !email || !password) return;
+    if (isLoading) return;
     
     setIsLoading(true);
-    setProgress(10); // Starten mit 10%
     
     try {
-      // Anmeldedaten speichern, wenn "Angemeldet bleiben" aktiviert ist
+      const previousEmail = localStorage.getItem('savedEmail');
+      const previousPassword = localStorage.getItem('savedPassword');
+      
       if (rememberMe) {
         localStorage.setItem('savedEmail', email);
         localStorage.setItem('savedPassword', password);
-      } else {
-        localStorage.removeItem('savedEmail');
-        localStorage.removeItem('savedPassword');
       }
-      
-      // Anmeldestatus auf 50% setzen, um Fortschritt anzuzeigen
-      setProgress(50);
       
       const success = await login(email, password);
       
       if (success) {
-        setProgress(100);
-        // Kurze Verzögerung, um den 100% Fortschritt anzuzeigen
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 200);
+        navigate('/', { replace: true });
       } else {
-        setIsLoading(false);
-        setProgress(0);
+        if (rememberMe) {
+          if (previousEmail) localStorage.setItem('savedEmail', previousEmail);
+          else localStorage.removeItem('savedEmail');
+          
+          if (previousPassword) localStorage.setItem('savedPassword', previousPassword);
+          else localStorage.removeItem('savedPassword');
+        }
+        
         toast({
           title: "Anmeldung fehlgeschlagen",
           description: "Ungültige E-Mail oder Passwort.",
@@ -80,13 +58,18 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Login error:", error);
-      setIsLoading(false);
-      setProgress(0);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
         variant: "destructive",
       });
+      
+      if (!rememberMe) {
+        localStorage.removeItem('savedEmail');
+        localStorage.removeItem('savedPassword');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -153,12 +136,6 @@ const Login = () => {
           >
             {isLoading ? "Anmeldung läuft..." : "Anmelden"}
           </Button>
-          
-          {isLoading && (
-            <div className="mt-2">
-              <Progress value={progress} className="h-2" />
-            </div>
-          )}
         </form>
         
         <div className="mt-4 text-center text-sm">
