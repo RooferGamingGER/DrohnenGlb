@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -13,12 +12,10 @@ export interface Measurement {
   type: MeasurementType;
   points: MeasurementPoint[];
   value: number;
-  segmentValues?: number[]; // Added for multi-point measurements
   unit: string;
   description?: string;
   isActive?: boolean;
   labelObject?: THREE.Sprite; // Reference to the 3D label
-  labelObjects?: THREE.Sprite[]; // References to segment labels for multi-point measurements
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
 }
@@ -26,30 +23,6 @@ export interface Measurement {
 // Calculate distance between two points in 3D space
 export const calculateDistance = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
   return p1.distanceTo(p2);
-};
-
-// Calculate total distance of a path with multiple points
-export const calculatePathDistance = (points: THREE.Vector3[]): number => {
-  if (points.length < 2) return 0;
-  
-  let totalDistance = 0;
-  for (let i = 0; i < points.length - 1; i++) {
-    totalDistance += calculateDistance(points[i], points[i + 1]);
-  }
-  
-  return totalDistance;
-};
-
-// Calculate individual segment distances in a multi-point path
-export const calculateSegmentDistances = (points: THREE.Vector3[]): number[] => {
-  if (points.length < 2) return [];
-  
-  const segments: number[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    segments.push(calculateDistance(points[i], points[i + 1]));
-  }
-  
-  return segments;
 };
 
 // Calculate height difference (y-axis) between two points
@@ -76,11 +49,11 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   if (!context) throw new Error("Could not get canvas context");
   
   // Increase canvas size for better resolution
-  canvas.width = 512; // Doubled for better text clarity
-  canvas.height = 128; // Doubled for better text clarity
+  canvas.width = 512; 
+  canvas.height = 128;
   
   // Set a solid background with rounded corners
-  context.fillStyle = 'rgba(0, 0, 0, 0.9)'; // More opaque background
+  context.fillStyle = 'rgba(0, 0, 0, 0.9)';
   context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
@@ -90,8 +63,8 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
   context.stroke();
   
-  // Set text properties with improved rendering
-  context.font = 'bold 48px Arial, sans-serif'; // Larger font, better font
+  // Use the Inter font which is used in the UI (from index.css)
+  context.font = 'bold 48px Inter, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
@@ -125,7 +98,7 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
-  sprite.scale.set(0.8, 0.4, 1); // Increased base scale for better readability
+  sprite.scale.set(0.8, 0.4, 1);
   
   // Add custom property to store base scale for dynamic scaling
   sprite.userData = {
@@ -155,20 +128,25 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   );
 };
 
-// Create a material for draggable point visualization
+// Create draggable point material
 export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({
-    color: isHovered ? 0xffcc00 : 0xff0000,
+  return new THREE.MeshBasicMaterial({ 
+    color: isHovered ? 0xffff00 : 0xff0000,
+    opacity: isHovered ? 0.9 : 0.8,
     transparent: true,
-    opacity: 0.8
+    depthTest: false,
+    size: 5
   });
 };
 
-// Create a mesh for a measurement point
-export const createDraggablePointMesh = (position: THREE.Vector3): THREE.Mesh => {
-  const geometry = new THREE.SphereGeometry(0.03, 16, 16);
-  const material = createDraggablePointMaterial();
+// Create a draggable point mesh with larger size for better interaction
+export const createDraggablePointMesh = (position: THREE.Vector3, isHovered: boolean = false): THREE.Mesh => {
+  // Use a larger sphere for better grabbing
+  const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+  const material = createDraggablePointMaterial(isHovered);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.copy(position);
+  // Set renderOrder to ensure points render on top
+  mesh.renderOrder = 1;
   return mesh;
 };

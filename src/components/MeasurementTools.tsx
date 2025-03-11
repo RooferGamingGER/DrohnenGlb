@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, PlusSquare } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -18,10 +17,8 @@ interface MeasurementToolsProps {
   onDeleteMeasurement: (id: string) => void;
   onUndoLastPoint: () => void;
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  onFinishMeasurement: () => void; // New prop to finalize multi-point measurements
   measurements: Measurement[];
   canUndo: boolean;
-  activeMultiPointMeasurement: boolean; // New prop to track active multi-point measurement
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -31,15 +28,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onDeleteMeasurement,
   onUndoLastPoint,
   onUpdateMeasurement,
-  onFinishMeasurement,
   measurements,
-  canUndo,
-  activeMultiPointMeasurement
+  canUndo
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Automatically disable measurement tool when editing a description
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
@@ -50,7 +44,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
-    // Disable measurement tool after deleting
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -59,7 +52,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when starting to edit
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -84,9 +76,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
+    if (activeTool === 'move') {
+      return;
+    }
+    
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when clicking anywhere in the container
+    
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -138,7 +134,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Länge messen (mehrere Punkte)</p>
+                <p>Länge messen</p>
               </TooltipContent>
             </Tooltip>
             
@@ -161,23 +157,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
-            
-            {activeMultiPointMeasurement && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onFinishMeasurement}
-                    className="p-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
-                    aria-label="Messung abschließen"
-                  >
-                    <Check size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Messung abschließen</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
             
             {canUndo && (
               <Tooltip>
@@ -221,7 +200,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <h3 className="font-medium">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="bg-background/50 p-2 rounded">
+              <li 
+                key={m.id} 
+                className={cn(
+                  "bg-background/50 p-2 rounded",
+                  m.isActive && "ring-2 ring-primary"
+                )}
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
                     {m.type === 'length' && <Ruler size={14} />}
@@ -262,20 +247,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       {m.description}
                     </p>
                   )
-                )}
-                
-                {m.type === 'length' && m.segmentValues && m.points.length > 2 && (
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    <div className="text-xs font-medium">Teilstrecken:</div>
-                    <div className="pl-2">
-                      {m.segmentValues.map((val, index) => (
-                        <div key={index} className="flex items-center gap-1">
-                          <span>{index + 1}:</span>
-                          <span>{val.toFixed(2)} {m.unit}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 )}
               </li>
             ))}
