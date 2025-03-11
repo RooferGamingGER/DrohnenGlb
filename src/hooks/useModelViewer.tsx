@@ -939,3 +939,104 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (processingIntervalRef.current) {
         clearInterval(processingIntervalRef.current);
         processingIntervalRef.current = null;
+      }
+
+      setState({
+        isLoading: false,
+        progress: 100,
+        error: null,
+        loadedModel: model,
+      });
+
+      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+
+      return model;
+    } catch (error) {
+      console.error('Error loading model:', error);
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      setState({
+        isLoading: false,
+        progress: 0,
+        error: `Fehler beim Laden des Modells: ${errorMessage}`,
+        loadedModel: null,
+      });
+      
+      toast({
+        title: "Fehler beim Laden",
+        description: `Das Modell konnte nicht geladen werden: ${errorMessage}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+
+      throw error;
+    }
+  };
+
+  const applyBackground = async (option: BackgroundOption) => {
+    if (!sceneRef.current || !rendererRef.current) return;
+
+    if (sceneRef.current.background) {
+      if (sceneRef.current.background instanceof THREE.Texture) {
+        sceneRef.current.background.dispose();
+      }
+      sceneRef.current.background = null;
+    }
+
+    rendererRef.current.setClearAlpha(option.id === 'transparent' ? 0 : 1);
+
+    if (option.color) {
+      sceneRef.current.background = new THREE.Color(option.color);
+    } else if (option.texture) {
+      try {
+        const texture = await loadTexture(option.texture);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(10, 10);
+        sceneRef.current.background = texture;
+      } catch (error) {
+        console.error('Error loading texture:', error);
+      }
+    }
+
+    setBackground(option);
+  };
+
+  const resetView = () => {
+    if (controlsRef.current && modelRef.current && cameraRef.current) {
+      const box = new THREE.Box3().setFromObject(modelRef.current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      
+      const distance = size * 1.5;
+      cameraRef.current.position.copy(center);
+      cameraRef.current.position.z += distance;
+      cameraRef.current.lookAt(center);
+      
+      controlsRef.current.target.copy(center);
+      controlsRef.current.update();
+    }
+  };
+
+  return {
+    ...state,
+    loadModel,
+    background,
+    setBackground: applyBackground,
+    backgroundOptions,
+    resetView,
+    activeTool,
+    setActiveTool,
+    measurements,
+    clearMeasurements,
+    undoLastPoint,
+    deleteMeasurement,
+    updateMeasurement,
+    canUndo,
+  };
+};
