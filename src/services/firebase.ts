@@ -90,11 +90,11 @@ export const loginWithFirebase = async (email: string, password: string): Promis
   console.log("Firebase Login Start", startTime);
   
   try {
-    // Kürzeres Timeout für schnellere Fehlerdiagnose
+    // Kürzeres Timeout für schnellere Fehlerdiagnose - auf 3 Sekunden reduziert
     const authResult = await Promise.race([
       signInWithEmailAndPassword(auth, email, password),
       new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Login Timeout nach 5 Sekunden")), 5000)
+        setTimeout(() => reject(new Error("Login Timeout nach 3 Sekunden")), 3000)
       )
     ]) as UserCredential;
     
@@ -113,7 +113,7 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     const errorTime = performance.now();
     const duration = errorTime - startTime;
     
-    if (error.message === "Login Timeout nach 5 Sekunden") {
+    if (error.message === "Login Timeout nach 3 Sekunden") {
       console.error(`Login Timeout nach ${duration.toFixed(2)}ms - Server antwortet nicht`);
       throw new Error("Die Anmeldung dauert zu lange. Bitte versuchen Sie es später erneut.");
     }
@@ -135,6 +135,56 @@ export const loginWithFirebase = async (email: string, password: string): Promis
   }
 };
 
+// Optimierte Benutzerabfrage mit kürzerem Timeout und Fehlerbehandlung
+let cachedUsers: any[] = [];
+let lastFetchTime = 0;
+const CACHE_EXPIRY = 30000; // 30 Sekunden Cache-Gültigkeit (von 60s reduziert)
+
+export const getAllUsers = async () => {
+  try {
+    const now = Date.now();
+    // Verwende Cache, wenn dieser noch gültig ist
+    if (cachedUsers.length > 0 && now - lastFetchTime < CACHE_EXPIRY) {
+      console.log("Benutzer aus Cache geladen:", cachedUsers.length);
+      return cachedUsers;
+    }
+    
+    const startTime = performance.now();
+    
+    // Firestore-Abfrage mit Timeout
+    const usersCollection = collection(db, "users");
+    const q = query(usersCollection);
+    
+    const querySnapshot = await Promise.race([
+      getDocs(q),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout bei Benutzerabfrage nach 2 Sekunden")), 2000)
+      )
+    ]);
+    
+    cachedUsers = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    lastFetchTime = now;
+    
+    const endTime = performance.now();
+    console.log(`Benutzer von Firestore geladen in ${endTime - startTime}ms:`, cachedUsers.length);
+    
+    return cachedUsers;
+  } catch (error: any) {
+    console.error("Fehler beim Abrufen der Benutzer:", error);
+    
+    if (error.message === "Timeout bei Benutzerabfrage nach 2 Sekunden") {
+      // Bei Timeout, versuche Cache zu verwenden, wenn vorhanden
+      if (cachedUsers.length > 0) {
+        console.warn("Timeout bei Benutzerabfrage - verwende alten Cache");
+        return cachedUsers;
+      }
+    }
+    
+    return [];
+  }
+};
+
+// Rest der Funktionen
 export const logoutFromFirebase = async (): Promise<boolean> => {
   try {
     await signOut(auth);

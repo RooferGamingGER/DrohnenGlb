@@ -44,16 +44,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const { toast } = useToast();
 
+  const userAdminCache = new Map<string, boolean>();
+  
   const checkIfUserIsAdmin = useCallback(async (uid: string): Promise<boolean> => {
     try {
-      const usersList = await getAllUsers();
+      if (userAdminCache.has(uid)) {
+        console.log("Admin-Status aus Cache geladen:", uid);
+        return userAdminCache.get(uid) || false;
+      }
+      
+      console.log("Admin-Status wird geprüft für:", uid);
+      const startTime = performance.now();
+      
+      const usersList = await Promise.race([
+        getAllUsers(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error("Admin-Status Timeout nach 2 Sekunden")), 2000)
+        )
+      ]);
+      
       const userInfo = usersList.find((u: FirestoreUser) => u.uid === uid || u.id === uid) as FirestoreUser | undefined;
-      return userInfo?.isAdmin || false;
-    } catch (error) {
+      const isAdmin = userInfo?.isAdmin || false;
+      
+      userAdminCache.set(uid, isAdmin);
+      
+      console.log(`Admin-Status geprüft in ${performance.now() - startTime}ms: ${isAdmin ? "Admin" : "Kein Admin"}`);
+      return isAdmin;
+    } catch (error: any) {
       console.error("Fehler beim Prüfen des Admin-Status:", error);
+      
+      if (error.message === "Admin-Status Timeout nach 2 Sekunden") {
+        toast({
+          title: "Hinweis",
+          description: "Verzögerung bei der Berechtigungsprüfung. Einige Funktionen könnten eingeschränkt sein.",
+          variant: "default",
+        });
+      }
+      
       return false;
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -61,7 +91,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser && isSubscribed) {
         try {
           console.log("Benutzerauthentifizierung erkannt, prüfe Admin-Status...");
+          const adminCheckStart = performance.now();
           const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
+          console.log(`Admin-Status vollständig geprüft in ${performance.now() - adminCheckStart}ms`);
+          
           const userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
@@ -205,6 +238,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user?.isAdmin) {
       const loadUsers = async () => {
         try {
+          const startTime = performance.now();
+          console.log("Lade Benutzerliste...");
+          
           const usersList = await getAllUsers();
           const formattedUsers: User[] = usersList.map((user: FirestoreUser) => ({
             id: user.uid || user.id,
@@ -212,7 +248,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: user.email || '',
             isAdmin: user.isAdmin || false
           }));
+          
           setUsers(formattedUsers);
+          console.log(`Benutzerliste geladen in ${performance.now() - startTime}ms:`, formattedUsers.length);
         } catch (error) {
           console.error("Fehler beim Laden der Benutzer:", error);
         }

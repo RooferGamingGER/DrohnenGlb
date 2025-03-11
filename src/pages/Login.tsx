@@ -23,9 +23,11 @@ const Login = () => {
     handleSubmit
   } = useLoginForm();
 
+  // Optimierte Statusnachrichten mit feingranularen Übergängen
   const getProgressStatus = (progress: number) => {
-    if (progress < 15) return "Anmeldung wird initialisiert...";
-    if (progress < 30) return "Benutzerinformationen werden gesendet...";
+    if (progress < 10) return "Anmeldung wird initialisiert...";
+    if (progress < 25) return "Verbindung wird hergestellt...";
+    if (progress < 40) return "Benutzerinformationen werden gesendet...";
     if (progress < 60) return "Authentifizierung läuft...";
     if (progress < 85) return "Berechtigungen werden überprüft...";
     if (progress < 95) return "Benutzerinformationen werden geladen...";
