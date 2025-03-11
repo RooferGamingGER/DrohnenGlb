@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -12,10 +13,12 @@ export interface Measurement {
   type: MeasurementType;
   points: MeasurementPoint[];
   value: number;
+  segmentValues?: number[]; // Added for multi-point measurements
   unit: string;
   description?: string;
   isActive?: boolean;
   labelObject?: THREE.Sprite; // Reference to the 3D label
+  labelObjects?: THREE.Sprite[]; // References to segment labels for multi-point measurements
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
 }
@@ -23,6 +26,30 @@ export interface Measurement {
 // Calculate distance between two points in 3D space
 export const calculateDistance = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
   return p1.distanceTo(p2);
+};
+
+// Calculate total distance of a path with multiple points
+export const calculatePathDistance = (points: THREE.Vector3[]): number => {
+  if (points.length < 2) return 0;
+  
+  let totalDistance = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    totalDistance += calculateDistance(points[i], points[i + 1]);
+  }
+  
+  return totalDistance;
+};
+
+// Calculate individual segment distances in a multi-point path
+export const calculateSegmentDistances = (points: THREE.Vector3[]): number[] => {
+  if (points.length < 2) return [];
+  
+  const segments: number[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    segments.push(calculateDistance(points[i], points[i + 1]));
+  }
+  
+  return segments;
 };
 
 // Calculate height difference (y-axis) between two points
@@ -126,4 +153,22 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
     sprite.userData.baseScale.y * scaleFactor,
     1
   );
+};
+
+// Create a material for draggable point visualization
+export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({
+    color: isHovered ? 0xffcc00 : 0xff0000,
+    transparent: true,
+    opacity: 0.8
+  });
+};
+
+// Create a mesh for a measurement point
+export const createDraggablePointMesh = (position: THREE.Vector3): THREE.Mesh => {
+  const geometry = new THREE.SphereGeometry(0.03, 16, 16);
+  const material = createDraggablePointMaterial();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(position);
+  return mesh;
 };

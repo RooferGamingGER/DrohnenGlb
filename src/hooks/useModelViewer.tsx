@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -14,9 +15,13 @@ import {
   MeasurementPoint,
   calculateDistance,
   calculateHeight,
+  calculatePathDistance,
+  calculateSegmentDistances,
   createMeasurementId,
   createTextSprite,
-  updateLabelScale
+  updateLabelScale,
+  createDraggablePointMaterial,
+  createDraggablePointMesh
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,6 +52,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [activeTool, setActiveTool] = useState<MeasurementType>('none');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [temporaryPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
+  const [activeMultiPointMeasurement, setActiveMultiPointMeasurement] = useState(false);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -120,6 +126,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           currentMeasurementRef.current.labels.pop();
         }
       }
+      
+      // If we just removed the second-to-last point in a length measurement, we're no longer in multi-point mode
+      if (activeTool === 'length' && newPoints.length < 2) {
+        setActiveMultiPointMeasurement(false);
+      }
     }
   };
 
@@ -132,6 +143,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           measurementToDelete.labelObject.material.dispose();
         }
         measurementGroupRef.current.remove(measurementToDelete.labelObject);
+      }
+      
+      if (measurementToDelete.labelObjects) {
+        measurementToDelete.labelObjects.forEach(label => {
+          if (label.material instanceof THREE.SpriteMaterial) {
+            label.material.map?.dispose();
+            label.material.dispose();
+          }
+          measurementGroupRef.current?.remove(label);
+        });
       }
       
       if (measurementToDelete.lineObjects) {
@@ -312,9 +333,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       
       addMeasurementPoint(point);
       
-      if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
+      // For height measurements, we still only need 2 points
+      if (activeTool === 'height' && temporaryPoints.length === 1) {
         const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
         finalizeMeasurement(newPoints);
+      }
+      // For length measurements with multiple points
+      else if (activeTool === 'length' && temporaryPoints.length >= 1) {
+        setActiveMultiPointMeasurement(true);
       }
     }
   };
@@ -371,67 +397,71 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         currentMeasurementRef.current.lines.push(line);
       }
       
-      if (activeTool === 'length' || activeTool === 'height') {
-        let value: number;
+      // Add segment label for each line segment in length measurement
+      if (activeTool === 'length') {
+        let value = calculateDistance(prevPoint, position);
         let unit = 'm';
         
-        if (activeTool === 'length') {
-          value = calculateDistance(prevPoint, position);
-          
-          const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
-          midPoint.y += 0.1;
-          
-          const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
-          
-          // Make sure new sprites are correctly initialized for dynamic scaling
-          labelSprite.userData = {
-            ...labelSprite.userData,
-            isLabel: true,
-            baseScale: { x: 0.6, y: 0.3, z: 1 }
-          };
-          
-          if (cameraRef.current) {
-            updateLabelScale(labelSprite, cameraRef.current);
-          }
-          
-          measurementGroupRef.current.add(labelSprite);
-          
-          if (currentMeasurementRef.current) {
-            currentMeasurementRef.current.labels.push(labelSprite);
-          }
-        } else {
-          value = calculateHeight(prevPoint, position);
-          
-          const midHeight = (prevPoint.y + position.y) / 2;
-          const midPoint = new THREE.Vector3(
-            prevPoint.x,
-            midHeight,
-            prevPoint.z
-          );
-          midPoint.x += 0.1;
-          
-          const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
-          
-          // Make sure new sprites are correctly initialized for dynamic scaling
-          labelSprite.userData = {
-            ...labelSprite.userData,
-            isLabel: true,
-            baseScale: { x: 0.6, y: 0.3, z: 1 }
-          };
-          
-          if (cameraRef.current) {
-            updateLabelScale(labelSprite, cameraRef.current);
-          }
-          
-          measurementGroupRef.current.add(labelSprite);
-          
-          if (currentMeasurementRef.current) {
-            currentMeasurementRef.current.labels.push(labelSprite);
-          }
+        const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
+        midPoint.y += 0.1;
+        
+        const labelText = `${value.toFixed(2)} ${unit}`;
+        const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
+        
+        labelSprite.userData = {
+          ...labelSprite.userData,
+          isLabel: true,
+          baseScale: { x: 0.6, y: 0.3, z: 1 }
+        };
+        
+        if (cameraRef.current) {
+          updateLabelScale(labelSprite, cameraRef.current);
+        }
+        
+        measurementGroupRef.current.add(labelSprite);
+        
+        if (currentMeasurementRef.current) {
+          currentMeasurementRef.current.labels.push(labelSprite);
+        }
+      } 
+      else if (activeTool === 'height') {
+        let value = calculateHeight(prevPoint, position);
+        let unit = 'm';
+        
+        const midHeight = (prevPoint.y + position.y) / 2;
+        const midPoint = new THREE.Vector3(
+          prevPoint.x,
+          midHeight,
+          prevPoint.z
+        );
+        midPoint.x += 0.1;
+        
+        const labelText = `${value.toFixed(2)} ${unit}`;
+        const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
+        
+        labelSprite.userData = {
+          ...labelSprite.userData,
+          isLabel: true,
+          baseScale: { x: 0.6, y: 0.3, z: 1 }
+        };
+        
+        if (cameraRef.current) {
+          updateLabelScale(labelSprite, cameraRef.current);
+        }
+        
+        measurementGroupRef.current.add(labelSprite);
+        
+        if (currentMeasurementRef.current) {
+          currentMeasurementRef.current.labels.push(labelSprite);
         }
       }
+    }
+  };
+  
+  const finishMultiPointMeasurement = () => {
+    if (activeTool === 'length' && temporaryPoints.length >= 2) {
+      finalizeMeasurement(temporaryPoints);
+      setActiveMultiPointMeasurement(false);
     }
   };
   
@@ -440,9 +470,40 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     let value = 0;
     let unit = 'm';
+    let segmentValues: number[] = [];
     
     if (activeTool === 'length') {
-      value = calculateDistance(points[0].position, points[1].position);
+      // Calculate total path length
+      const allPositions = points.map(p => p.position);
+      value = calculatePathDistance(allPositions);
+      
+      // Calculate individual segment distances
+      segmentValues = calculateSegmentDistances(allPositions);
+      
+      // For multi-point paths, create a total distance label at the last point
+      if (points.length > 2 && currentMeasurementRef.current) {
+        const lastPoint = points[points.length - 1].position.clone();
+        lastPoint.y += 0.2; // Position the total label above the last point
+        
+        const totalLabelText = `Total: ${value.toFixed(2)} ${unit}`;
+        const totalLabelSprite = createTextSprite(totalLabelText, lastPoint, 0x00ff00);
+        
+        totalLabelSprite.userData = {
+          ...totalLabelSprite.userData,
+          isLabel: true,
+          baseScale: { x: 0.8, y: 0.4, z: 1 }
+        };
+        
+        if (cameraRef.current) {
+          updateLabelScale(totalLabelSprite, cameraRef.current);
+        }
+        
+        if (measurementGroupRef.current) {
+          measurementGroupRef.current.add(totalLabelSprite);
+        }
+        
+        currentMeasurementRef.current.labels.push(totalLabelSprite);
+      }
     } else if (activeTool === 'height') {
       value = calculateHeight(points[0].position, points[1].position);
     }
@@ -450,7 +511,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     const measurementObjects = {
       pointObjects: currentMeasurementRef.current?.meshes || [],
       lineObjects: currentMeasurementRef.current?.lines || [],
-      labelObject: currentMeasurementRef.current?.labels[0] || null
+      labelObjects: currentMeasurementRef.current?.labels || [],
+      labelObject: currentMeasurementRef.current?.labels[currentMeasurementRef.current.labels.length - 1] || null
     };
     
     const newMeasurement: Measurement = {
@@ -458,6 +520,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       type: activeTool,
       points: points,
       value,
+      segmentValues: activeTool === 'length' ? segmentValues : undefined,
       unit,
       ...measurementObjects
     };
@@ -477,6 +540,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             measurement.labelObject.material.dispose();
           }
           measurementGroupRef.current?.remove(measurement.labelObject);
+        }
+        
+        if (measurement.labelObjects) {
+          measurement.labelObjects.forEach(label => {
+            if (label.material instanceof THREE.SpriteMaterial) {
+              label.material.map?.dispose();
+              label.material.dispose();
+            }
+            measurementGroupRef.current?.remove(label);
+          });
         }
         
         if (measurement.lineObjects) {
@@ -506,6 +579,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     setMeasurements([]);
     setTemporaryPoints([]);
+    setActiveMultiPointMeasurement(false);
     currentMeasurementRef.current = null;
   };
 
@@ -529,6 +603,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
       setTemporaryPoints([]);
+      setActiveMultiPointMeasurement(false);
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
@@ -737,5 +812,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    activeMultiPointMeasurement,
+    finishMultiPointMeasurement
   };
 };

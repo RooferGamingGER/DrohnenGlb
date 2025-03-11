@@ -33,6 +33,8 @@ const ModelViewer: React.FC = () => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    activeMultiPointMeasurement,
+    finishMultiPointMeasurement
   } = useModelViewer({ containerRef: viewerRef });
 
   const handleFileSelected = (file: File) => {
@@ -110,8 +112,10 @@ const ModelViewer: React.FC = () => {
                 onDeleteMeasurement={deleteMeasurement}
                 onUndoLastPoint={undoLastPoint}
                 onUpdateMeasurement={updateMeasurement}
+                onFinishMeasurement={finishMultiPointMeasurement}
                 measurements={measurements}
                 canUndo={canUndo}
+                activeMultiPointMeasurement={activeMultiPointMeasurement}
               />
             </div>
             
@@ -148,6 +152,7 @@ const ModelViewer: React.FC = () => {
                   <p>• Zwei Finger zum Verschieben</p>
                   <p>• Doppelklick zum Zurücksetzen der Ansicht</p>
                   <p>• Für Messungen: Tool auswählen und auf das Modell klicken</p>
+                  <p>• Bei Längenmessungen: Mehrere Punkte setzen und mit dem Häkchen abschließen</p>
                 </div>
               </div>
             )}

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, PlusSquare } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,10 @@ interface MeasurementToolsProps {
   onDeleteMeasurement: (id: string) => void;
   onUndoLastPoint: () => void;
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
+  onFinishMeasurement: () => void; // New prop to finalize multi-point measurements
   measurements: Measurement[];
   canUndo: boolean;
+  activeMultiPointMeasurement: boolean; // New prop to track active multi-point measurement
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -29,8 +31,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onDeleteMeasurement,
   onUndoLastPoint,
   onUpdateMeasurement,
+  onFinishMeasurement,
   measurements,
-  canUndo
+  canUndo,
+  activeMultiPointMeasurement
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -134,7 +138,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Länge messen</p>
+                <p>Länge messen (mehrere Punkte)</p>
               </TooltipContent>
             </Tooltip>
             
@@ -157,6 +161,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
+            
+            {activeMultiPointMeasurement && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onFinishMeasurement}
+                    className="p-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                    aria-label="Messung abschließen"
+                  >
+                    <Check size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Messung abschließen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             
             {canUndo && (
               <Tooltip>
@@ -241,6 +262,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       {m.description}
                     </p>
                   )
+                )}
+                
+                {m.type === 'length' && m.segmentValues && m.points.length > 2 && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="text-xs font-medium">Teilstrecken:</div>
+                    <div className="pl-2">
+                      {m.segmentValues.map((val, index) => (
+                        <div key={index} className="flex items-center gap-1">
+                          <span>{index + 1}:</span>
+                          <span>{val.toFixed(2)} {m.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </li>
             ))}
