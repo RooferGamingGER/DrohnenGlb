@@ -156,27 +156,32 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         file,
         (event) => {
           if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            const percentComplete = Math.round((event.loaded / event.total) * 50);
             setState(prev => ({ ...prev, progress: percentComplete }));
           }
         }
       );
 
-      const box = centerModel(model);
-      const size = box.getSize(new THREE.Vector3()).length();
-      const center = box.getCenter(new THREE.Vector3());
+      setState(prev => ({ ...prev, progress: 75 }));
 
-      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      model.position.x = -center.x;
+      model.position.y = -center.y;
+      model.position.z = -center.z;
+
+      setState(prev => ({ ...prev, progress: 90 }));
 
       if (cameraRef.current && controlsRef.current) {
-        // Improved camera positioning for better centering
-        const distance = size * 1.5; // Reduced from 2 to 1.5 to show model bigger
-        cameraRef.current.position.copy(center);
-        cameraRef.current.position.z += distance; // Position camera to front for a better initial view
-        cameraRef.current.lookAt(center);
+        const maxDimension = Math.max(size.x, size.y, size.z);
+        const distance = maxDimension * 2;
+        
+        cameraRef.current.position.set(0, 0, distance);
+        cameraRef.current.lookAt(0, 0, 0);
 
-        // Set controls to look at center of model
-        controlsRef.current.target.copy(center);
+        controlsRef.current.target.set(0, 0, 0);
         controlsRef.current.update();
         controlsRef.current.saveState();
       }
@@ -191,7 +196,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      // Apply dark background
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
 
       toast({
@@ -253,18 +257,15 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const resetView = () => {
     if (controlsRef.current && modelRef.current && cameraRef.current) {
-      // Get the center of the model again
       const box = new THREE.Box3().setFromObject(modelRef.current);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
       
-      // Reset the camera position
       const distance = size * 1.5;
       cameraRef.current.position.copy(center);
       cameraRef.current.position.z += distance;
       cameraRef.current.lookAt(center);
       
-      // Reset the controls target to center of model
       controlsRef.current.target.copy(center);
       controlsRef.current.update();
     }
