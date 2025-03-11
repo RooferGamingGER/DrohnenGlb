@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +13,6 @@ export interface LoginFormState {
 }
 
 export const useLoginForm = () => {
-  // Lade gespeicherte Anmeldedaten aus dem localStorage
   const [email, setEmail] = useState(() => localStorage.getItem('savedEmail') || '');
   const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('savedEmail'));
@@ -26,7 +24,6 @@ export const useLoginForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Automatische Weiterleitung, wenn bereits angemeldet
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
@@ -55,12 +52,18 @@ export const useLoginForm = () => {
         localStorage.setItem('savedPassword', password);
       }
       
-      setProgress(30);
+      setProgress(40);
       metrics.vorLogin = performance.now() - startTime;
       console.log("Starte Login-Prozess...");
       
       const loginStartTime = performance.now();
+      
+      setProgress(50);
+      
       const success = await login(email, password);
+      
+      setProgress(75);
+      
       const loginEndTime = performance.now();
       metrics.loginDauer = loginEndTime - loginStartTime;
       metrics.gesamtDauer = loginEndTime - startTime;
