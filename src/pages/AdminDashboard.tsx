@@ -10,6 +10,7 @@ import { Trash2, Eye, EyeOff, Save, Edit } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, users, createUser, deleteUser, updateUser } = useAuth();
+  const [newEmail, setNewEmail] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -22,28 +23,29 @@ const AdminDashboard = () => {
   const [editForm, setEditForm] = useState<{
     username: string;
     password: string;
-  }>({ username: '', password: '' });
+    email: string;
+  }>({ username: '', password: '', email: '' });
 
   // Wenn kein Admin-Benutzer, zur Startseite umleiten
   if (!user?.isAdmin) {
     return <Navigate to="/" />;
   }
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (newUsername.trim() === '' || newPassword.trim() === '') {
+    if (newUsername.trim() === '' || newPassword.trim() === '' || newEmail.trim() === '') {
       toast({
         title: "Fehler",
-        description: "Benutzername und Passwort dürfen nicht leer sein.",
+        description: "E-Mail, Benutzername und Passwort dürfen nicht leer sein.",
         variant: "destructive",
       });
       setIsLoading(false);
       return;
     }
 
-    const success = createUser(newUsername, newPassword, isAdmin);
+    const { success, error } = await createUser(newEmail, newUsername, newPassword, isAdmin);
     
     setIsLoading(false);
     
@@ -53,13 +55,14 @@ const AdminDashboard = () => {
         description: `Benutzer "${newUsername}" wurde erfolgreich erstellt.`,
       });
       // Formular zurücksetzen
+      setNewEmail('');
       setNewUsername('');
       setNewPassword('');
       setIsAdmin(false);
     } else {
       toast({
         title: "Fehler",
-        description: "Der Benutzername existiert bereits oder Sie haben keine Admin-Rechte.",
+        description: error || "Der Benutzername existiert bereits oder Sie haben keine Admin-Rechte.",
         variant: "destructive",
       });
     }
@@ -70,11 +73,12 @@ const AdminDashboard = () => {
     setEditForm({
       username: userItem.username,
       password: '',
+      email: '', // We don't have the email in the user profile
     });
   };
 
-  const handleSaveEdit = (userId: string) => {
-    const updates: { username?: string; password?: string } = {};
+  const handleSaveEdit = async (userId: string) => {
+    const updates: { username?: string; password?: string; email?: string } = {};
     const currentUser = users.find(u => u.id === userId);
     
     if (!currentUser) return;
@@ -86,9 +90,12 @@ const AdminDashboard = () => {
     if (editForm.password) {
       updates.password = editForm.password;
     }
+    if (editForm.email) {
+      updates.email = editForm.email;
+    }
 
     if (Object.keys(updates).length > 0) {
-      const success = updateUser(userId, updates);
+      const { success, error } = await updateUser(userId, updates);
       if (success) {
         toast({
           title: "Benutzer aktualisiert",
@@ -97,7 +104,7 @@ const AdminDashboard = () => {
       } else {
         toast({
           title: "Fehler",
-          description: "Die Änderungen konnten nicht gespeichert werden.",
+          description: error || "Die Änderungen konnten nicht gespeichert werden.",
           variant: "destructive",
         });
       }
@@ -107,7 +114,7 @@ const AdminDashboard = () => {
     setShowPassword(null);
   };
 
-  const handleDeleteUser = (userId: string, username: string) => {
+  const handleDeleteUser = async (userId: string, username: string) => {
     // Prüfen, ob es der aktuell eingeloggte Benutzer ist
     if (userId === user?.id) {
       toast({
@@ -120,7 +127,7 @@ const AdminDashboard = () => {
 
     // Bestätigung vom Benutzer einholen
     if (window.confirm(`Möchten Sie den Benutzer "${username}" wirklich löschen?`)) {
-      const success = deleteUser(userId);
+      const { success, error } = await deleteUser(userId);
       
       if (success) {
         toast({
@@ -130,7 +137,7 @@ const AdminDashboard = () => {
       } else {
         toast({
           title: "Fehler",
-          description: "Der Benutzer konnte nicht gelöscht werden.",
+          description: error || "Der Benutzer konnte nicht gelöscht werden.",
           variant: "destructive",
         });
       }
@@ -146,6 +153,20 @@ const AdminDashboard = () => {
           <div className="bg-card p-6 rounded-lg border shadow-sm">
             <h2 className="text-xl font-bold mb-4">Benutzer erstellen</h2>
             <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">
+                  E-Mail
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="E-Mail-Adresse eingeben"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                />
+              </div>
+              
               <div className="space-y-2">
                 <label htmlFor="username" className="text-sm font-medium">
                   Benutzername
