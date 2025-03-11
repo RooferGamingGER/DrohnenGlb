@@ -11,7 +11,6 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import Header from "./components/Header";
 import ProtectedRoute from "./components/ProtectedRoute";
-import InitialAdminSetup from "./components/InitialAdminSetup";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +21,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <InitialAdminSetup />
           <div className="flex h-full flex-col">
             <Header />
             <main className="flex-1 overflow-y-auto">

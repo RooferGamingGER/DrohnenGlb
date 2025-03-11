@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   auth,
@@ -6,10 +7,8 @@ import {
   createUserInFirebase,
   deleteUserFromFirebase,
   updateUserInFirebase,
-  getAllUsers,
-  checkIfInitialAdminNeeded
+  getAllUsers
 } from '../services/firebase';
-import { User as FirebaseUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export interface User {
@@ -37,8 +36,6 @@ interface AuthContextType {
   updateUser: (userId: string, updates: { email?: string; password?: string }) => Promise<boolean>;
   users: User[];
   isAuthenticated: boolean;
-  setupInitialAdmin: (email: string, password: string) => Promise<boolean>;
-  needsInitialAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,7 +43,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [needsInitialAdmin, setNeedsInitialAdmin] = useState<boolean>(false);
   const { toast } = useToast();
 
   const checkIfUserIsAdmin = useCallback(async (uid: string): Promise<boolean> => {
@@ -186,20 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const checkForInitialAdmin = async () => {
-      try {
-        const needsAdmin = await checkIfInitialAdminNeeded();
-        setNeedsInitialAdmin(needsAdmin);
-      } catch (error) {
-        console.error("Fehler bei der Prüfung auf initialen Admin:", error);
-        setNeedsInitialAdmin(true);
-      }
-    };
-
-    checkForInitialAdmin();
-  }, []);
-
-  useEffect(() => {
     if (user?.isAdmin) {
       const loadUsers = async () => {
         try {
@@ -220,46 +202,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const needsAdmin = await checkIfInitialAdminNeeded();
-      if (!needsAdmin) {
-        toast({
-          title: "Fehler",
-          description: "Es existieren bereits Benutzer. Der initiale Admin kann nicht erstellt werden.",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      const userCredential = await createUserInFirebase(email, password, true);
-      
-      if (userCredential) {
-        toast({
-          title: "Erfolg",
-          description: "Admin-Benutzer wurde erfolgreich erstellt. Sie können sich jetzt anmelden.",
-        });
-        setNeedsInitialAdmin(false);
-        return true;
-      } else {
-        toast({
-          title: "Fehler",
-          description: "Admin-Benutzer konnte nicht erstellt werden. Bitte überprüfen Sie die Firebase-Konfiguration.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    } catch (error) {
-      console.error("Fehler bei der Einrichtung des Admin-Benutzers:", error);
-      toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -272,8 +214,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUser,
         users,
         isAuthenticated: !!user,
-        setupInitialAdmin,
-        needsInitialAdmin,
       }}
     >
       {children}

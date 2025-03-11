@@ -182,25 +182,3 @@ export const getAllUsers = async () => {
     return [];
   }
 };
-
-// Cache für Admin-Check Status
-let adminNeededStatus: boolean | null = null;
-let adminCheckTime = 0;
-
-export const checkIfInitialAdminNeeded = async (): Promise<boolean> => {
-  try {
-    const now = Date.now();
-    if (adminNeededStatus !== null && now - adminCheckTime < CACHE_EXPIRY) {
-      return adminNeededStatus;
-    }
-    
-    const usersCollection = collection(db, "users");
-    const querySnapshot = await getDocs(usersCollection);
-    adminNeededStatus = querySnapshot.empty;
-    adminCheckTime = now;
-    return adminNeededStatus;
-  } catch (error) {
-    console.error("Fehler beim Prüfen des initialen Admin-Status:", error);
-    return true;
-  }
-};
