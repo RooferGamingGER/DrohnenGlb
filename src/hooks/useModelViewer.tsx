@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -65,7 +64,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
   
-  // Measurement visualization
   const measurementGroupRef = useRef<THREE.Group | null>(null);
   const currentMeasurementRef = useRef<{
     points: THREE.Vector3[];
@@ -77,7 +75,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   
-  // Handle mouse move for showing potential measurement points
   const handleMouseMove = (event: MouseEvent) => {
     if (!containerRef.current || !modelRef.current || !cameraRef.current || activeTool === 'none') {
       if (hoverPoint) setHoverPoint(null);
@@ -98,28 +95,24 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
-  // Function to undo last point
   const undoLastPoint = () => {
     if (temporaryPoints.length > 0) {
       const newPoints = temporaryPoints.slice(0, -1);
       setTemporaryPoints(newPoints);
       
       if (measurementGroupRef.current) {
-        // Remove last point visualization
         const lastPoint = measurementGroupRef.current.children.find(
           child => child instanceof THREE.Mesh && 
           child.position.equals(temporaryPoints[temporaryPoints.length - 1].position)
         );
         if (lastPoint) measurementGroupRef.current.remove(lastPoint);
         
-        // Remove last line if it exists
         if (currentMeasurementRef.current?.lines.length) {
           const lastLine = currentMeasurementRef.current.lines[currentMeasurementRef.current.lines.length - 1];
           measurementGroupRef.current.remove(lastLine);
           currentMeasurementRef.current.lines.pop();
         }
         
-        // Remove last label if it exists
         if (currentMeasurementRef.current?.labels.length) {
           const lastLabel = currentMeasurementRef.current.labels[currentMeasurementRef.current.labels.length - 1];
           measurementGroupRef.current.remove(lastLabel);
@@ -129,11 +122,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
-  // Function to delete individual measurement
   const deleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete && measurementGroupRef.current) {
-      // Remove all visualization elements for this measurement
       if (measurementToDelete.labelObject) {
         if (measurementToDelete.labelObject.material instanceof THREE.SpriteMaterial) {
           measurementToDelete.labelObject.material.map?.dispose();
@@ -142,7 +133,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         measurementGroupRef.current.remove(measurementToDelete.labelObject);
       }
       
-      // Remove line objects
       if (measurementToDelete.lineObjects) {
         measurementToDelete.lineObjects.forEach(line => {
           line.geometry.dispose();
@@ -151,7 +141,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         });
       }
       
-      // Remove point objects
       if (measurementToDelete.pointObjects) {
         measurementToDelete.pointObjects.forEach(point => {
           point.geometry.dispose();
@@ -164,7 +153,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
-  // Show hover point
   useEffect(() => {
     if (hoverPoint && measurementGroupRef.current && activeTool !== 'none') {
       const hoverGeometry = new THREE.SphereGeometry(0.03);
@@ -177,7 +165,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       hoverMesh.position.copy(hoverPoint);
       hoverMesh.name = 'hoverPoint';
       
-      // Remove any existing hover point
       const existingHoverPoint = measurementGroupRef.current.children.find(
         child => child.name === 'hoverPoint'
       );
@@ -229,7 +216,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     controls.update();
     controlsRef.current = controls;
     
-    // Create measurement group
     const measurementGroup = new THREE.Group();
     measurementGroup.name = "measurements";
     scene.add(measurementGroup);
@@ -240,11 +226,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         controlsRef.current.update();
       }
       
-      // Update label orientations to always face camera
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            // Make sure labels always face the camera
             child.quaternion.copy(cameraRef.current!.quaternion);
           }
         });
@@ -296,51 +280,41 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, []);
 
-  // Handle click events for measurements
   const handleMeasurementClick = (event: MouseEvent) => {
     if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
         !sceneRef.current || !cameraRef.current) {
       return;
     }
     
-    // Calculate mouse position in normalized device coordinates
     const rect = containerRef.current.getBoundingClientRect();
     mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
-    // Cast ray from camera through mouse position
     raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
     
-    // Check for intersections with the model
     const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
     
     if (intersects.length > 0) {
       const point = intersects[0].point.clone();
       const worldPoint = point.clone();
       
-      // Add point to temporary points
       setTemporaryPoints(prev => [...prev, { 
         position: point,
         worldPosition: worldPoint
       }]);
       
-      // Visualize the point
       addMeasurementPoint(point);
       
-      // Process measurement when enough points are collected
       if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
-        // We now have 2 points including the new one, create the measurement
         const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
         finalizeMeasurement(newPoints);
       }
     }
   };
   
-  // Add visualization for a measurement point
   const addMeasurementPoint = (position: THREE.Vector3) => {
     if (!measurementGroupRef.current) return;
     
-    // Create point geometry
     const pointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
     const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const point = new THREE.Mesh(pointGeometry, pointMaterial);
@@ -348,7 +322,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     measurementGroupRef.current.add(point);
     
-    // Track the point mesh
     if (!currentMeasurementRef.current) {
       currentMeasurementRef.current = {
         points: [position],
@@ -361,7 +334,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       currentMeasurementRef.current.meshes.push(point);
     }
     
-    // Add line between points if this is not the first point
     if (temporaryPoints.length > 0) {
       const prevPoint = temporaryPoints[temporaryPoints.length - 1].position;
       
@@ -370,11 +342,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         linewidth: 2
       });
       
-      // Create line geometry
       let linePoints: THREE.Vector3[];
       
       if (activeTool === 'height') {
-        // For height measurement, create a vertical line
         const verticalPoint = new THREE.Vector3(
           prevPoint.x, 
           position.y,
@@ -383,7 +353,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         
         linePoints = [prevPoint, verticalPoint, position];
       } else {
-        // For length, create a direct line
         linePoints = [prevPoint, position];
       }
       
@@ -395,7 +364,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         currentMeasurementRef.current.lines.push(line);
       }
       
-      // Add measurement label with improved styling
       if (activeTool === 'length' || activeTool === 'height') {
         let value: number;
         let unit = 'm';
@@ -403,9 +371,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         if (activeTool === 'length') {
           value = calculateDistance(prevPoint, position);
           
-          // Place label above the middle of the line
           const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
-          midPoint.y += 0.1; // Position slightly above the line
+          midPoint.y += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
@@ -415,17 +382,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           if (currentMeasurementRef.current) {
             currentMeasurementRef.current.labels.push(labelSprite);
           }
-        } else { // height
+        } else {
           value = calculateHeight(prevPoint, position);
           
-          // Place label at the middle height
           const midHeight = (prevPoint.y + position.y) / 2;
           const midPoint = new THREE.Vector3(
             prevPoint.x,
             midHeight,
             prevPoint.z
           );
-          midPoint.x += 0.1; // Position to the right of the line
+          midPoint.x += 0.1;
           
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
@@ -440,7 +406,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
   
-  // Finalize a measurement and add it to the measurements array
   const finalizeMeasurement = (points: MeasurementPoint[]) => {
     if (activeTool === 'none' || points.length < 2) return;
     
@@ -453,7 +418,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       value = calculateHeight(points[0].position, points[1].position);
     }
     
-    // Gather all 3D objects associated with this measurement
     const measurementObjects = {
       pointObjects: currentMeasurementRef.current?.meshes || [],
       lineObjects: currentMeasurementRef.current?.lines || [],
@@ -472,16 +436,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setMeasurements(prev => [...prev, newMeasurement]);
     setTemporaryPoints([]);
     
-    // Reset current measurement reference
     currentMeasurementRef.current = null;
   };
   
-  // Clear all measurements
   const clearMeasurements = () => {
     if (measurementGroupRef.current) {
-      // Properly dispose of all measurement visualization objects
       measurements.forEach(measurement => {
-        // Remove and dispose label
         if (measurement.labelObject) {
           if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
             measurement.labelObject.material.map?.dispose();
@@ -490,7 +450,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           measurementGroupRef.current?.remove(measurement.labelObject);
         }
         
-        // Remove and dispose lines
         if (measurement.lineObjects) {
           measurement.lineObjects.forEach(line => {
             line.geometry.dispose();
@@ -499,7 +458,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           });
         }
         
-        // Remove and dispose points
         if (measurement.pointObjects) {
           measurement.pointObjects.forEach(point => {
             point.geometry.dispose();
@@ -509,7 +467,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         }
       });
       
-      // Clean up hover point if exists
       const hoverPoint = measurementGroupRef.current.children.find(
         child => child.name === 'hoverPoint'
       );
@@ -523,7 +480,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     currentMeasurementRef.current = null;
   };
 
-  // Set up click handler when activeTool changes
+  const updateMeasurement = (id: string, data: Partial<Measurement>) => {
+    setMeasurements(prevMeasurements => 
+      prevMeasurements.map(m => 
+        m.id === id ? { ...m, ...data } : m
+      )
+    );
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
     
@@ -547,7 +511,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, [activeTool, temporaryPoints]);
 
-  // Set up event listeners
   useEffect(() => {
     if (!containerRef.current) return;
     
@@ -558,7 +521,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, [activeTool, temporaryPoints]);
 
-  // Update canUndo state
   useEffect(() => {
     setCanUndo(temporaryPoints.length > 0);
   }, [temporaryPoints]);
@@ -572,7 +534,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         modelRef.current = null;
       }
 
-      // Clear existing measurements when loading a new model
       clearMeasurements();
 
       if (processingIntervalRef.current) {
@@ -745,6 +706,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     clearMeasurements,
     undoLastPoint,
     deleteMeasurement,
+    updateMeasurement,
     canUndo,
   };
 };

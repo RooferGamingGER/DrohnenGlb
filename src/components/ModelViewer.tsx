@@ -31,6 +31,7 @@ const ModelViewer: React.FC = () => {
     clearMeasurements,
     undoLastPoint,
     deleteMeasurement,
+    updateMeasurement,
     canUndo,
   } = useModelViewer({ containerRef: viewerRef });
 
@@ -94,6 +95,7 @@ const ModelViewer: React.FC = () => {
                 onClearMeasurements={clearMeasurements}
                 onDeleteMeasurement={deleteMeasurement}
                 onUndoLastPoint={undoLastPoint}
+                onUpdateMeasurement={updateMeasurement}
                 measurements={measurements}
                 canUndo={canUndo}
               />

@@ -1,8 +1,9 @@
 
 import { useState } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 import { 
   Tooltip,
   TooltipContent,
@@ -16,6 +17,7 @@ interface MeasurementToolsProps {
   onClearMeasurements: () => void;
   onDeleteMeasurement: (id: string) => void;
   onUndoLastPoint: () => void;
+  onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
   measurements: Measurement[];
   canUndo: boolean;
 }
@@ -26,14 +28,35 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onClearMeasurements,
   onDeleteMeasurement,
   onUndoLastPoint,
+  onUpdateMeasurement,
   measurements,
   canUndo
 }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
   // Prevent new point placement when a measurement is deleted
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
     // Stop event propagation to prevent new point placement when clicking delete
     event.stopPropagation();
     onDeleteMeasurement(id);
+  };
+
+  const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
+    event.stopPropagation();
+    setEditingId(id);
+    setEditValue(currentDescription);
+  };
+
+  const handleEditSave = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    onUpdateMeasurement(id, { description: editValue });
+    setEditingId(null);
+  };
+
+  const handleInputClick = (event: React.MouseEvent) => {
+    // Stop propagation to prevent new point placement when clicking the input
+    event.stopPropagation();
   };
 
   return (
@@ -143,19 +166,47 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <h3 className="font-medium">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="flex items-center justify-between bg-background/50 p-2 rounded">
-                <span className="flex items-center gap-2">
-                  {m.type === 'length' && <Ruler size={14} />}
-                  {m.type === 'height' && <ArrowUpDown size={14} />}
-                  <span>{m.value.toFixed(2)} {m.unit}</span>
-                </span>
-                <button 
-                  onClick={(e) => handleDeleteMeasurement(m.id, e)}
-                  className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                  aria-label="Messung löschen"
-                >
-                  <X size={14} />
-                </button>
+              <li key={m.id} className="bg-background/50 p-2 rounded">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-2">
+                    {m.type === 'length' && <Ruler size={14} />}
+                    {m.type === 'height' && <ArrowUpDown size={14} />}
+                    <span>{m.value.toFixed(2)} {m.unit}</span>
+                  </span>
+                  <div className="flex items-center">
+                    <button 
+                      onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
+                      className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                      aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
+                    >
+                      {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
+                    </button>
+                    <button 
+                      onClick={(e) => handleDeleteMeasurement(m.id, e)}
+                      className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                      aria-label="Messung löschen"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+                
+                {editingId === m.id ? (
+                  <Input
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onClick={handleInputClick}
+                    placeholder="Beschreibung hinzufügen"
+                    className="h-7 text-xs"
+                    autoFocus
+                  />
+                ) : (
+                  m.description && (
+                    <p className="text-muted-foreground text-xs break-words">
+                      {m.description}
+                    </p>
+                  )
+                )}
               </li>
             ))}
           </ul>

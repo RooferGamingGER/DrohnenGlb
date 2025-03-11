@@ -14,6 +14,7 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
+  description?: string;
   isActive?: boolean;
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
@@ -48,16 +49,16 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   
   if (!context) throw new Error("Could not get canvas context");
   
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = 128; // Reduced from 256
+  canvas.height = 32;  // Reduced from 64
   
   // Set a semi-transparent background
-  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  context.roundRect(0, 0, canvas.width, canvas.height, 10);
+  context.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  context.roundRect(0, 0, canvas.width, canvas.height, 8);
   context.fill();
   
   // Set text properties
-  context.font = 'bold 28px Inter';
+  context.font = 'bold 16px Inter'; // Reduced from 28px
   context.fillStyle = 'white';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
@@ -77,7 +78,7 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - smaller size for better visibility
-  sprite.scale.set(0.25, 0.125, 1);
+  sprite.scale.set(0.18, 0.09, 1); // Reduced from 0.25, 0.125
   
   return sprite;
 };
