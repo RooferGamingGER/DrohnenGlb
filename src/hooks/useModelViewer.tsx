@@ -49,7 +49,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [temporaryPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
 
-  // Dragging state
   const [isDraggingPoint, setIsDraggingPoint] = useState(false);
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
@@ -85,13 +84,27 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   
-  const handleMouseMove = (event: MouseEvent) => {
+  const handleMouseMove = (event: MouseEvent | TouchEvent) => {
     if (!containerRef.current) return;
+    
+    let clientX: number, clientY: number;
+    
+    if ('touches' in event) {
+      // Touch event
+      if (event.touches.length === 0) return;
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+      event.preventDefault(); // Prevent scrolling while dragging
+    } else {
+      // Mouse event
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
     
     // Update mouse position
     const rect = containerRef.current.getBoundingClientRect();
-    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    mouseRef.current.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     
     // Handle dragging of measurement points
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
@@ -176,13 +189,21 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     previousMouseRef.current.copy(mouseRef.current);
   };
 
-  const handleMouseDown = (event: MouseEvent) => {
+  const handleMouseDown = (event: MouseEvent | TouchEvent) => {
     if (!containerRef.current || !measurementGroupRef.current) return;
+    
+    // For touch events, prevent default to avoid scrolling
+    if ('touches' in event && event.touches.length > 0) {
+      // Update mouse position for touch
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((event.touches[0].clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((event.touches[0].clientY - rect.top) / rect.height) * 2 + 1;
+    }
     
     // Check if we're clicking on a measurement point
     if (hoveredPointId && !isDraggingPoint) {
       event.preventDefault();
-      event.stopPropagation();
+      if ('stopPropagation' in event) event.stopPropagation();
       
       // Find the point mesh
       const pointMesh = measurementGroupRef.current.children.find(
@@ -214,7 +235,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
-  const handleMouseUp = (event: MouseEvent) => {
+  const handleMouseUp = (event: MouseEvent | TouchEvent) => {
     if (isDraggingPoint) {
       // Finish dragging
       setIsDraggingPoint(false);
@@ -540,17 +561,28 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
     
-    // Add mouse event listeners for dragging points
+    // Add mouse and touch event listeners for dragging points
     containerRef.current.addEventListener('mousedown', handleMouseDown);
+    containerRef.current.addEventListener('touchstart', handleMouseDown, { passive: false });
+    
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchend', handleMouseUp);
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleMouseMove, { passive: false });
     
     return () => {
       window.removeEventListener('resize', handleResize);
       
       if (containerRef.current) {
         containerRef.current.removeEventListener('mousedown', handleMouseDown);
+        containerRef.current.removeEventListener('touchstart', handleMouseDown);
       }
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchend', handleMouseUp);
+      
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleMouseMove);
       
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -568,7 +600,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, []);
 
-  const handleMeasurementClick = (event: MouseEvent) => {
+  const handleMeasurementClick = (event: MouseEvent | TouchEvent) => {
     // Skip if we're currently dragging a point
     if (isDraggingPoint) return;
     
@@ -577,9 +609,22 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       return;
     }
     
+    let clientX: number, clientY: number;
+    
+    if ('touches' in event) {
+      // Touch event
+      if (event.touches.length === 0) return;
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else {
+      // Mouse event
+      clientX = (event as MouseEvent).clientX;
+      clientY = (event as MouseEvent).clientY;
+    }
+    
     const rect = containerRef.current.getBoundingClientRect();
-    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    mouseRef.current.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     
     raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
     
@@ -819,12 +864,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     if (activeTool !== 'none') {
       containerRef.current.addEventListener('click', handleMeasurementClick);
+      containerRef.current.addEventListener('touchend', handleMeasurementClick, { passive: false });
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = false;
       }
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
+      containerRef.current.removeEventListener('touchend', handleMeasurementClick);
       setTemporaryPoints([]);
       
       if (controlsRef.current) {
@@ -834,6 +881,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     return () => {
       containerRef.current?.removeEventListener('click', handleMeasurementClick);
+      containerRef.current?.removeEventListener('touchend', handleMeasurementClick);
     };
   }, [activeTool, temporaryPoints]);
 
@@ -841,9 +889,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     if (!containerRef.current) return;
     
     containerRef.current.addEventListener('mousemove', handleMouseMove);
+    containerRef.current.addEventListener('touchmove', handleMouseMove, { passive: false });
     
     return () => {
       containerRef.current?.removeEventListener('mousemove', handleMouseMove);
+      containerRef.current?.removeEventListener('touchmove', handleMouseMove);
     };
   }, [activeTool, temporaryPoints, isDraggingPoint, hoveredPointId]);
 
