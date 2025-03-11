@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,62 +36,97 @@ export const useLoginForm = () => {
     if (isLoading) return;
     
     setIsLoading(true);
-    setProgress(10);
+    setProgress(5); // Start at a lower value
     
     const metrics: Record<string, number> = {};
     const startTime = performance.now();
     
+    // Create a function to update progress with animation
+    const animateProgress = (from: number, to: number, duration: number) => {
+      const startTime = performance.now();
+      const updateProgress = () => {
+        const now = performance.now();
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const currentProgress = from + (to - from) * progress;
+        
+        setProgress(Math.round(currentProgress));
+        
+        if (progress < 1) {
+          requestAnimationFrame(updateProgress);
+        }
+      };
+      
+      requestAnimationFrame(updateProgress);
+    };
+    
     try {
+      // Immediately animate to 15%
+      animateProgress(5, 15, 300);
+      
       const previousEmail = localStorage.getItem('savedEmail');
       const previousPassword = localStorage.getItem('savedPassword');
       
-      setProgress(20);
-      metrics.speichernStart = performance.now() - startTime;
+      // Continue animating to 30%
+      setTimeout(() => {
+        animateProgress(15, 30, 300);
+        metrics.speichernStart = performance.now() - startTime;
+      }, 300);
       
       if (rememberMe) {
         localStorage.setItem('savedEmail', email);
         localStorage.setItem('savedPassword', password);
       }
       
-      setProgress(40);
-      metrics.vorLogin = performance.now() - startTime;
-      console.log("Starte Login-Prozess...");
+      // Animate to 45% before login
+      setTimeout(() => {
+        animateProgress(30, 45, 400);
+        metrics.vorLogin = performance.now() - startTime;
+        console.log("Starte Login-Prozess...");
+      }, 600);
       
       const loginStartTime = performance.now();
       
-      setProgress(50);
+      // Small progress increments during login to give feedback
+      const loginProgressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 65) return prev + 1;
+          return prev;
+        });
+      }, 150);
       
       const success = await login(email, password);
       
-      setProgress(75);
+      clearInterval(loginProgressInterval);
+      animateProgress(65, 85, 300);
       
       const loginEndTime = performance.now();
       metrics.loginDauer = loginEndTime - loginStartTime;
       metrics.gesamtDauer = loginEndTime - startTime;
       
-      setProgress(90);
-      setPerformanceMetrics(metrics);
-      
-      if (success) {
-        console.log("Login erfolgreich, leite weiter...");
+      setTimeout(() => {
         setProgress(100);
-        navigate('/', { replace: true });
-      } else {
-        setProgress(100);
-        if (rememberMe) {
-          if (previousEmail) localStorage.setItem('savedEmail', previousEmail);
-          else localStorage.removeItem('savedEmail');
-          
-          if (previousPassword) localStorage.setItem('savedPassword', previousPassword);
-          else localStorage.removeItem('savedPassword');
-        }
+        setPerformanceMetrics(metrics);
         
-        toast({
-          title: "Anmeldung fehlgeschlagen",
-          description: "Ungültige E-Mail oder Passwort.",
-          variant: "destructive",
-        });
-      }
+        if (success) {
+          console.log("Login erfolgreich, leite weiter...");
+          navigate('/', { replace: true });
+        } else {
+          if (rememberMe) {
+            if (previousEmail) localStorage.setItem('savedEmail', previousEmail);
+            else localStorage.removeItem('savedEmail');
+            
+            if (previousPassword) localStorage.setItem('savedPassword', previousPassword);
+            else localStorage.removeItem('savedPassword');
+          }
+          
+          toast({
+            title: "Anmeldung fehlgeschlagen",
+            description: "Ungültige E-Mail oder Passwort.",
+            variant: "destructive",
+          });
+        }
+      }, 300);
     } catch (error) {
       console.error("Login-Fehler:", error);
       metrics.fehlerZeit = performance.now() - startTime;
@@ -105,10 +141,14 @@ export const useLoginForm = () => {
         localStorage.removeItem('savedEmail');
         localStorage.removeItem('savedPassword');
       }
+      
+      setProgress(100);
     } finally {
       metrics.gesamtDauer = performance.now() - startTime;
       setPerformanceMetrics(metrics);
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
 

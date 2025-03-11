@@ -22,6 +22,15 @@ const Login = () => {
     handleSubmit
   } = useLoginForm();
 
+  const getProgressStatus = (progress: number) => {
+    if (progress < 15) return "Initialisiere Anmeldung...";
+    if (progress < 30) return "Lade Anmeldedaten...";
+    if (progress < 45) return "Bereite Anmeldung vor...";
+    if (progress < 65) return "Authentifiziere...";
+    if (progress < 85) return "Überprüfe Berechtigung...";
+    return "Anmeldung abgeschlossen";
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md space-y-6 p-8">
@@ -82,7 +91,7 @@ const Login = () => {
             <div className="space-y-2">
               <Progress value={progress} className="h-2 w-full" />
               <p className="text-xs text-center text-muted-foreground">
-                {progress < 100 ? "Anmeldung läuft..." : "Überprüfung abgeschlossen"}
+                {getProgressStatus(progress)}
               </p>
             </div>
           )}
@@ -96,7 +105,6 @@ const Login = () => {
           </Button>
         </form>
 
-        {/* Always show PerformanceMetrics if metrics exist */}
         {Object.keys(performanceMetrics).length > 0 && (
           <PerformanceMetrics metrics={performanceMetrics} />
         )}
