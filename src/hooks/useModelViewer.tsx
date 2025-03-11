@@ -45,6 +45,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const requestRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
   const processingStartTimeRef = useRef<number | null>(null);
+  const uploadProgressRef = useRef<number>(0);
+  const processingIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -146,6 +148,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         modelRef.current = null;
       }
 
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+
       setState({
         isLoading: true,
         progress: 0,
@@ -153,32 +160,39 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: null,
       });
 
+      uploadProgressRef.current = 0;
+
       const model = await loadGLBModel(
         file,
         (event) => {
           if (event.lengthComputable) {
             const uploadPercentage = Math.round((event.loaded / event.total) * 100);
-            const scaledProgress = Math.floor(uploadPercentage * 0.5);
+            uploadProgressRef.current = uploadPercentage;
+            const scaledProgress = Math.floor(uploadPercentage * 0.7);
             setState(prev => ({ ...prev, progress: scaledProgress }));
           }
         }
       );
 
-      setState(prev => ({ ...prev, progress: 50 }));
+      setState(prev => ({ ...prev, progress: 70 }));
       processingStartTimeRef.current = Date.now();
       
-      const processingInterval = setInterval(() => {
+      const estimatedProcessingTime = 3000;
+      
+      processingIntervalRef.current = window.setInterval(() => {
         const elapsedTime = Date.now() - (processingStartTimeRef.current || 0);
-        const estimatedProcessingTime = 3000; 
         const processingProgress = Math.min(
-          Math.floor(50 + (elapsedTime / estimatedProcessingTime) * 50), 
+          Math.floor(70 + (elapsedTime / estimatedProcessingTime) * 30), 
           99
         );
         
         setState(prev => ({ ...prev, progress: processingProgress }));
         
         if (processingProgress >= 99) {
-          clearInterval(processingInterval);
+          if (processingIntervalRef.current) {
+            clearInterval(processingIntervalRef.current);
+            processingIntervalRef.current = null;
+          }
         }
       }, 100);
 
@@ -204,7 +218,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       sceneRef.current.add(model);
       modelRef.current = model;
 
-      clearInterval(processingInterval);
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
 
       setState({
         isLoading: false,
@@ -224,6 +241,12 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       return model;
     } catch (error) {
       console.error('Error loading model:', error);
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+      
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
       setState({
         isLoading: false,
