@@ -50,14 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
-        setUser({
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          username: firebaseUser.email || '',
-          isAdmin
-        });
+        try {
+          const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
+          setUser({
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            username: firebaseUser.email || '',
+            isAdmin
+          });
+          console.log(`User authenticated: ${firebaseUser.uid}, isAdmin: ${isAdmin}`);
+        } catch (error) {
+          console.error("Error setting user data:", error);
+          setUser(null);
+        }
       } else {
+        console.log("No authenticated user");
         setUser(null);
       }
     });
@@ -67,8 +74,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const checkForInitialAdmin = async () => {
-      const usersList = await getAllUsers();
-      setNeedsInitialAdmin(usersList.length === 0);
+      try {
+        const usersList = await getAllUsers();
+        console.log("Checking for initial admin. Users count:", usersList.length);
+        setNeedsInitialAdmin(usersList.length === 0);
+      } catch (error) {
+        console.error("Error checking for initial admin:", error);
+        setNeedsInitialAdmin(true);
+      }
     };
 
     checkForInitialAdmin();
@@ -77,14 +90,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (user?.isAdmin) {
       const loadUsers = async () => {
-        const usersList = await getAllUsers();
-        const formattedUsers = usersList.map((user: FirestoreUser) => ({
-          id: user.uid || user.id,
-          email: user.email || '',
-          username: user.email || '',
-          isAdmin: user.isAdmin || false
-        }));
-        setUsers(formattedUsers);
+        try {
+          const usersList = await getAllUsers();
+          const formattedUsers = usersList.map((user: FirestoreUser) => ({
+            id: user.uid || user.id,
+            email: user.email || '',
+            username: user.email || '',
+            isAdmin: !!user.isAdmin
+          }));
+          setUsers(formattedUsers);
+          console.log("Users loaded:", formattedUsers.length);
+        } catch (error) {
+          console.error("Error loading users:", error);
+        }
       };
 
       loadUsers();
@@ -92,9 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
-    const usersList = await getAllUsers();
-    const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid) as FirestoreUser | undefined;
-    return userInfo?.isAdmin === true;
+    try {
+      const usersList = await getAllUsers();
+      const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid) as FirestoreUser | undefined;
+      return userInfo?.isAdmin === true;
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      return false;
+    }
   };
 
   const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
@@ -140,19 +163,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const createUser = async (email: string, password: string, isAdmin: boolean): Promise<boolean> => {
-    if (!user?.isAdmin) return false;
+    if (!user?.isAdmin) {
+      toast({
+        title: "Keine Berechtigung",
+        description: "Sie benötigen Admin-Rechte, um Benutzer zu erstellen.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
     const firebaseUser = await createUserInFirebase(email, password, isAdmin);
+    
     if (firebaseUser) {
+      toast({
+        title: "Erfolg",
+        description: `Benutzer ${email} wurde erfolgreich erstellt.`,
+      });
+      
       const updatedUsers = await getAllUsers();
       const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
         id: user.uid || user.id,
         email: user.email || '',
         username: user.email || '',
-        isAdmin: user.isAdmin || false
+        isAdmin: !!user.isAdmin
       }));
       setUsers(formattedUsers);
+      return true;
+    } else {
+      toast({
+        title: "Fehler",
+        description: "Der Benutzer konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
+      return false;
     }
-    return !!firebaseUser;
   };
 
   const deleteUser = async (userId: string): Promise<boolean> => {

@@ -15,7 +15,7 @@ const InitialAdminSetup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Wenn kein Admin benötigt wird, zeigen wir nichts an
+  // If no admin is needed, don't show anything
   if (!needsInitialAdmin) {
     return null;
   }
@@ -43,13 +43,29 @@ const InitialAdminSetup = () => {
 
     setIsLoading(true);
     try {
+      console.log("Setting up initial admin:", email);
       const success = await setupInitialAdmin(email, password);
       if (success) {
         toast({
           title: "Erfolg",
           description: "Admin-Konto erfolgreich erstellt. Sie können sich jetzt anmelden.",
         });
+        console.log("Initial admin setup successful");
+      } else {
+        toast({
+          title: "Fehler",
+          description: "Admin-Konto konnte nicht erstellt werden. Bitte versuchen Sie es später erneut.",
+          variant: "destructive",
+        });
+        console.log("Initial admin setup failed");
       }
+    } catch (error) {
+      console.error("Error during admin setup:", error);
+      toast({
+        title: "Fehler",
+        description: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
