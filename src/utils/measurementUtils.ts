@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -49,11 +50,11 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   if (!context) throw new Error("Could not get canvas context");
   
   // Increase canvas size for better resolution
-  canvas.width = 512; // Doubled for better text clarity
-  canvas.height = 128; // Doubled for better text clarity
+  canvas.width = 512; 
+  canvas.height = 128;
   
   // Set a solid background with rounded corners
-  context.fillStyle = 'rgba(0, 0, 0, 0.9)'; // More opaque background
+  context.fillStyle = 'rgba(0, 0, 0, 0.9)';
   context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
@@ -63,8 +64,8 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
   context.stroke();
   
-  // Set text properties with improved rendering
-  context.font = 'bold 48px Arial, sans-serif'; // Larger font, better font
+  // Use the Inter font which is used in the UI (from index.css)
+  context.font = 'bold 48px Inter, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
@@ -98,7 +99,7 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
-  sprite.scale.set(0.8, 0.4, 1); // Increased base scale for better readability
+  sprite.scale.set(0.8, 0.4, 1);
   
   // Add custom property to store base scale for dynamic scaling
   sprite.userData = {
@@ -127,3 +128,13 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
     1
   );
 };
+
+// Create draggable point material
+export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({ 
+    color: isHovered ? 0xffff00 : 0xff0000,
+    opacity: isHovered ? 0.8 : 1.0,
+    transparent: true
+  });
+};
+
