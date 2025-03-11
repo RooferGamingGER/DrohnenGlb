@@ -71,12 +71,21 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       ambient: ambientLight
     };
 
+    // Configure orbit controls for better rotation
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.rotateSpeed = 0.7;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
+    
+    // Ensure free rotation on all axes
+    controls.enableRotate = true;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI;
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    
     controls.update();
     controlsRef.current = controls;
 
@@ -176,6 +185,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
         // Update controls
         controlsRef.current.target.copy(center);
+        
+        // Ensure controls allow free rotation
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.minPolarAngle = 0;
+        controlsRef.current.maxPolarAngle = Math.PI;
+        controlsRef.current.minAzimuthAngle = -Infinity;
+        controlsRef.current.maxAzimuthAngle = Infinity;
+        
         controlsRef.current.update();
         controlsRef.current.saveState();
       }
@@ -268,6 +285,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       
       // Reset the controls target to center of model
       controlsRef.current.target.copy(center);
+      
+      // Make sure rotation is enabled on all axes
+      controlsRef.current.enableRotate = true;
+      controlsRef.current.minPolarAngle = 0;
+      controlsRef.current.maxPolarAngle = Math.PI;
+      controlsRef.current.minAzimuthAngle = -Infinity;
+      controlsRef.current.maxAzimuthAngle = Infinity;
+      
       controlsRef.current.update();
     }
   };
