@@ -49,11 +49,11 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   if (!context) throw new Error("Could not get canvas context");
   
   // Increase canvas size for better resolution
-  canvas.width = 512; 
-  canvas.height = 128;
+  canvas.width = 512; // Doubled for better text clarity
+  canvas.height = 128; // Doubled for better text clarity
   
   // Set a solid background with rounded corners
-  context.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  context.fillStyle = 'rgba(0, 0, 0, 0.9)'; // More opaque background
   context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
@@ -63,8 +63,8 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
   context.stroke();
   
-  // Use the Inter font which is used in the UI (from index.css)
-  context.font = 'bold 48px Inter, sans-serif';
+  // Set text properties with improved rendering
+  context.font = 'bold 48px Arial, sans-serif'; // Larger font, better font
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
@@ -98,7 +98,7 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
-  sprite.scale.set(0.8, 0.4, 1);
+  sprite.scale.set(0.8, 0.4, 1); // Increased base scale for better readability
   
   // Add custom property to store base scale for dynamic scaling
   sprite.userData = {
@@ -126,27 +126,4 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
     sprite.userData.baseScale.y * scaleFactor,
     1
   );
-};
-
-// Create draggable point material
-export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({ 
-    color: isHovered ? 0xffff00 : 0xff0000,
-    opacity: isHovered ? 0.9 : 0.8,
-    transparent: true,
-    depthTest: false,
-    size: 5
-  });
-};
-
-// Create a draggable point mesh with larger size for better interaction
-export const createDraggablePointMesh = (position: THREE.Vector3, isHovered: boolean = false): THREE.Mesh => {
-  // Use a larger sphere for better grabbing
-  const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-  const material = createDraggablePointMaterial(isHovered);
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.copy(position);
-  // Set renderOrder to ensure points render on top
-  mesh.renderOrder = 1;
-  return mesh;
 };
