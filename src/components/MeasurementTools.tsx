@@ -35,7 +35,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Automatically disable measurement tool when editing a description
+  // Automatisches Deaktivieren des Messwerkzeugs, wenn eine Beschreibung bearbeitet wird
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
@@ -46,7 +46,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
-    // Disable measurement tool after deleting
+    // Messwerkzeug nach dem Löschen deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -55,7 +55,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when starting to edit
+    // Messwerkzeug beim Starten der Bearbeitung deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -80,9 +80,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
+    // Nur im Verschiebenmodus lassen wir das Ereignis passieren
+    if (activeTool === 'move') {
+      return;
+    }
+    
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when clicking anywhere in the container
+    
+    // Messwerkzeug beim Klicken irgendwo im Container deaktivieren
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -220,7 +226,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <h3 className="font-medium">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li key={m.id} className="bg-background/50 p-2 rounded">
+              <li 
+                key={m.id} 
+                className={cn(
+                  "bg-background/50 p-2 rounded",
+                  m.isActive && "ring-2 ring-primary"
+                )}
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
                     {m.type === 'length' && <Ruler size={14} />}

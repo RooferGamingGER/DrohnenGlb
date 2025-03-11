@@ -45,16 +45,21 @@ const ModelViewer: React.FC = () => {
     });
   };
 
+  // Ich ändere diese Funktion, um die Ereignisse nicht zu stoppen, wenn wir im "move" Modus sind
+  // und ermögliche damit das Greifen und Verschieben von Messpunkten
   const handleToolsPanelClick = (e: React.MouseEvent) => {
-    // Only stop propagation and prevent default when we're NOT clicking on a point
-    // This allows clicks on points to pass through for dragging operations
-    if (activeTool !== 'move') {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      if (activeTool !== 'none') {
-        setActiveTool('none');
-      }
+    // Wenn wir im Verschiebenmodus sind, lassen wir das Ereignis an die unterliegenden Elemente durch
+    // So können wir auf Messpunkte klicken und sie greifen
+    if (activeTool === 'move') {
+      return; // Wir tun nichts, um die Ereignisse durchzulassen
+    }
+    
+    // Für andere Modi stoppen wir die Ereignisausbreitung wie bisher
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (activeTool !== 'none') {
+      setActiveTool('none');
     }
   };
 

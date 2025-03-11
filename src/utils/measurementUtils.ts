@@ -135,6 +135,19 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
     color: isHovered ? 0xffff00 : 0xff0000,
     opacity: isHovered ? 0.9 : 0.8,
     transparent: true,
-    depthTest: false
+    depthTest: false,
+    size: 5
   });
+};
+
+// Create a draggable point mesh with larger size for better interaction
+export const createDraggablePointMesh = (position: THREE.Vector3, isHovered: boolean = false): THREE.Mesh => {
+  // Use a larger sphere for better grabbing
+  const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+  const material = createDraggablePointMaterial(isHovered);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(position);
+  // Set renderOrder to ensure points render on top
+  mesh.renderOrder = 1;
+  return mesh;
 };
