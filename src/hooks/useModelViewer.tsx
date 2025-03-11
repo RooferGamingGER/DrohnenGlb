@@ -145,7 +145,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
               const geometry = line.geometry as THREE.BufferGeometry;
               const positions = geometry.getAttribute('position');
               
-              // Fix for TypeScript error: Check the type and cast to Float32BufferAttribute
+              // Check the type and cast to Float32BufferAttribute
               if (positions instanceof THREE.Float32BufferAttribute) {
                 // For each line, we need to update one of its endpoints
                 if (i === pointIndex) {
@@ -167,7 +167,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             const geometry = lastLine.geometry as THREE.BufferGeometry;
             const positions = geometry.getAttribute('position');
             
-            // Fix for TypeScript error: Check the type and cast to Float32BufferAttribute
+            // Check the type and cast to Float32BufferAttribute
             if (positions instanceof THREE.Float32BufferAttribute) {
               positions.setXYZ(0, newPosition.x, newPosition.y, newPosition.z);
               positions.needsUpdate = true;
@@ -460,10 +460,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       processingStartTimeRef.current = Date.now();
       
       // Load the model
-      const { model, boundingBox } = await loadGLBModel(file, (progress) => {
-        // Update progress state
-        setState(prev => ({ ...prev, progress }));
-        uploadProgressRef.current = progress;
+      const loadedModelData = await loadGLBModel(file, (progressEvent) => {
+        // Calculate progress percentage
+        const progressPercentage = progressEvent.lengthComputable ? 
+          Math.round((progressEvent.loaded / progressEvent.total) * 100) : 0;
+          
+        // Update progress state with a number value (percentage)
+        setState(prev => ({ ...prev, progress: progressPercentage }));
+        uploadProgressRef.current = progressPercentage;
       });
       
       // If there's an existing model, remove it
@@ -471,16 +475,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         sceneRef.current.remove(modelRef.current);
       }
       
-      if (!model) {
+      if (!loadedModelData) {
         throw new Error('Failed to load model');
       }
       
       // Add model to scene
-      sceneRef.current.add(model);
-      modelRef.current = model;
+      sceneRef.current.add(loadedModelData);
+      modelRef.current = loadedModelData;
       
       // Center the model
-      centerModel(model, boundingBox);
+      const boundingBox = centerModel(loadedModelData);
       
       // Reset camera and controls
       resetView();
@@ -489,7 +493,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        loadedModel: model
+        progress: 100,
+        loadedModel: loadedModelData
       }));
       
       // Show a success toast
@@ -506,6 +511,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       setState(prev => ({
         ...prev,
         isLoading: false,
+        progress: 0,
         error: error instanceof Error ? error.message : 'Failed to load model'
       }));
       
