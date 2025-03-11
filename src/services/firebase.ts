@@ -23,13 +23,13 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  // Hier müssen Sie Ihre Firebase-Konfiguration einfügen
-  apiKey: "IHRE_API_KEY",
-  authDomain: "IHRE_AUTH_DOMAIN",
-  projectId: "IHRE_PROJECT_ID",
-  storageBucket: "IHRE_STORAGE_BUCKET",
-  messagingSenderId: "IHRE_MESSAGING_SENDER_ID",
-  appId: "IHRE_APP_ID"
+  apiKey: "AIzaSyCeEwGPEtfBM23t4OVQGrD9MTF6TjRi1u0",
+  authDomain: "dronenglb.firebaseapp.com",
+  projectId: "dronenglb",
+  storageBucket: "dronenglb.firebasestorage.app",
+  messagingSenderId: "896131806649",
+  appId: "1:896131806649:web:a9def7530a4ddd975ab268",
+  measurementId: "G-NVMJMDXDLK"
 };
 
 const app = initializeApp(firebaseConfig);
