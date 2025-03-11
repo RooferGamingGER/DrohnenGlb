@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 
 const Login = () => {
   const [email, setEmail] = useState(() => localStorage.getItem('savedEmail') || '');
   const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('savedEmail'));
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, number>>({});
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -27,21 +30,46 @@ const Login = () => {
     if (isLoading) return;
     
     setIsLoading(true);
+    setProgress(10);
+    
+    // Start measuring performance
+    const metrics: Record<string, number> = {};
+    const startTime = performance.now();
+    metrics.startTime = startTime;
     
     try {
       const previousEmail = localStorage.getItem('savedEmail');
       const previousPassword = localStorage.getItem('savedPassword');
+      
+      // Save credentials if remember me is checked
+      setProgress(20);
+      metrics.beforeRememberMeTime = performance.now() - startTime;
       
       if (rememberMe) {
         localStorage.setItem('savedEmail', email);
         localStorage.setItem('savedPassword', password);
       }
       
+      setProgress(30);
+      metrics.beforeLoginTime = performance.now() - startTime;
+      console.log("Attempting login...");
+      
+      // Perform login
+      const loginStartTime = performance.now();
       const success = await login(email, password);
+      const loginEndTime = performance.now();
+      metrics.loginTime = loginEndTime - loginStartTime;
+      metrics.totalLoginTime = loginEndTime - startTime;
+      
+      console.log("Login performance metrics:", metrics);
+      setProgress(90);
       
       if (success) {
+        console.log("Login successful, navigating...");
+        setProgress(100);
         navigate('/', { replace: true });
       } else {
+        setProgress(100);
         if (rememberMe) {
           if (previousEmail) localStorage.setItem('savedEmail', previousEmail);
           else localStorage.removeItem('savedEmail');
@@ -58,6 +86,9 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Login error:", error);
+      metrics.errorTime = performance.now() - startTime;
+      console.log("Login error metrics:", metrics);
+      
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -69,6 +100,12 @@ const Login = () => {
         localStorage.removeItem('savedPassword');
       }
     } finally {
+      const endTime = performance.now();
+      metrics.totalTime = endTime - startTime;
+      console.log("Final login metrics:", metrics);
+      setPerformanceMetrics(metrics);
+      
+      setProgress(100);
       setIsLoading(false);
     }
   };
@@ -129,6 +166,15 @@ const Login = () => {
             </label>
           </div>
           
+          {isLoading && (
+            <div className="space-y-2">
+              <Progress value={progress} className="h-2 w-full" />
+              <p className="text-xs text-center text-muted-foreground">
+                {progress < 100 ? "Anmeldung läuft..." : "Überprüfung abgeschlossen"}
+              </p>
+            </div>
+          )}
+          
           <Button
             type="submit"
             className="w-full"
@@ -143,6 +189,17 @@ const Login = () => {
             Nur ein Administrator kann neue Konten erstellen.
           </p>
         </div>
+        
+        {Object.keys(performanceMetrics).length > 0 && (
+          <div className="mt-4 text-xs border-t pt-4 text-muted-foreground">
+            <p className="font-medium">Debug-Informationen:</p>
+            <ul className="space-y-1 mt-2">
+              {Object.entries(performanceMetrics).map(([key, value]) => (
+                <li key={key}>{key}: {value.toFixed(2)}ms</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

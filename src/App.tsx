@@ -27,17 +27,19 @@ const App = () => (
             <Header />
             <main className="flex-1 overflow-y-auto">
               <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute>
-                      <Index />
-                    </ProtectedRoute>
-                  } 
-                />
+                {/* Redirect root to login */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Make login accessible directly */}
                 <Route path="/login" element={<Login />} />
+                
                 {/* Redirect register route to login */}
                 <Route path="/register" element={<Navigate to="/login" />} />
+                
                 <Route 
                   path="/admin" 
                   element={
@@ -46,7 +48,8 @@ const App = () => (
                     </ProtectedRoute>
                   } 
                 />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                
+                {/* Redirect any other undefined routes to login if not authenticated */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

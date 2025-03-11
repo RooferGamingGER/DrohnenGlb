@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -20,9 +21,7 @@ import {
   deleteDoc,
   updateDoc,
   enableIndexedDbPersistence,
-  Firestore,
-  initializeFirestore,
-  memoryLocalCache 
+  Firestore
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -35,30 +34,57 @@ const firebaseConfig = {
   measurementId: "G-NVMJMDXDLK"
 };
 
+console.log("Firebase initialization starting...");
+const initStartTime = performance.now();
+
 // Initialize Firebase with optimized configuration
 const app = initializeApp(firebaseConfig);
+console.log(`Firebase app initialized in ${performance.now() - initStartTime}ms`);
 
 // Auth with local persistence for faster access
+const authStartTime = performance.now();
 export const auth: Auth = getAuth(app);
+console.log(`Auth service initialized in ${performance.now() - authStartTime}ms`);
+
+const persistenceStartTime = performance.now();
 setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log(`Auth persistence set in ${performance.now() - persistenceStartTime}ms`);
+  })
   .catch((error) => {
     console.error("Auth persistence error:", error);
   });
 
-// Initialize Firestore without conflicting cache configurations
+// Initialize Firestore
+const dbStartTime = performance.now();
 export const db: Firestore = getFirestore(app);
+console.log(`Firestore initialized in ${performance.now() - dbStartTime}ms`);
 
 // Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  console.error("Firestore persistence error:", err);
-});
+const persistenceDbStartTime = performance.now();
+enableIndexedDbPersistence(db)
+  .then(() => {
+    console.log(`Firestore persistence enabled in ${performance.now() - persistenceDbStartTime}ms`);
+  })
+  .catch((err) => {
+    console.error("Firestore persistence error:", err);
+  });
 
-// Optimierter Login
+console.log(`Total Firebase initialization time: ${performance.now() - initStartTime}ms`);
+
+// Optimierter Login mit Performance-Messung
 export const loginWithFirebase = async (email: string, password: string): Promise<UserCredential | null> => {
+  const startTime = performance.now();
+  console.log("loginWithFirebase started");
+  
   try {
-    return await signInWithEmailAndPassword(auth, email, password);
+    const authResult = await signInWithEmailAndPassword(auth, email, password);
+    const endTime = performance.now();
+    console.log(`Firebase auth completed in ${endTime - startTime}ms`);
+    return authResult;
   } catch (error) {
-    console.error("Login error:", error);
+    const errorTime = performance.now();
+    console.error(`Login error after ${errorTime - startTime}ms:`, error);
     throw error;
   }
 };
