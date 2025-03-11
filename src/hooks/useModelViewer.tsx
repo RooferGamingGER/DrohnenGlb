@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -45,6 +44,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   } | null>(null);
   const requestRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
+  const processingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -157,33 +157,45 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         file,
         (event) => {
           if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            setState(prev => ({ ...prev, progress: percentComplete }));
+            const uploadPercentage = Math.round((event.loaded / event.total) * 100);
+            const scaledProgress = Math.floor(uploadPercentage * 0.5);
+            setState(prev => ({ ...prev, progress: scaledProgress }));
           }
         }
       );
+
+      setState(prev => ({ ...prev, progress: 50 }));
+      processingStartTimeRef.current = Date.now();
+      
+      const processingInterval = setInterval(() => {
+        const elapsedTime = Date.now() - (processingStartTimeRef.current || 0);
+        const estimatedProcessingTime = 3000; 
+        const processingProgress = Math.min(
+          Math.floor(50 + (elapsedTime / estimatedProcessingTime) * 50), 
+          99
+        );
+        
+        setState(prev => ({ ...prev, progress: processingProgress }));
+        
+        if (processingProgress >= 99) {
+          clearInterval(processingInterval);
+        }
+      }, 100);
 
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
 
-      model.rotation.x = -Math.PI / 2; // Rotate 90 degrees around X axis
+      model.rotation.x = -Math.PI / 2;
 
       if (cameraRef.current && controlsRef.current) {
-        // Improved camera positioning for better model centering
         const distance = size * 1.5;
         
-        // Reset camera position completely before setting new position
         cameraRef.current.position.set(0, 0, 0);
-        
-        // Position camera directly in front of the model
         cameraRef.current.position.copy(center);
         cameraRef.current.position.z += distance;
-        
-        // Make sure camera is looking directly at the center
         cameraRef.current.lookAt(center);
 
-        // Reset and update controls
         controlsRef.current.target.copy(center);
         controlsRef.current.update();
         controlsRef.current.saveState();
@@ -192,6 +204,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       sceneRef.current.add(model);
       modelRef.current = model;
 
+      clearInterval(processingInterval);
+
       setState({
         isLoading: false,
         progress: 100,
@@ -199,7 +213,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
-      // Apply dark background
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
 
       toast({
@@ -261,18 +274,15 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const resetView = () => {
     if (controlsRef.current && modelRef.current && cameraRef.current) {
-      // Get the center of the model again
       const box = new THREE.Box3().setFromObject(modelRef.current);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
       
-      // Reset the camera position
       const distance = size * 1.5;
       cameraRef.current.position.copy(center);
       cameraRef.current.position.z += distance;
       cameraRef.current.lookAt(center);
       
-      // Reset the controls target to center of model
       controlsRef.current.target.copy(center);
       controlsRef.current.update();
     }
