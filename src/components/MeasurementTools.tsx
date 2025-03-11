@@ -29,6 +29,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   measurements,
   canUndo
 }) => {
+  // Prevent new point placement when a measurement is deleted
+  const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
+    // Stop event propagation to prevent new point placement when clicking delete
+    event.stopPropagation();
+    onDeleteMeasurement(id);
+  };
+
   return (
     <div className="flex flex-col gap-4 bg-background/90 backdrop-blur-sm p-3 rounded-lg shadow-lg">
       <div className="flex flex-col gap-2">
@@ -143,7 +150,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <span>{m.value.toFixed(2)} {m.unit}</span>
                 </span>
                 <button 
-                  onClick={() => onDeleteMeasurement(m.id)}
+                  onClick={(e) => handleDeleteMeasurement(m.id, e)}
                   className="text-destructive hover:bg-destructive/10 p-1 rounded"
                   aria-label="Messung löschen"
                 >

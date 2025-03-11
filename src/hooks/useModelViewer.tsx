@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -14,7 +15,8 @@ import {
   MeasurementPoint,
   calculateDistance,
   calculateHeight,
-  createMeasurementId
+  createMeasurementId,
+  createTextSprite
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,6 +71,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     points: THREE.Vector3[];
     lines: THREE.Line[];
     labels: THREE.Sprite[];
+    meshes: THREE.Mesh[];
   } | null>(null);
 
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
@@ -130,20 +133,34 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const deleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete && measurementGroupRef.current) {
-      // Remove visualization for this measurement
-      const pointsToRemove = measurementToDelete.points.map(p => p.position);
-      measurementGroupRef.current.children.forEach(child => {
-        if (child instanceof THREE.Mesh && pointsToRemove.some(p => p.equals(child.position))) {
-          measurementGroupRef.current?.remove(child);
+      // Remove all visualization elements for this measurement
+      if (measurementToDelete.labelObject) {
+        if (measurementToDelete.labelObject.material instanceof THREE.SpriteMaterial) {
+          measurementToDelete.labelObject.material.map?.dispose();
+          measurementToDelete.labelObject.material.dispose();
         }
-      });
+        measurementGroupRef.current.remove(measurementToDelete.labelObject);
+      }
+      
+      // Remove line objects
+      if (measurementToDelete.lineObjects) {
+        measurementToDelete.lineObjects.forEach(line => {
+          line.geometry.dispose();
+          (line.material as THREE.Material).dispose();
+          measurementGroupRef.current?.remove(line);
+        });
+      }
+      
+      // Remove point objects
+      if (measurementToDelete.pointObjects) {
+        measurementToDelete.pointObjects.forEach(point => {
+          point.geometry.dispose();
+          (point.material as THREE.Material).dispose();
+          measurementGroupRef.current?.remove(point);
+        });
+      }
       
       setMeasurements(prev => prev.filter(m => m.id !== id));
-      toast({
-        title: "Messung gelöscht",
-        description: "Die ausgewählte Messung wurde entfernt.",
-        duration: 3000,
-      });
     }
   };
 
@@ -221,6 +238,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     const animate = () => {
       if (controlsRef.current) {
         controlsRef.current.update();
+      }
+      
+      // Update label orientations to always face camera
+      if (measurementGroupRef.current && cameraRef.current) {
+        measurementGroupRef.current.children.forEach(child => {
+          if (child instanceof THREE.Sprite) {
+            // Make sure labels always face the camera
+            child.quaternion.copy(cameraRef.current!.quaternion);
+          }
+        });
       }
       
       if (rendererRef.current && sceneRef.current && cameraRef.current) {
@@ -314,12 +341,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     if (!measurementGroupRef.current) return;
     
     // Create point geometry
-    const pointGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const pointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
     const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const point = new THREE.Mesh(pointGeometry, pointMaterial);
     point.position.copy(position);
     
     measurementGroupRef.current.add(point);
+    
+    // Track the point mesh
+    if (!currentMeasurementRef.current) {
+      currentMeasurementRef.current = {
+        points: [position],
+        lines: [],
+        labels: [],
+        meshes: [point]
+      };
+    } else {
+      currentMeasurementRef.current.points.push(position);
+      currentMeasurementRef.current.meshes.push(point);
+    }
     
     // Add line between points if this is not the first point
     if (temporaryPoints.length > 0) {
@@ -351,7 +391,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       const line = new THREE.Line(lineGeometry, lineMaterial);
       measurementGroupRef.current.add(line);
       
-      // Add measurement label with 3D text directly over the line
+      if (currentMeasurementRef.current) {
+        currentMeasurementRef.current.lines.push(line);
+      }
+      
+      // Add measurement label with improved styling
       if (activeTool === 'length' || activeTool === 'height') {
         let value: number;
         let unit = 'm';
@@ -361,10 +405,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           
           // Place label above the middle of the line
           const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
-          midPoint.y += 0.2; // Position slightly above the line
+          midPoint.y += 0.1; // Position slightly above the line
           
-          // Create 3D text for length measurement
-          addMeasurementLabel(midPoint, value, unit);
+          const labelText = `${value.toFixed(2)} ${unit}`;
+          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
+          
+          measurementGroupRef.current.add(labelSprite);
+          
+          if (currentMeasurementRef.current) {
+            currentMeasurementRef.current.labels.push(labelSprite);
+          }
         } else { // height
           value = calculateHeight(prevPoint, position);
           
@@ -375,75 +425,18 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             midHeight,
             prevPoint.z
           );
-          midPoint.x += 0.2; // Position to the right of the line
+          midPoint.x += 0.1; // Position to the right of the line
           
-          // Create 3D text for height measurement
-          addMeasurementLabel(midPoint, value, unit);
+          const labelText = `${value.toFixed(2)} ${unit}`;
+          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
+          
+          measurementGroupRef.current.add(labelSprite);
+          
+          if (currentMeasurementRef.current) {
+            currentMeasurementRef.current.labels.push(labelSprite);
+          }
         }
       }
-    }
-  };
-  
-  // Add text label for measurement (now as 3D text above the model)
-  const addMeasurementLabel = (position: THREE.Vector3, value: number, unit: string) => {
-    if (!measurementGroupRef.current || !cameraRef.current) return;
-    
-    // Create canvas for texture
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    
-    if (!context) return;
-    
-    canvas.width = 256;
-    canvas.height = 128;
-    
-    // Set a semi-transparent background
-    context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Set text properties
-    context.font = 'bold 36px Arial';
-    context.fillStyle = 'white';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(`${value.toFixed(2)} ${unit}`, canvas.width / 2, canvas.height / 2);
-    
-    // Create sprite material with canvas texture
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({ 
-      map: texture,
-      sizeAttenuation: false
-    });
-    
-    // Create sprite and position it
-    const sprite = new THREE.Sprite(material);
-    sprite.position.copy(position);
-    
-    // Scale the sprite based on camera distance
-    sprite.scale.set(0.5, 0.25, 1);
-    
-    // Add sprite to measurement group
-    measurementGroupRef.current.add(sprite);
-    
-    // Update sprite position to face camera
-    const updateSpriteOrientation = () => {
-      if (cameraRef.current) {
-        sprite.position.copy(position);
-      }
-    };
-    
-    // Call once to set initial position
-    updateSpriteOrientation();
-    
-    // Add to current measurement for tracking
-    if (currentMeasurementRef.current) {
-      currentMeasurementRef.current.labels.push(sprite);
-    } else {
-      currentMeasurementRef.current = {
-        points: [],
-        lines: [],
-        labels: [sprite]
-      };
     }
   };
   
@@ -460,12 +453,20 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       value = calculateHeight(points[0].position, points[1].position);
     }
     
+    // Gather all 3D objects associated with this measurement
+    const measurementObjects = {
+      pointObjects: currentMeasurementRef.current?.meshes || [],
+      lineObjects: currentMeasurementRef.current?.lines || [],
+      labelObject: currentMeasurementRef.current?.labels[0] || null
+    };
+    
     const newMeasurement: Measurement = {
       id: createMeasurementId(),
       type: activeTool,
       points: points,
       value,
-      unit
+      unit,
+      ...measurementObjects
     };
     
     setMeasurements(prev => [...prev, newMeasurement]);
@@ -473,40 +474,52 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     // Reset current measurement reference
     currentMeasurementRef.current = null;
-    
-    // Show toast with measurement result
-    toast({
-      title: `Messung abgeschlossen`,
-      description: activeTool === 'height'
-        ? `Höhe: ${value.toFixed(2)} ${unit}`
-        : `Länge: ${value.toFixed(2)} ${unit}`,
-      duration: 3000,
-    });
   };
   
   // Clear all measurements
   const clearMeasurements = () => {
-    setMeasurements([]);
-    setTemporaryPoints([]);
-    
-    // Clear visualization
     if (measurementGroupRef.current) {
-      while (measurementGroupRef.current.children.length > 0) {
-        const object = measurementGroupRef.current.children[0];
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          (object.material as THREE.Material).dispose();
-        } else if (object instanceof THREE.Line) {
-          object.geometry.dispose();
-          (object.material as THREE.Material).dispose();
-        } else if (object instanceof THREE.Sprite) {
-          (object.material as THREE.SpriteMaterial).map?.dispose();
-          (object.material as THREE.Material).dispose();
+      // Properly dispose of all measurement visualization objects
+      measurements.forEach(measurement => {
+        // Remove and dispose label
+        if (measurement.labelObject) {
+          if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+            measurement.labelObject.material.map?.dispose();
+            measurement.labelObject.material.dispose();
+          }
+          measurementGroupRef.current?.remove(measurement.labelObject);
         }
-        measurementGroupRef.current.remove(object);
+        
+        // Remove and dispose lines
+        if (measurement.lineObjects) {
+          measurement.lineObjects.forEach(line => {
+            line.geometry.dispose();
+            (line.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(line);
+          });
+        }
+        
+        // Remove and dispose points
+        if (measurement.pointObjects) {
+          measurement.pointObjects.forEach(point => {
+            point.geometry.dispose();
+            (point.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(point);
+          });
+        }
+      });
+      
+      // Clean up hover point if exists
+      const hoverPoint = measurementGroupRef.current.children.find(
+        child => child.name === 'hoverPoint'
+      );
+      if (hoverPoint) {
+        measurementGroupRef.current.remove(hoverPoint);
       }
     }
     
+    setMeasurements([]);
+    setTemporaryPoints([]);
     currentMeasurementRef.current = null;
   };
 
@@ -645,12 +658,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       });
 
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
-
-      toast({
-        title: "Modell geladen",
-        description: "Das 3D-Modell wurde erfolgreich geladen. Sie können es jetzt von allen Seiten betrachten.",
-        duration: 3000,
-      });
 
       return model;
     } catch (error) {
