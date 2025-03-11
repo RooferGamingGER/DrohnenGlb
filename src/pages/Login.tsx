@@ -96,7 +96,10 @@ const Login = () => {
           </Button>
         </form>
 
-        <PerformanceMetrics metrics={performanceMetrics} />
+        {/* Always show PerformanceMetrics if metrics exist */}
+        {Object.keys(performanceMetrics).length > 0 && (
+          <PerformanceMetrics metrics={performanceMetrics} />
+        )}
       </Card>
     </div>
   );
