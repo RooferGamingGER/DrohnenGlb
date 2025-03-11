@@ -45,19 +45,10 @@ const ModelViewer: React.FC = () => {
     });
   };
 
-  // Ich ändere diese Funktion, um die Ereignisse nicht zu stoppen, wenn wir im "move" Modus sind
-  // und ermögliche damit das Greifen und Verschieben von Messpunkten
   const handleToolsPanelClick = (e: React.MouseEvent) => {
-    // Wenn wir im Verschiebenmodus sind, lassen wir das Ereignis an die unterliegenden Elemente durch
-    // So können wir auf Messpunkte klicken und sie greifen
-    if (activeTool === 'move') {
-      return; // Wir tun nichts, um die Ereignisse durchzulassen
-    }
-    
-    // Für andere Modi stoppen wir die Ereignisausbreitung wie bisher
     e.preventDefault();
     e.stopPropagation();
-    
+    // Ensure that any ongoing measurement is cancelled when interacting with the tools panel
     if (activeTool !== 'none') {
       setActiveTool('none');
     }
@@ -109,6 +100,8 @@ const ModelViewer: React.FC = () => {
             <div 
               className="fixed left-4 top-1/2 transform -translate-y-1/2 z-20"
               onClick={handleToolsPanelClick}
+              onMouseDown={handleToolsPanelClick}
+              onMouseUp={handleToolsPanelClick}
             >
               <MeasurementTools 
                 activeTool={activeTool}
@@ -121,12 +114,6 @@ const ModelViewer: React.FC = () => {
                 canUndo={canUndo}
               />
             </div>
-            
-            {activeTool === 'move' && (
-              <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm p-3 rounded-lg z-50 shadow-lg animate-fade-in">
-                <p className="text-sm">Klicken Sie auf einen Messpunkt, um ihn zu verschieben</p>
-              </div>
-            )}
             
             <button
               onClick={() => setShowControls(!showControls)}
@@ -161,7 +148,6 @@ const ModelViewer: React.FC = () => {
                   <p>• Zwei Finger zum Verschieben</p>
                   <p>• Doppelklick zum Zurücksetzen der Ansicht</p>
                   <p>• Für Messungen: Tool auswählen und auf das Modell klicken</p>
-                  <p>• Messpunkte verschieben: Tool auswählen und auf Messpunkt klicken</p>
                 </div>
               </div>
             )}

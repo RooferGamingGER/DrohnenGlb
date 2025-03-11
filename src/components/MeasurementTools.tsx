@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Hand } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Automatisches Deaktivieren des Messwerkzeugs, wenn eine Beschreibung bearbeitet wird
+  // Automatically disable measurement tool when editing a description
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
@@ -46,7 +46,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
-    // Messwerkzeug nach dem Löschen deaktivieren
+    // Disable measurement tool after deleting
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -55,7 +55,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Messwerkzeug beim Starten der Bearbeitung deaktivieren
+    // Disable measurement tool when starting to edit
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -80,15 +80,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
-    // Nur im Verschiebenmodus lassen wir das Ereignis passieren
-    if (activeTool === 'move') {
-      return;
-    }
-    
     event.preventDefault();
     event.stopPropagation();
-    
-    // Messwerkzeug beim Klicken irgendwo im Container deaktivieren
+    // Disable measurement tool when clicking anywhere in the container
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -164,26 +158,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </TooltipContent>
             </Tooltip>
             
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onToolChange('move')}
-                  className={cn(
-                    "p-2 rounded-md transition-colors",
-                    activeTool === 'move' 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-secondary"
-                  )}
-                  aria-label="Messpunkte verschieben"
-                >
-                  <Hand size={18} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Messpunkte verschieben</p>
-              </TooltipContent>
-            </Tooltip>
-            
             {canUndo && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -226,13 +200,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <h3 className="font-medium">Messungen:</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
-              <li 
-                key={m.id} 
-                className={cn(
-                  "bg-background/50 p-2 rounded",
-                  m.isActive && "ring-2 ring-primary"
-                )}
-              >
+              <li key={m.id} className="bg-background/50 p-2 rounded">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-2">
                     {m.type === 'length' && <Ruler size={14} />}

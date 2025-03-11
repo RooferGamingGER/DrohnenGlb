@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -17,8 +18,7 @@ import {
   createMeasurementId,
   createTextSprite,
   updateLabelScale,
-  createDraggablePointMaterial,
-  createDraggablePointMesh
+  createDraggablePointMaterial
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -50,6 +50,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [temporaryPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
 
+  // Dragging state
   const [isDraggingPoint, setIsDraggingPoint] = useState(false);
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
@@ -85,40 +86,36 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   
-  const handleMouseMove = (event: MouseEvent | TouchEvent) => {
+  const handleMouseMove = (event: MouseEvent) => {
     if (!containerRef.current) return;
     
-    let clientX: number, clientY: number;
-    
-    if ('touches' in event) {
-      if (event.touches.length === 0) return;
-      clientX = event.touches[0].clientX;
-      clientY = event.touches[0].clientY;
-      
-      if (isDraggingPoint) {
-        event.preventDefault();
-      }
-    } else {
-      clientX = event.clientX;
-      clientY = event.clientY;
-    }
-    
+    // Update mouse position
     const rect = containerRef.current.getBoundingClientRect();
-    mouseRef.current.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
+    // Handle dragging of measurement points
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
       
+      // Calculate mouse movement delta
+      const deltaX = mouseRef.current.x - previousMouseRef.current.x;
+      const deltaY = mouseRef.current.y - previousMouseRef.current.y;
+      
+      // Update raycaster with current mouse position
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
+      // Find intersection with the model
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
       if (intersects.length > 0) {
+        // Move the point to the new intersection position
         const newPosition = intersects[0].point.clone();
         
+        // Update the dragged point's position
         draggedPointRef.current.position.copy(newPosition);
         
+        // Update the measurement in state
         if (selectedMeasurementId !== null && selectedPointIndex !== null) {
           updateMeasurementPointPosition(
             selectedMeasurementId, 
@@ -128,7 +125,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         }
       }
     }
-    else if ((activeTool === 'length' || activeTool === 'height') && modelRef.current && cameraRef.current) {
+    // Normal hover detection for model or measurement points
+    else if (activeTool !== 'none' && modelRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
@@ -138,9 +136,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         setHoverPoint(null);
       }
     }
-    else if ((activeTool === 'none' || activeTool === 'move') && measurementGroupRef.current && cameraRef.current) {
+    // Check if we're hovering over any measurement points
+    else if (activeTool === 'none' && measurementGroupRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
+      // Filter for meshes only (points)
       const pointObjects = measurementGroupRef.current.children.filter(
         child => child instanceof THREE.Mesh && child.name.startsWith('point-')
       );
@@ -150,18 +150,15 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (intersects.length > 0) {
         const pointId = intersects[0].object.name;
         setHoveredPointId(pointId);
+        document.body.style.cursor = 'grab';
         
-        if (activeTool === 'move') {
-          document.body.style.cursor = 'grab';
-        } else {
-          document.body.style.cursor = 'pointer';
-        }
-        
+        // Update the point material to show it's hoverable
         if (intersects[0].object instanceof THREE.Mesh) {
           intersects[0].object.material = createDraggablePointMaterial(true);
         }
       } else {
         if (hoveredPointId) {
+          // Reset any previously hovered point material
           const prevHoveredPoint = measurementGroupRef.current.children.find(
             child => child.name === hoveredPointId
           );
@@ -180,35 +177,31 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       document.body.style.cursor = 'auto';
     }
     
+    // Store the current mouse position for the next frame
     previousMouseRef.current.copy(mouseRef.current);
   };
 
-  const handleMouseDown = (event: MouseEvent | TouchEvent) => {
+  const handleMouseDown = (event: MouseEvent) => {
     if (!containerRef.current || !measurementGroupRef.current) return;
     
-    if ('touches' in event && event.touches.length > 0) {
-      const rect = containerRef.current.getBoundingClientRect();
-      mouseRef.current.x = ((event.touches[0].clientX - rect.left) / rect.width) * 2 - 1;
-      mouseRef.current.y = -((event.touches[0].clientY - rect.top) / rect.height) * 2 + 1;
+    // Check if we're clicking on a measurement point
+    if (hoveredPointId && !isDraggingPoint) {
+      event.preventDefault();
+      event.stopPropagation();
       
-      if (activeTool === 'move' || hoveredPointId) {
-        event.preventDefault();
-      }
-    }
-    
-    if (hoveredPointId && (activeTool === 'move' || activeTool === 'none')) {
-      if ('stopPropagation' in event) event.stopPropagation();
-      if ('preventDefault' in event) event.preventDefault();
-      
+      // Find the point mesh
       const pointMesh = measurementGroupRef.current.children.find(
         child => child.name === hoveredPointId
       ) as THREE.Mesh;
       
       if (pointMesh) {
+        // Start dragging
         setIsDraggingPoint(true);
         draggedPointRef.current = pointMesh;
         document.body.style.cursor = 'grabbing';
         
+        // Get measurement ID and point index from the point name
+        // Format: point-{measurementId}-{pointIndex}
         const nameParts = hoveredPointId.split('-');
         if (nameParts.length >= 3) {
           const measurementId = nameParts[1];
@@ -217,52 +210,30 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           setSelectedMeasurementId(measurementId);
           setSelectedPointIndex(pointIndex);
           
-          setMeasurements(prev => prev.map(m => ({
-            ...m,
-            isActive: m.id === measurementId
-          })));
-          
+          // Disable orbit controls while dragging
           if (controlsRef.current) {
             controlsRef.current.enabled = false;
-          }
-          
-          if (activeTool === 'move') {
-            toast({
-              title: "Messpunkt wird verschoben",
-              description: "Bewegen Sie den Cursor und klicken Sie erneut, um den Punkt zu platzieren",
-              duration: 2000,
-            });
           }
         }
       }
     }
   };
 
-  const handleMouseUp = (event: MouseEvent | TouchEvent) => {
+  const handleMouseUp = (event: MouseEvent) => {
     if (isDraggingPoint) {
+      // Finish dragging
       setIsDraggingPoint(false);
       draggedPointRef.current = null;
       document.body.style.cursor = hoveredPointId ? 'grab' : 'auto';
       
+      // Re-enable orbit controls
       if (controlsRef.current) {
         controlsRef.current.enabled = true;
       }
       
-      setMeasurements(prev => prev.map(m => ({
-        ...m,
-        isActive: false
-      })));
-      
+      // Clear selection
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
-      
-      if (activeTool === 'move') {
-        toast({
-          title: "Messpunkt verschoben",
-          description: "Der Messpunkt wurde erfolgreich neu positioniert",
-          duration: 2000,
-        });
-      }
     }
   };
 
@@ -274,6 +245,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setMeasurements(prevMeasurements => {
       return prevMeasurements.map(measurement => {
         if (measurement.id === measurementId) {
+          // Create a copy of points with updated position
           const updatedPoints = [...measurement.points];
           
           if (updatedPoints[pointIndex]) {
@@ -284,20 +256,23 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             };
           }
           
+          // Calculate new measurement value
           let newValue: number;
           if (measurement.type === 'length') {
             newValue = calculateDistance(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
-          } else {
+          } else { // height
             newValue = calculateHeight(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
           }
           
+          // Update label position and text
           if (measurement.labelObject) {
+            // Update label position (middle point)
             let labelPosition: THREE.Vector3;
             
             if (measurement.type === 'length') {
@@ -305,8 +280,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 updatedPoints[0].position,
                 updatedPoints[1].position
               ).multiplyScalar(0.5);
-              labelPosition.y += 0.1;
-            } else {
+              labelPosition.y += 0.1; // Slightly above the line
+            } else { // height
               const midHeight = (
                 updatedPoints[0].position.y + 
                 updatedPoints[1].position.y
@@ -317,23 +292,29 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 midHeight,
                 updatedPoints[0].position.z
               );
-              labelPosition.x += 0.1;
+              labelPosition.x += 0.1; // Slightly to the right
             }
             
+            // Update sprite position
             measurement.labelObject.position.copy(labelPosition);
             
+            // Update text
             const labelText = `${newValue.toFixed(2)} ${measurement.unit}`;
             
+            // We need to recreate the sprite with updated text
             const newSprite = createTextSprite(
               labelText, 
               labelPosition,
               measurement.type === 'length' ? 0x00ff00 : 0x0000ff
             );
             
+            // Copy user data and scale
             newSprite.userData = measurement.labelObject.userData;
             newSprite.scale.copy(measurement.labelObject.scale);
             
+            // Remove old sprite and add new one
             if (measurementGroupRef.current) {
+              // Dispose old sprite materials
               if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
                 measurement.labelObject.material.map?.dispose();
                 measurement.labelObject.material.dispose();
@@ -343,8 +324,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
               measurementGroupRef.current.add(newSprite);
             }
             
+            // Update line positions
             if (measurement.lineObjects && measurement.lineObjects.length > 0) {
               if (measurement.type === 'length') {
+                // For length, just update the start and end points
                 const lineGeometry = new THREE.BufferGeometry().setFromPoints([
                   updatedPoints[0].position,
                   updatedPoints[1].position
@@ -352,7 +335,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 
                 measurement.lineObjects[0].geometry.dispose();
                 measurement.lineObjects[0].geometry = lineGeometry;
-              } else {
+              } else { // height
+                // For height, we have a vertical line
                 const verticalPoint = new THREE.Vector3(
                   updatedPoints[0].position.x,
                   updatedPoints[1].position.y,
@@ -523,8 +507,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
+            // Keep sprites facing the camera
             child.quaternion.copy(cameraRef.current!.quaternion);
           
+            // Dynamically scale labels based on distance
             if (child.userData && child.userData.isLabel) {
               updateLabelScale(child, cameraRef.current);
             }
@@ -559,27 +545,17 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
     
-    containerRef.current.addEventListener('mousedown', handleMouseDown, { capture: true });
-    containerRef.current.addEventListener('touchstart', handleMouseDown, { passive: false, capture: true });
-    
+    // Add mouse event listeners for dragging points
+    containerRef.current.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('touchend', handleMouseUp);
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('touchmove', handleMouseMove, { passive: false });
     
     return () => {
       window.removeEventListener('resize', handleResize);
       
       if (containerRef.current) {
-        containerRef.current.removeEventListener('mousedown', handleMouseDown, { capture: true });
-        containerRef.current.removeEventListener('touchstart', handleMouseDown, { capture: true });
+        containerRef.current.removeEventListener('mousedown', handleMouseDown);
       }
       window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchend', handleMouseUp);
-      
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleMouseMove);
       
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -597,28 +573,18 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     };
   }, []);
 
-  const handleMeasurementClick = (event: MouseEvent | TouchEvent) => {
-    if (isDraggingPoint || hoveredPointId || activeTool === 'move') return;
+  const handleMeasurementClick = (event: MouseEvent) => {
+    // Skip if we're currently dragging a point
+    if (isDraggingPoint) return;
     
     if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
         !sceneRef.current || !cameraRef.current) {
       return;
     }
     
-    let clientX: number, clientY: number;
-    
-    if ('touches' in event) {
-      if (event.touches.length === 0) return;
-      clientX = event.touches[0].clientX;
-      clientY = event.touches[0].clientY;
-    } else {
-      clientX = (event as MouseEvent).clientX;
-      clientY = (event as MouseEvent).clientY;
-    }
-    
     const rect = containerRef.current.getBoundingClientRect();
-    mouseRef.current.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
     raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
     
@@ -645,8 +611,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const addMeasurementPoint = (position: THREE.Vector3) => {
     if (!measurementGroupRef.current) return;
     
-    const point = createDraggablePointMesh(position);
+    const pointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+    const pointMaterial = createDraggablePointMaterial();
+    const point = new THREE.Mesh(pointGeometry, pointMaterial);
+    point.position.copy(position);
     
+    // Set a unique name for the point so we can identify it later when dragging
+    // The name will be updated with the measurement ID after finalization
     point.name = `point-temp-${temporaryPoints.length}`;
     
     measurementGroupRef.current.add(point);
@@ -706,6 +677,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
           
+          // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -735,6 +707,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
           
+          // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -769,6 +742,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     const measurementId = createMeasurementId();
     
+    // Update point names with the new measurement ID for easy identification
     if (currentMeasurementRef.current && currentMeasurementRef.current.meshes) {
       currentMeasurementRef.current.meshes.forEach((mesh, index) => {
         mesh.name = `point-${measurementId}-${index}`;
@@ -830,110 +804,240 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (hoverPoint) {
         measurementGroupRef.current.remove(hoverPoint);
       }
-      
-      setMeasurements([]);
-      setTemporaryPoints([]);
-      
-      if (currentMeasurementRef.current) {
-        currentMeasurementRef.current = null;
-      }
     }
+    
+    setMeasurements([]);
+    setTemporaryPoints([]);
+    currentMeasurementRef.current = null;
   };
 
-  const loadModel = async (file: File): Promise<void> => {
-    if (modelRef.current && sceneRef.current) {
-      sceneRef.current.remove(modelRef.current);
-      modelRef.current = null;
+  const updateMeasurement = (id: string, data: Partial<Measurement>) => {
+    setMeasurements(prevMeasurements => 
+      prevMeasurements.map(m => 
+        m.id === id ? { ...m, ...data } : m
+      )
+    );
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    if (activeTool !== 'none') {
+      containerRef.current.addEventListener('click', handleMeasurementClick);
+      
+      if (controlsRef.current) {
+        controlsRef.current.enableRotate = false;
+      }
+    } else {
+      containerRef.current.removeEventListener('click', handleMeasurementClick);
+      setTemporaryPoints([]);
+      
+      if (controlsRef.current) {
+        controlsRef.current.enableRotate = true;
+      }
     }
     
-    setState({
-      isLoading: true,
-      progress: 0,
-      error: null,
-      loadedModel: null,
-    });
+    return () => {
+      containerRef.current?.removeEventListener('click', handleMeasurementClick);
+    };
+  }, [activeTool, temporaryPoints]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
     
+    containerRef.current.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      containerRef.current?.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [activeTool, temporaryPoints, isDraggingPoint, hoveredPointId]);
+
+  useEffect(() => {
+    setCanUndo(temporaryPoints.length > 0);
+  }, [temporaryPoints]);
+
+  const loadModel = async (file: File) => {
     try {
-      processingStartTimeRef.current = Date.now();
-      
-      // Simulate upload progress
-      processingIntervalRef.current = window.setInterval(() => {
-        if (uploadProgressRef.current < 90) {
-          uploadProgressRef.current += 5;
-          setState(prev => ({ ...prev, progress: uploadProgressRef.current }));
-        }
-      }, 300);
-      
-      const model = await loadGLBModel(file, (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setState(prev => ({ ...prev, progress }));
-        }
-      });
-      
-      clearInterval(processingIntervalRef.current);
-      processingIntervalRef.current = null;
-      
       if (!sceneRef.current) return;
-      
-      model.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          if (child.material) {
-            // Enable shadows
-            child.castShadow = true;
-            child.receiveShadow = true;
-            
-            // If material is an array, process each material
-            if (Array.isArray(child.material)) {
-              child.material.forEach(mat => {
-                if (mat.map) mat.map.anisotropy = 16;
-              });
-            } else {
-              // Single material
-              if (child.material.map) child.material.map.anisotropy = 16;
-            }
+
+      if (modelRef.current && sceneRef.current) {
+        sceneRef.current.remove(modelRef.current);
+        modelRef.current = null;
+      }
+
+      clearMeasurements();
+
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+
+      setState({
+        isLoading: true,
+        progress: 0,
+        error: null,
+        loadedModel: null,
+      });
+
+      uploadProgressRef.current = 0;
+
+      const model = await loadGLBModel(
+        file,
+        (event) => {
+          if (event.lengthComputable) {
+            const uploadPercentage = Math.round((event.loaded / event.total) * 100);
+            uploadProgressRef.current = uploadPercentage;
+            const scaledProgress = Math.floor(uploadPercentage * 0.7);
+            setState(prev => ({ ...prev, progress: scaledProgress }));
           }
         }
-      });
+      );
+
+      setState(prev => ({ ...prev, progress: 70 }));
+      processingStartTimeRef.current = Date.now();
       
+      const estimatedProcessingTime = 3000;
+      
+      processingIntervalRef.current = window.setInterval(() => {
+        const elapsedTime = Date.now() - (processingStartTimeRef.current || 0);
+        const processingProgress = Math.min(
+          Math.floor(70 + (elapsedTime / estimatedProcessingTime) * 30), 
+          99
+        );
+        
+        setState(prev => ({ ...prev, progress: processingProgress }));
+        
+        if (processingProgress >= 99) {
+          if (processingIntervalRef.current) {
+            clearInterval(processingIntervalRef.current);
+            processingIntervalRef.current = null;
+          }
+        }
+      }, 100);
+
       const box = centerModel(model);
-      
-      // Calculate size for camera positioning
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = cameraRef.current?.fov || 45;
-      const cameraZ = maxDim / (2 * Math.tan((fov * Math.PI) / 360));
-      
-      // Position camera to fit model
-      if (cameraRef.current) {
-        cameraRef.current.position.z = cameraZ * 1.5;
-        cameraRef.current.updateProjectionMatrix();
+      const size = box.getSize(new THREE.Vector3()).length();
+      const center = box.getCenter(new THREE.Vector3());
+
+      model.rotation.x = -Math.PI / 2;
+
+      if (cameraRef.current && controlsRef.current) {
+        const distance = size * 1.5;
+        
+        cameraRef.current.position.set(0, 0, 0);
+        cameraRef.current.position.copy(center);
+        cameraRef.current.position.z += distance;
+        cameraRef.current.lookAt(center);
+
+        controlsRef.current.target.copy(center);
+        controlsRef.current.update();
+        controlsRef.current.saveState();
       }
-      
-      // Reset controls
-      if (controlsRef.current) {
-        controlsRef.current.reset();
-        controlsRef.current.target.set(0, 0, 0);
+
+      sceneRef.current.add(model);
+      modelRef.current = model;
+
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
       }
-      
-      clearMeasurements();
-      
-      if (sceneRef.current) {
-        sceneRef.current.add(model);
-        modelRef.current = model;
-      }
-      
+
       setState({
         isLoading: false,
         progress: 100,
         error: null,
         loadedModel: model,
       });
-      
+
+      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+
+      return model;
     } catch (error) {
-      console.error("Error loading model:", error);
+      console.error('Error loading model:', error);
       
       if (processingIntervalRef.current) {
         clearInterval(processingIntervalRef.current);
         processingIntervalRef.current = null;
       }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      setState({
+        isLoading: false,
+        progress: 0,
+        error: `Fehler beim Laden des Modells: ${errorMessage}`,
+        loadedModel: null,
+      });
+      
+      toast({
+        title: "Fehler beim Laden",
+        description: `Das Modell konnte nicht geladen werden: ${errorMessage}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+
+      throw error;
+    }
+  };
+
+  const applyBackground = async (option: BackgroundOption) => {
+    if (!sceneRef.current || !rendererRef.current) return;
+
+    if (sceneRef.current.background) {
+      if (sceneRef.current.background instanceof THREE.Texture) {
+        sceneRef.current.background.dispose();
+      }
+      sceneRef.current.background = null;
+    }
+
+    rendererRef.current.setClearAlpha(option.id === 'transparent' ? 0 : 1);
+
+    if (option.color) {
+      sceneRef.current.background = new THREE.Color(option.color);
+    } else if (option.texture) {
+      try {
+        const texture = await loadTexture(option.texture);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(10, 10);
+        sceneRef.current.background = texture;
+      } catch (error) {
+        console.error('Error loading texture:', error);
+      }
+    }
+
+    setBackground(option);
+  };
+
+  const resetView = () => {
+    if (controlsRef.current && modelRef.current && cameraRef.current) {
+      const box = new THREE.Box3().setFromObject(modelRef.current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      
+      const distance = size * 1.5;
+      cameraRef.current.position.copy(center);
+      cameraRef.current.position.z += distance;
+      cameraRef.current.lookAt(center);
+      
+      controlsRef.current.target.copy(center);
+      controlsRef.current.update();
+    }
+  };
+
+  return {
+    ...state,
+    loadModel,
+    background,
+    setBackground: applyBackground,
+    backgroundOptions,
+    resetView,
+    activeTool,
+    setActiveTool,
+    measurements,
+    clearMeasurements,
+    undoLastPoint,
+    deleteMeasurement,
+    updateMeasurement,
+    canUndo,
+  };
+};
