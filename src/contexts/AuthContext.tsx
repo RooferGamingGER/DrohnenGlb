@@ -50,9 +50,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+      
+      // Prüfen ob der gespeicherte Benutzer noch in der Benutzerliste existiert
+      const userStillExists = users.some(u => u.id === parsedUser.id);
+      
+      if (userStillExists) {
+        setUser(parsedUser);
+      } else {
+        // Wenn Benutzer nicht mehr existiert, aus dem localStorage entfernen
+        localStorage.removeItem('currentUser');
+      }
     }
-  }, []);
+  }, [users]);
 
   // Benutzer im localStorage aktualisieren, wenn sich die Liste ändert
   useEffect(() => {

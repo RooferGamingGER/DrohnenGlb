@@ -159,12 +159,12 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="px-4 py-3 text-sm">{user.id}</td>
-                      <td className="px-4 py-3 text-sm font-medium">{user.username}</td>
+                  {users.map((userItem) => (
+                    <tr key={userItem.id}>
+                      <td className="px-4 py-3 text-sm">{userItem.id}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{userItem.username}</td>
                       <td className="px-4 py-3 text-sm">
-                        {user.isAdmin ? (
+                        {userItem.isAdmin ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                             Admin
                           </span>
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleDeleteUser(user.id, user.username)}
+                          onClick={() => handleDeleteUser(userItem.id, userItem.username)}
                           title="Benutzer löschen"
                           className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                         >
