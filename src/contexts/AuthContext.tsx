@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   auth,
@@ -49,14 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Firebase Auth Status überwachen
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
         setUser({
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          username: firebaseUser.email || '', // Use email as username for display
+          username: firebaseUser.email || '',
           isAdmin
         });
       } else {
@@ -68,7 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    // Überprüfen, ob ein Initial-Admin benötigt wird
     const checkForInitialAdmin = async () => {
       const usersList = await getAllUsers();
       setNeedsInitialAdmin(usersList.length === 0);
@@ -78,19 +75,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    // Benutzerliste aktualisieren
-    const loadUsers = async () => {
-      const usersList = await getAllUsers();
-      const formattedUsers = usersList.map((user: FirestoreUser) => ({
-        id: user.uid || user.id,
-        email: user.email || '',
-        username: user.email || '', // Map emails to usernames for display
-        isAdmin: user.isAdmin || false
-      }));
-      setUsers(formattedUsers);
-    };
-
     if (user?.isAdmin) {
+      const loadUsers = async () => {
+        const usersList = await getAllUsers();
+        const formattedUsers = usersList.map((user: FirestoreUser) => ({
+          id: user.uid || user.id,
+          email: user.email || '',
+          username: user.email || '',
+          isAdmin: user.isAdmin || false
+        }));
+        setUsers(formattedUsers);
+      };
+
       loadUsers();
     }
   }, [user]);
@@ -98,11 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkIfUserIsAdmin = async (uid: string): Promise<boolean> => {
     const usersList = await getAllUsers();
     const userInfo = usersList.find((u: FirestoreUser) => (u.uid || u.id) === uid);
-    return userInfo?.isAdmin || false;
+    return !!userInfo?.isAdmin;
   };
 
   const setupInitialAdmin = async (email: string, password: string): Promise<boolean> => {
-    // Prüfen, ob bereits Benutzer existieren
     const usersList = await getAllUsers();
     if (usersList.length > 0) {
       toast({
@@ -113,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // Admin-Benutzer erstellen
     const firebaseUser = await createUserInFirebase(email, password, true);
     if (firebaseUser) {
       toast({
@@ -153,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
         id: user.uid || user.id,
         email: user.email || '',
-        username: user.email || '', // Map emails to usernames
+        username: user.email || '',
         isAdmin: user.isAdmin || false
       }));
       setUsers(formattedUsers);
@@ -169,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
         id: user.uid || user.id,
         email: user.email || '',
-        username: user.email || '', // Map emails to usernames
+        username: user.email || '',
         isAdmin: user.isAdmin || false
       }));
       setUsers(formattedUsers);
@@ -188,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
         id: user.uid || user.id,
         email: user.email || '',
-        username: user.email || '', // Map emails to usernames
+        username: user.email || '',
         isAdmin: user.isAdmin || false
       }));
       setUsers(formattedUsers);
