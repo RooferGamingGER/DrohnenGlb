@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { loadGLBModel, centerModel, loadTexture, BackgroundOption, backgroundOptions } from '@/utils/modelUtils';
+import { 
+  loadGLBModel, 
+  centerModel, 
+  loadTexture, 
+  BackgroundOption, 
+  backgroundOptions 
+} from '@/utils/modelUtils';
+import { useToast } from '@/hooks/use-toast';
 
 interface UseModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -15,6 +22,7 @@ interface ModelViewerState {
 }
 
 export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
+  const { toast } = useToast();
   const [state, setState] = useState<ModelViewerState>({
     isLoading: false,
     progress: 0,
@@ -183,13 +191,27 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
+      toast({
+        title: "Modell geladen",
+        description: "Das 3D-Modell wurde erfolgreich geladen.",
+        duration: 3000,
+      });
+
     } catch (error) {
       console.error('Error loading model:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
       setState({
         isLoading: false,
         progress: 0,
-        error: 'Fehler beim Laden des Modells',
+        error: `Fehler beim Laden des Modells: ${errorMessage}`,
         loadedModel: null,
+      });
+      
+      toast({
+        title: "Fehler beim Laden",
+        description: `Das Modell konnte nicht geladen werden: ${errorMessage}`,
+        variant: "destructive",
+        duration: 5000,
       });
     }
   };

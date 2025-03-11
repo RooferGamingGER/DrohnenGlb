@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 export type BackgroundOption = {
   id: string;
@@ -23,6 +24,13 @@ export const loadGLBModel = (
 ): Promise<THREE.Group> => {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
+    
+    // Add DRACO loader support
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    dracoLoader.setDecoderConfig({ type: 'js' });
+    loader.setDRACOLoader(dracoLoader);
+    
     const fileURL = URL.createObjectURL(file);
 
     loader.load(
