@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -49,28 +48,49 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   
   if (!context) throw new Error("Could not get canvas context");
   
-  canvas.width = 256; // Increased for better text clarity
-  canvas.height = 64;  // Increased for better text clarity
+  // Increase canvas size for better resolution
+  canvas.width = 512; // Doubled for better text clarity
+  canvas.height = 128; // Doubled for better text clarity
   
-  // Set a semi-transparent background
-  context.fillStyle = 'rgba(0, 0, 0, 0.85)';
-  context.roundRect(0, 0, canvas.width, canvas.height, 8);
+  // Set a solid background with rounded corners
+  context.fillStyle = 'rgba(0, 0, 0, 0.9)'; // More opaque background
+  context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
-  // Set text properties
-  context.font = 'bold 32px Inter'; // Increased font size
-  context.fillStyle = 'white';
+  // Add border for better visibility
+  context.strokeStyle = 'white';
+  context.lineWidth = 4;
+  context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
+  context.stroke();
+  
+  // Set text properties with improved rendering
+  context.font = 'bold 48px Arial, sans-serif'; // Larger font, better font
   context.textAlign = 'center';
   context.textBaseline = 'middle';
+  
+  // Add text shadow for better contrast
+  context.shadowColor = 'black';
+  context.shadowBlur = 4;
+  context.shadowOffsetX = 2;
+  context.shadowOffsetY = 2;
+  
+  // Draw text
+  context.fillStyle = 'white';
   context.fillText(text, canvas.width / 2, canvas.height / 2);
   
   // Create sprite material with canvas texture
   const texture = new THREE.CanvasTexture(canvas);
+  
+  // Apply texture filtering for clearer text
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  
   const material = new THREE.SpriteMaterial({ 
     map: texture,
     sizeAttenuation: true,
     depthTest: false,
-    depthWrite: false
+    depthWrite: false,
+    transparent: true
   });
   
   // Create sprite and position it
@@ -78,11 +98,11 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   sprite.position.copy(position);
   
   // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
-  sprite.scale.set(0.6, 0.3, 1); // Increased base scale for better readability
+  sprite.scale.set(0.8, 0.4, 1); // Increased base scale for better readability
   
   // Add custom property to store base scale for dynamic scaling
   sprite.userData = {
-    baseScale: { x: 0.6, y: 0.3, z: 1 },
+    baseScale: { x: 0.8, y: 0.4, z: 1 },
     isLabel: true
   };
   
@@ -98,7 +118,7 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   
   // Calculate scale factor based on distance
   // This ensures labels maintain readable size regardless of zoom level
-  const scaleFactor = Math.max(0.7, distance * 0.12);
+  const scaleFactor = Math.max(0.8, distance * 0.15);
   
   // Apply scale based on base scale and distance
   sprite.scale.set(
