@@ -10,7 +10,7 @@ import { Trash2, Eye, EyeOff, Save, Edit } from "lucide-react";
 
 const AdminDashboard = () => {
   const { user, users, createUser, deleteUser, updateUser } = useAuth();
-  const [newUsername, setNewUsername] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,9 +20,9 @@ const AdminDashboard = () => {
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
-    username: string;
+    email: string;
     password: string;
-  }>({ username: '', password: '' });
+  }>({ email: '', password: '' });
 
   // Wenn kein Admin-Benutzer, zur Startseite umleiten
   if (!user?.isAdmin) {
@@ -33,81 +33,84 @@ const AdminDashboard = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (newUsername.trim() === '' || newPassword.trim() === '') {
+    if (newEmail.trim() === '' || newPassword.trim() === '') {
       toast({
         title: "Fehler",
-        description: "Benutzername und Passwort dürfen nicht leer sein.",
+        description: "E-Mail und Passwort dürfen nicht leer sein.",
         variant: "destructive",
       });
       setIsLoading(false);
       return;
     }
 
-    const success = createUser(newUsername, newPassword, isAdmin);
-    
-    setIsLoading(false);
-    
-    if (success) {
-      toast({
-        title: "Benutzer erstellt",
-        description: `Benutzer "${newUsername}" wurde erfolgreich erstellt.`,
+    createUser(newEmail, newPassword, isAdmin)
+      .then(success => {
+        setIsLoading(false);
+        
+        if (success) {
+          toast({
+            title: "Benutzer erstellt",
+            description: `Benutzer "${newEmail}" wurde erfolgreich erstellt.`,
+          });
+          // Formular zurücksetzen
+          setNewEmail('');
+          setNewPassword('');
+          setIsAdmin(false);
+        } else {
+          toast({
+            title: "Fehler",
+            description: "Die E-Mail existiert bereits oder Sie haben keine Admin-Rechte.",
+            variant: "destructive",
+          });
+        }
       });
-      // Formular zurücksetzen
-      setNewUsername('');
-      setNewPassword('');
-      setIsAdmin(false);
-    } else {
-      toast({
-        title: "Fehler",
-        description: "Der Benutzername existiert bereits oder Sie haben keine Admin-Rechte.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleStartEdit = (userItem: any) => {
     setEditingUser(userItem.id);
     setEditForm({
-      username: userItem.username,
+      email: userItem.email || '',
       password: '',
     });
   };
 
   const handleSaveEdit = (userId: string) => {
-    const updates: { username?: string; password?: string } = {};
+    const updates: { email?: string; password?: string } = {};
     const currentUser = users.find(u => u.id === userId);
     
     if (!currentUser) return;
 
     // Nur Änderungen hinzufügen, die tatsächlich geändert wurden
-    if (editForm.username && editForm.username !== currentUser.username) {
-      updates.username = editForm.username;
+    if (editForm.email && editForm.email !== currentUser.email) {
+      updates.email = editForm.email;
     }
     if (editForm.password) {
       updates.password = editForm.password;
     }
 
     if (Object.keys(updates).length > 0) {
-      const success = updateUser(userId, updates);
-      if (success) {
-        toast({
-          title: "Benutzer aktualisiert",
-          description: "Die Änderungen wurden erfolgreich gespeichert.",
+      updateUser(userId, updates)
+        .then(success => {
+          if (success) {
+            toast({
+              title: "Benutzer aktualisiert",
+              description: "Die Änderungen wurden erfolgreich gespeichert.",
+            });
+          } else {
+            toast({
+              title: "Fehler",
+              description: "Die Änderungen konnten nicht gespeichert werden.",
+              variant: "destructive",
+            });
+          }
         });
-      } else {
-        toast({
-          title: "Fehler",
-          description: "Die Änderungen konnten nicht gespeichert werden.",
-          variant: "destructive",
-        });
-      }
     }
     
     setEditingUser(null);
     setShowPassword(null);
   };
 
-  const handleDeleteUser = (userId: string, username: string) => {
+  const handleDeleteUser = (userId: string, userEmail: string) => {
     // Prüfen, ob es der aktuell eingeloggte Benutzer ist
     if (userId === user?.id) {
       toast({
@@ -119,21 +122,22 @@ const AdminDashboard = () => {
     }
 
     // Bestätigung vom Benutzer einholen
-    if (window.confirm(`Möchten Sie den Benutzer "${username}" wirklich löschen?`)) {
-      const success = deleteUser(userId);
-      
-      if (success) {
-        toast({
-          title: "Benutzer gelöscht",
-          description: `Benutzer "${username}" wurde erfolgreich gelöscht.`,
+    if (window.confirm(`Möchten Sie den Benutzer "${userEmail}" wirklich löschen?`)) {
+      deleteUser(userId)
+        .then(success => {
+          if (success) {
+            toast({
+              title: "Benutzer gelöscht",
+              description: `Benutzer "${userEmail}" wurde erfolgreich gelöscht.`,
+            });
+          } else {
+            toast({
+              title: "Fehler",
+              description: "Der Benutzer konnte nicht gelöscht werden.",
+              variant: "destructive",
+            });
+          }
         });
-      } else {
-        toast({
-          title: "Fehler",
-          description: "Der Benutzer konnte nicht gelöscht werden.",
-          variant: "destructive",
-        });
-      }
     }
   };
 
@@ -147,14 +151,15 @@ const AdminDashboard = () => {
             <h2 className="text-xl font-bold mb-4">Benutzer erstellen</h2>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="username" className="text-sm font-medium">
-                  Benutzername
+                <label htmlFor="email" className="text-sm font-medium">
+                  E-Mail
                 </label>
                 <Input
-                  id="username"
-                  placeholder="Neuen Benutzernamen eingeben"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="E-Mail Adresse eingeben"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
                   required
                 />
               </div>
@@ -203,7 +208,7 @@ const AdminDashboard = () => {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Benutzername</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">E-Mail</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Rolle</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Aktionen</th>
                   </tr>
@@ -217,12 +222,12 @@ const AdminDashboard = () => {
                       <td className="px-4 py-3 text-sm">
                         {editingUser === userItem.id ? (
                           <Input
-                            value={editForm.username}
-                            onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                             className="w-full"
                           />
                         ) : (
-                          userItem.username
+                          userItem.email
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -279,7 +284,7 @@ const AdminDashboard = () => {
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            onClick={() => handleDeleteUser(userItem.id, userItem.username)}
+                            onClick={() => handleDeleteUser(userItem.id, userItem.email)}
                             title="Benutzer löschen"
                             className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                           >

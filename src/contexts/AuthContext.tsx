@@ -14,6 +14,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 export interface User {
   id: string;
   email: string;
+  username?: string; // Add username as optional property
   isAdmin?: boolean;
 }
 
@@ -43,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser({
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
+          username: firebaseUser.email || '', // Use email as username for display
           isAdmin
         });
       } else {
@@ -57,7 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Benutzerliste aktualisieren
     const loadUsers = async () => {
       const usersList = await getAllUsers();
-      setUsers(usersList as User[]);
+      const formattedUsers = usersList.map(user => ({
+        ...user,
+        username: user.email || '' // Map emails to usernames for display
+      }));
+      setUsers(formattedUsers as User[]);
     };
 
     if (user?.isAdmin) {
@@ -94,7 +100,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const firebaseUser = await createUserInFirebase(email, password, isAdmin);
     if (firebaseUser) {
       const updatedUsers = await getAllUsers();
-      setUsers(updatedUsers as User[]);
+      const formattedUsers = updatedUsers.map(user => ({
+        ...user,
+        username: user.email || '' // Map emails to usernames
+      }));
+      setUsers(formattedUsers as User[]);
     }
     return !!firebaseUser;
   };
@@ -104,7 +114,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const success = await deleteUserFromFirebase(userId);
     if (success) {
       const updatedUsers = await getAllUsers();
-      setUsers(updatedUsers as User[]);
+      const formattedUsers = updatedUsers.map(user => ({
+        ...user,
+        username: user.email || '' // Map emails to usernames
+      }));
+      setUsers(formattedUsers as User[]);
     }
     return success;
   };
@@ -117,7 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const success = await updateUserInFirebase(userId, updates);
     if (success && updates.email) {
       const updatedUsers = await getAllUsers();
-      setUsers(updatedUsers as User[]);
+      const formattedUsers = updatedUsers.map(user => ({
+        ...user,
+        username: user.email || '' // Map emails to usernames
+      }));
+      setUsers(formattedUsers as User[]);
     }
     return success;
   };

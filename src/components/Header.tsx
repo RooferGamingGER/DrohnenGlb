@@ -24,7 +24,7 @@ const Header = () => {
           {isAuthenticated ? (
             <>
               <span className="text-sm">
-                Angemeldet als: <b>{user?.username}</b>
+                Angemeldet als: <b>{user?.username || user?.email}</b>
               </span>
               {user?.isAdmin && (
                 <Button variant="outline" asChild>
