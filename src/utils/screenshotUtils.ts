@@ -326,9 +326,9 @@ export const exportMeasurementsToPDF = async (
           // Further reduce size for mobile screenshots to ensure they fit properly
           const optimizedDataUrl = await optimizeImageData(
             screenshot.imageDataUrl, 
-            550, // Even more reduced size for safety
-            0.65, // Further reduced quality for better compression
-            180  // Lower DPI for better fit
+            500, // Further reduced size for safety
+            0.6, // Lower quality for better compression
+            150  // Lower DPI for better fit
           );
           
           const img = new Image();
@@ -340,15 +340,15 @@ export const exportMeasurementsToPDF = async (
               const aspectRatio = img.width / img.height;
               
               // Use a more conservative width to leave more margin space
-              const imgWidth = contentWidth * 0.75; // More conservative width
+              const imgWidth = contentWidth * 0.7; // Even more conservative width
               const imgHeight = imgWidth / aspectRatio;
               
               // Add extra buffer space to ensure no overlap with footer
-              const requiredSpace = titleHeight + imgHeight + 35; 
+              const requiredSpace = titleHeight + imgHeight + 45; // Increased buffer
               
               // Ensure we start a new page if there's not enough space
               // Include more buffer space to prevent footer overlap
-              if (yPos + requiredSpace > (pageHeight - footerHeight - 10)) {
+              if (yPos + requiredSpace > (pageHeight - footerHeight - 15)) {
                 doc.addPage();
                 addPageHeader();
                 yPos = margin + 30;
@@ -366,7 +366,7 @@ export const exportMeasurementsToPDF = async (
               yPos += titleHeight;
               
               try {
-                // Center the image horizontally
+                // Center the image horizontally and ensure it has enough margin
                 const xPos = margin + ((contentWidth - imgWidth) / 2);
                 
                 doc.addImage(
@@ -382,7 +382,7 @@ export const exportMeasurementsToPDF = async (
                 );
                 
                 // Add more space after images to ensure no footer overlap
-                yPos += imgHeight + 30;
+                yPos += imgHeight + 40; // Increased space after image
               } catch (addImageError) {
                 console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
                 yPos += 5;
