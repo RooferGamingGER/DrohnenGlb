@@ -25,9 +25,12 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
 
+    // Header settings
+    const logoSize = 15;
+    const headerHeight = margin + logoSize + 10; // Adjust as needed
+
     const addPageHeader = (pageNumber: number, totalPages: number) => {
       try {
-        const logoSize = 15;
         const logoImg = new Image();
         logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
 
@@ -50,13 +53,15 @@ export const exportMeasurementsToPDF = async (
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const date = new Date().toLocaleDateString('de-DE');
-      
+
       // Calculate text width for proper alignment
       const dateTextWidth = doc.getTextWidth(`Datum: ${date}`);
       const pageTextWidth = doc.getTextWidth(`Seite ${pageNumber} von ${totalPages}`);
-      
-      doc.text(`Datum: ${date}`, pageWidth - margin - dateTextWidth, margin + 10);
-      doc.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - margin - pageTextWidth, margin + 20);
+
+      const rightMargin = 30; // Increased right margin
+
+      doc.text(`Datum: ${date}`, pageWidth - rightMargin - dateTextWidth, margin + 10);
+      doc.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - rightMargin - pageTextWidth, margin + 20);
 
       doc.setLineWidth(0.3);
       doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
@@ -82,7 +87,7 @@ export const exportMeasurementsToPDF = async (
 
     addPageHeader(1, totalPages);
 
-    let yPos = margin + 30;
+    let yPos = headerHeight + 10; // Start content below the header
 
     if (measurements.length > 0) {
       doc.setFontSize(14);
@@ -155,7 +160,7 @@ export const exportMeasurementsToPDF = async (
                 doc.addPage();
                 totalPages++;
                 addPageHeader(totalPages, totalPages);
-                yPos = margin + 30;
+                yPos = headerHeight + 10; // Reset yPos for the new page
               }
 
               doc.setFontSize(11);
@@ -209,7 +214,7 @@ export const exportMeasurementsToPDF = async (
     for (let i = 1; i <= finalTotalPages; i++) {
       doc.setPage(i);
       addPageFooter();
-      addPageHeader(i, finalTotalPages)
+      addPageHeader(i, finalTotalPages);
     }
 
     doc.save('Bericht.pdf');
