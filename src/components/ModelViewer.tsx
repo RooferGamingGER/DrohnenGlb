@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -10,13 +9,13 @@ import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 import { useToast } from '@/hooks/use-toast';
 import { captureScreenshot, exportMeasurementsToPDF } from '@/utils/screenshotUtils';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
