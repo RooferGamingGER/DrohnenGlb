@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -126,9 +127,10 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleTakeScreenshot = () => {
-    const mobileInfo = useIsMobile();
+    // Check if in portrait mode on mobile
+    const isPortrait = window.innerHeight > window.innerWidth;
     
-    if (mobileInfo.isMobile && mobileInfo.isPortrait) {
+    if (isMobile && isPortrait) {
       toast({
         title: "Portrait-Modus erkannt",
         description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
@@ -143,7 +145,7 @@ const ModelViewer: React.FC = () => {
         modelViewer.renderer,
         modelViewer.scene,
         modelViewer.camera,
-        mobileInfo.isMobile
+        isMobile
       );
       
       if (dataUrl) {
