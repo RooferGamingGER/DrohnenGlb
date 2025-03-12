@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -67,7 +66,7 @@ const optimizeImageData = async (
         let width = img.width;
         let height = img.height;
         
-        // Calculate pixel dimensions for 150 DPI
+        // Calculate pixel dimensions for target DPI (150 DPI)
         // Standard resolution conversion: 1 inch = 96 pixels at 96dpi
         // So if we want 150dpi, we multiply by (150/96)
         const scaleFactor = targetDPI / 96;
@@ -101,7 +100,7 @@ const optimizeImageData = async (
         // Draw the image with new dimensions
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to data URL with reduced quality JPEG
+        // Convert to data URL with reduced quality JPEG (quality of 0.4 for smaller files)
         const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(optimizedDataUrl);
       };
@@ -349,7 +348,7 @@ export const exportMeasurementsToPDF = async (
         
         // Optimize image before adding to PDF
         try {
-          // Set target DPI to 150 and reduce quality more aggressively
+          // Use 150 DPI and quality of 0.4 for smaller file size
           const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 700, 0.4, 150);
           
           // Get dimensions of the optimized image to maintain aspect ratio
@@ -366,7 +365,7 @@ export const exportMeasurementsToPDF = async (
               const imgWidth = contentWidth; // Use full content width
               const imgHeight = imgWidth / aspectRatio;
               const requiredSpace = titleHeight + imgHeight + 15; // Added some padding
-              
+            
               // Add a new page if this screenshot won't fit
               if (yPos + requiredSpace > pageHeight) {
                 doc.addPage();
@@ -418,4 +417,3 @@ export const exportMeasurementsToPDF = async (
     throw error;
   }
 };
-

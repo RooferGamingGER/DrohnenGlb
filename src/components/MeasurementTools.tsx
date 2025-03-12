@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ interface MeasurementToolsProps {
   measurements: Measurement[];
   canUndo: boolean;
   onClose?: () => void;
+  onToggleMeasurementVisibility?: (id: string) => void;
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
 }
@@ -35,6 +36,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   measurements,
   canUndo,
   onClose,
+  onToggleMeasurementVisibility,
   screenshots,
   isMobile = false
 }) => {
@@ -75,6 +77,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
     onUpdateMeasurement(id, { description: editValue });
     setEditingId(null);
+  };
+
+  const handleToggleMeasurementVisibility = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onToggleMeasurementVisibility) {
+      onToggleMeasurementVisibility(id);
+    }
   };
 
   const handleInputClick = (event: React.MouseEvent) => {
@@ -269,6 +279,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <span>{m.value.toFixed(2)} {m.unit}</span>
                   </span>
                   <div className="flex items-center">
+                    {onToggleMeasurementVisibility && (
+                      <button 
+                        onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
+                        className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                        aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+                      >
+                        {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+                    )}
                     <button 
                       onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
                       className="text-primary hover:bg-primary/10 p-1 rounded mr-1"

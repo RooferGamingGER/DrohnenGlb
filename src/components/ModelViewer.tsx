@@ -220,6 +220,21 @@ const ModelViewer: React.FC = () => {
     }
   }, [measurementsVisible, modelViewer]);
 
+  const toggleSingleMeasurementVisibility = useCallback((id: string) => {
+    // Find the measurement
+    const measurement = modelViewer.measurements.find(m => m.id === id);
+    if (measurement) {
+      // Toggle the visibility
+      const newVisibility = measurement.visible === false ? true : false;
+      modelViewer.updateMeasurement(id, { visible: newVisibility });
+      
+      toast({
+        title: newVisibility ? "Messung eingeblendet" : "Messung ausgeblendet",
+        description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`
+      });
+    }
+  }, [modelViewer, toast]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && modelViewer.activeTool !== 'none') {
@@ -235,7 +250,21 @@ const ModelViewer: React.FC = () => {
 
   return (
     <div className="relative h-full w-full flex flex-col">
-      <div className={`flex items-center justify-end w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
+      <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
+        {/* Added margin to make the measurement toggle button more visible */}
+        <div className="mr-4">
+          {modelViewer.loadedModel && showMeasurementTools && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="bg-background/70 backdrop-blur-sm"
+              onClick={toggleMeasurementTools}
+            >
+              {showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge einblenden"}
+            </Button>
+          )}
+        </div>
+        
         <ViewerControls
           onReset={handleResetView}
           onFullscreen={handleFullscreen}
@@ -317,9 +346,9 @@ const ModelViewer: React.FC = () => {
       </div>
       
       {/* Always render the MeasurementTools if they are enabled, but positioning is conditional */}
-      {modelViewer.loadedModel && (
+      {modelViewer.loadedModel && showMeasurementTools && (
         <div 
-          className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''} ${showMeasurementTools ? 'block' : 'hidden'}`}
+          className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}
         >
           <MeasurementTools
             activeTool={modelViewer.activeTool}
@@ -328,6 +357,7 @@ const ModelViewer: React.FC = () => {
             onDeleteMeasurement={modelViewer.deleteMeasurement}
             onUndoLastPoint={modelViewer.undoLastPoint}
             onUpdateMeasurement={modelViewer.updateMeasurement}
+            onToggleMeasurementVisibility={toggleSingleMeasurementVisibility}
             measurements={modelViewer.measurements}
             canUndo={modelViewer.canUndo}
             onClose={toggleMeasurementTools}
