@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Add this to ensure all routes are handled by index.html
+  // Ensure all routes are handled by index.html
   build: {
     rollupOptions: {
       output: {
