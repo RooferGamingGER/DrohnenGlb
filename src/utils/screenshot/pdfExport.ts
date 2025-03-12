@@ -1,3 +1,4 @@
+
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Measurement } from '../measurementUtils';
@@ -8,8 +9,8 @@ import { optimizeImageData } from './captureUtils';
  * Exports measurements and screenshots to PDF format (DIN A4)
  */
 export const exportMeasurementsToPDF = async (
-    measurements: Measurement,
-    screenshots: Screenshot
+    measurements: Measurement[],
+    screenshots: Screenshot[]
 ): Promise<void> => {
     try {
         if (!measurements.length && !screenshots.length) {
@@ -30,6 +31,7 @@ export const exportMeasurementsToPDF = async (
         const logoSize = 15;
         const headerHeight = margin + logoSize + 10;
         const footerHeight = 20;
+        const contentWidth = pageWidth - (margin * 2);
 
         // Bildgrößen für 2 Bilder pro Seite
         const imgWidth = contentWidth;
@@ -74,6 +76,9 @@ export const exportMeasurementsToPDF = async (
             doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
 
             doc.text(footerLine, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            
+            // Reset text color after footer
+            doc.setTextColor(0, 0, 0);
         };
 
         // 🔹 Erste Seite mit Kopfzeile
@@ -88,7 +93,6 @@ export const exportMeasurementsToPDF = async (
             yPos += 10;
 
             const tableStartY = yPos;
-            const availableTableHeight = pageHeight - headerHeight - footerHeight - yPos - margin;
 
             const tableData = measurements.map(m => [
                 m.description || '-',
@@ -96,46 +100,38 @@ export const exportMeasurementsToPDF = async (
                 `${m.value.toFixed(2)} ${m.unit}`
             ]);
 
-            let isFirstPage = true; // Flag, um die erste Seite zu verfolgen
-
             autoTable(doc, {
                 startY: tableStartY,
                 head: [['Beschreibung', 'Typ', 'Messwert']],
                 body: tableData,
-                margin: { left: margin, right: margin },
                 theme: 'grid',
                 styles: { fontSize: 10, cellPadding: 3 },
                 headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255], fontStyle: 'bold' },
                 alternateRowStyles: { fillColor: [245, 245, 245] },
-                didDrawPage: (data) => {
-                    // Füge Header und Footer hinzu
+                didDrawPage: () => {
+                    // Add header and footer on each new page
                     addPageHeader();
                     addPageFooter();
-
-                    // Korrigiere den Header nach autoTable-Seitenumbrüchen
-                    if (!isFirstPage) {
-                        // Zeichne den Header erneut, aber achte darauf, dass er nicht doppelt gezeichnet wird
-                        // Überprüfe, ob der Header bereits an der erwarteten Position ist, bevor du ihn erneut zeichnest
-                        if (data.pageCount > 1) {
-                            // Zeichne den Header nur, wenn es sich nicht um die erste Seite handelt
-                            addPageHeader();
-                        }
-                    }
-                    isFirstPage = false; // Nach der ersten Seite auf "false" setzen
                 },
-                pageBreak: 'auto',
-                maxRowHeight: availableTableHeight / (tableData.length + 1)
+                // Configure all margin properties in one place
+                margin: {
+                    top: headerHeight,
+                    bottom: footerHeight,
+                    left: margin,
+                    right: margin
+                }
             });
 
+            // Update position after table
             yPos = (doc as any).lastAutoTable.finalY + 15;
         }
 
-        // 🔹 Neue Seite für Aufnahmen
+        // 🔹 Screenshots auf neuen Seiten
         if (screenshots.length > 0) {
             doc.addPage();
             addPageHeader();
+            addPageFooter();
             yPos = headerHeight + margin;
-            let imageCounter = 0;
 
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
@@ -144,63 +140,57 @@ export const exportMeasurementsToPDF = async (
 
             for (let i = 0; i < screenshots.length; i++) {
                 const screenshot = screenshots[i];
+                
+                // Wenn wir 2 Bilder auf einer Seite haben, mache eine neue Seite für das nächste
+                if (i > 0 && i % 2 === 0) {
+                    doc.addPage();
+                    addPageHeader();
+                    addPageFooter();
+                    yPos = headerHeight + margin;
+                }
 
                 try {
+                    // Position für das aktuelle Bild
+                    const currentImagePos = i % 2 === 0 ? yPos : yPos + imgHeight + 10;
+                    
+                    // Optimiere das Bild
                     const optimizedDataUrl = await optimizeImageData(
                         screenshot.imageDataUrl, 1200, 0.92, 300, true
                     );
 
-                    const img = new Image();
-                    img.src = optimizedDataUrl;
-
-                    await new Promise<void>((resolve) => {
-                        img.onload = () => {
-                            const titleHeight = 10;
-                            const xPos = margin;
-                            const imageYPos = imageCounter % 2 === 0 ? yPos : yPos + imgHeight + 10;
-
-                            doc.setFontSize(11);
-                            doc.setFont('helvetica', 'bold');
-
-                            const title = screenshot.filename || `Aufnahme ${i + 1}`;
-                            const displayTitle = screenshot.description
-                                ? `${title}: ${screenshot.description}`
-                                : title;
-
-                            doc.text(displayTitle, margin, imageYPos - 5);
-                            doc.addImage(optimizedDataUrl, 'JPEG', xPos, imageYPos, imgWidth, imgHeight);
-
-                            imageCounter++;
-
-                            // 🔹 Falls 2 Bilder auf der Seite sind → Neue Seite
-                            if (imageCounter % 2 === 0) {
-                                doc.addPage();
-                                addPageHeader();
-                                yPos = headerHeight + margin;
-                            }
-
-                            resolve();
-                        };
-
-                        img.onerror = () => {
-                            console.warn(`Aufnahme ${i + 1} konnte nicht geladen werden`);
-                            resolve();
-                        };
-                    });
+                    // Titel für das Bild
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    
+                    const title = screenshot.filename || `Aufnahme ${i + 1}`;
+                    const displayTitle = screenshot.description
+                        ? `${title}: ${screenshot.description}`
+                        : title;
+                    
+                    doc.text(displayTitle, margin, currentImagePos - 5);
+                    
+                    // Füge das Bild hinzu
+                    doc.addImage(optimizedDataUrl, 'JPEG', margin, currentImagePos, imgWidth, imgHeight);
+                    
+                    // Für ungerade Indices (zweites Bild auf der Seite), erhöhe yPos für die nächste Seite
+                    if (i % 2 === 1) {
+                        yPos = currentImagePos + imgHeight + 20;
+                    }
                 } catch (imgError) {
                     console.warn(`Aufnahme ${i + 1} konnte nicht verarbeitet werden:`, imgError);
-                    yPos += 5;
                 }
             }
         }
 
-        // 🔹 Fußzeilen auf jeder Seite hinzufügen
-        const finalTotalPages = doc.getNumberOfPages();
-        for (let i = 1; i <= finalTotalPages; i++) {
+        // 🔹 Stelle sicher, dass alle Seiten Header und Footer haben
+        const totalPages = doc.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            // Gehe zu jeder Seite und stelle sicher, dass Header und Footer vorhanden sind
             doc.setPage(i);
             addPageFooter();
         }
 
+        // Dokument als PDF speichern
         doc.save('Bericht.pdf');
     } catch (error) {
         console.error("Fehler beim Exportieren als PDF:", error);

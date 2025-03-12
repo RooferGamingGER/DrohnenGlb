@@ -167,11 +167,20 @@ const ModelViewer: React.FC = () => {
         } catch (pdfError) {
           console.error('Error exporting to PDF:', pdfError);
           
-          exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
-          toast({
-            title: "Export erfolgreich",
-            description: "Die Daten wurden als HTML-Datei exportiert (in Word öffnen).",
-          });
+          try {
+            exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
+            toast({
+              title: "Export als Fallback erfolgreich",
+              description: "PDF-Export fehlgeschlagen. Die Daten wurden als HTML-Datei exportiert (in Word öffnen).",
+            });
+          } catch (wordError) {
+            console.error('Error exporting to Word:', wordError);
+            toast({
+              title: "Fehler beim Export",
+              description: "Die Daten konnten weder als PDF noch als HTML exportiert werden.",
+              variant: "destructive"
+            });
+          }
         }
       } catch (error) {
         console.error('Error exporting measurements:', error);
