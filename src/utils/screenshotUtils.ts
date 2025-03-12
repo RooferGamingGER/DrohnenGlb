@@ -193,12 +193,12 @@ export const exportMeasurementsToWord = (
 };
 
 export const exportMeasurementsToPDF = async (
-  measurements: Measurement[], 
+  measurements: Measurement[] = [], 
   screenshots: { id: string, imageDataUrl: string, description: string, filename?: string }[] = []
 ): Promise<void> => {
   try {
-    if (!measurements || measurements.length === 0) {
-      throw new Error("Keine Messungen vorhanden");
+    if (!measurements.length && !screenshots.length) {
+      throw new Error("Keine Messdaten oder Aufnahmen vorhanden");
     }
     
     const doc = new JsPDFModule({
@@ -210,7 +210,6 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Add header to all pages (via addPage event)
     const addPageHeader = () => {
       try {
         const logoSize = 15;
@@ -242,18 +241,15 @@ export const exportMeasurementsToPDF = async (
       doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
     };
     
-    // Add footer to all pages (via addPage event)
     const addPageFooter = (pageNumber: number) => {
       const totalPages = doc.getNumberOfPages();
       
-      // Footer text
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(128, 128, 128);
       
       const footerText = 'Kostenloser Service von Drohnenvermessung by RooferGaming® - Weitere Informationen erhalten sie unter drohnenvermessung-roofergaming.de';
       
-      // Page numbers
       doc.text(
         `Seite ${pageNumber} von ${totalPages}`,
         pageWidth / 2,
@@ -261,55 +257,53 @@ export const exportMeasurementsToPDF = async (
         { align: 'center' }
       );
       
-      // Footer line
       doc.setLineWidth(0.1);
       doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
       
-      // Footer text (wrapped if needed)
-      const footerY = pageHeight - 20;
-      doc.text(footerText, pageWidth / 2, footerY, { 
+      doc.text(footerText, pageWidth / 2, pageHeight - 20, { 
         align: 'center',
         maxWidth: pageWidth - (margin * 4)
       });
     };
     
-    // Manually add first page header
     addPageHeader();
     
     let yPos = margin + 30;
     
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Messdaten', margin, yPos);
-    yPos += 10;
-    
-    const tableData = measurements.map(m => [
-      m.description || '-',
-      m.type === 'length' ? 'Länge' : 'Höhe',
-      `${m.value.toFixed(2)} ${m.unit}`
-    ]);
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Beschreibung', 'Typ', 'Messwert']],
-      body: tableData,
-      margin: { left: margin, right: margin },
-      theme: 'grid',
-      styles: {
-        fontSize: 10,
-        cellPadding: 3
-      },
-      headStyles: {
-        fillColor: [66, 66, 66],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      }
-    });
-    
-    yPos = (doc as any).lastAutoTable.finalY + 15;
+    if (measurements.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Messdaten', margin, yPos);
+      yPos += 10;
+      
+      const tableData = measurements.map(m => [
+        m.description || '-',
+        m.type === 'length' ? 'Länge' : 'Höhe',
+        `${m.value.toFixed(2)} ${m.unit}`
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Beschreibung', 'Typ', 'Messwert']],
+        body: tableData,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3
+        },
+        headStyles: {
+          fillColor: [66, 66, 66],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        }
+      });
+      
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+    }
     
     if (screenshots && screenshots.length > 0) {
       doc.setFontSize(14);
@@ -341,7 +335,6 @@ export const exportMeasurementsToPDF = async (
             
               if (yPos + requiredSpace > pageHeight - 30) {
                 doc.addPage();
-                // Add header to the new page
                 addPageHeader();
                 yPos = margin + 30;
               }
@@ -349,12 +342,7 @@ export const exportMeasurementsToPDF = async (
               doc.setFontSize(11);
               doc.setFont('helvetica', 'bold');
               
-              // Use filename if available, or "Aufnahme X"
-              const title = screenshot.filename 
-                ? screenshot.filename 
-                : `Aufnahme ${i + 1}`;
-                
-              // Add description if available
+              const title = screenshot.filename || `Aufnahme ${i + 1}`;
               const displayTitle = screenshot.description 
                 ? `${title}: ${screenshot.description}` 
                 : title;
@@ -396,7 +384,6 @@ export const exportMeasurementsToPDF = async (
       }
     }
     
-    // Add page numbers and footers to all pages
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);

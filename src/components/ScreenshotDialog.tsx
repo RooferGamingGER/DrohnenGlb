@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileDown, X, Save } from 'lucide-react';
+import { Download, X, Save } from 'lucide-react';
 import { saveScreenshot } from '@/utils/screenshotUtils';
 
 interface ScreenshotDialogProps {
@@ -27,12 +27,13 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
   onClose,
   onSave 
 }) => {
-  const [filename, setFilename] = useState('screenshot');
   const [description, setDescription] = useState('');
+  const timestamp = new Date().getTime();
+  const filename = `Aufnahme_${timestamp}`;
 
   const handleDownload = () => {
     if (imageDataUrl) {
-      const finalFilename = `${filename || 'screenshot'}${description ? `_${description.replace(/\s+/g, '_')}` : ''}.png`;
+      const finalFilename = `${filename}${description ? `_${description.replace(/\s+/g, '_')}` : ''}.png`;
       saveScreenshot(imageDataUrl, finalFilename);
     }
   };
@@ -52,22 +53,11 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Aufnahme</DialogTitle>
           <DialogDescription>
-            Geben Sie einen Namen und eine Beschreibung für die Aufnahme ein.
+            Geben Sie eine Beschreibung für die Aufnahme ein.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="flex flex-col space-y-2">
-            <Label htmlFor="filename">Dateiname</Label>
-            <Input
-              id="filename"
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              placeholder="screenshot"
-              className="col-span-3"
-            />
-          </div>
-          
           <div className="flex flex-col space-y-2">
             <Label htmlFor="description">Beschreibung</Label>
             <Input
