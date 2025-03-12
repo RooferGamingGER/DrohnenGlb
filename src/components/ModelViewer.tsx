@@ -171,7 +171,7 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleExportMeasurements = async () => {
-    if (modelViewer.measurements.length > 0) {
+    if (modelViewer.measurements.length > 0 || savedScreenshots.length > 0) {
       try {
         const loadingToast = toast({
           title: "Export wird vorbereitet",
@@ -182,7 +182,7 @@ const ModelViewer: React.FC = () => {
           await exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
           toast({
             title: "Export erfolgreich",
-            description: "Die Messungen wurden als PDF-Datei exportiert.",
+            description: "Die Daten wurden als PDF-Datei exportiert.",
           });
         } catch (pdfError) {
           console.error('Error exporting to PDF:', pdfError);
@@ -190,21 +190,21 @@ const ModelViewer: React.FC = () => {
           exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
           toast({
             title: "Export erfolgreich",
-            description: "Die Messungen wurden als HTML-Datei exportiert (in Word öffnen).",
+            description: "Die Daten wurden als HTML-Datei exportiert (in Word öffnen).",
           });
         }
       } catch (error) {
         console.error('Error exporting measurements:', error);
         toast({
           title: "Fehler beim Export",
-          description: "Die Messungen konnten nicht exportiert werden.",
+          description: "Die Daten konnten nicht exportiert werden.",
           variant: "destructive"
         });
       }
     } else {
       toast({
-        title: "Keine Messungen",
-        description: "Es sind keine Messungen zum Exportieren vorhanden.",
+        title: "Keine Daten vorhanden",
+        description: "Es sind weder Messungen noch Screenshots zum Exportieren vorhanden.",
         variant: "destructive"
       });
     }

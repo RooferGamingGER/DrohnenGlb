@@ -92,7 +92,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left" className="bg-background/90 border border-gray-300">
-                <p>Messungen exportieren</p>
+                <p>Daten exportieren</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -112,7 +112,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* New Project button moved to the right with a gap */}
           {showUpload && (
             <Tooltip>
               <TooltipTrigger asChild>

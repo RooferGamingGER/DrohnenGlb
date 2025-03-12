@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -143,6 +144,11 @@ export const exportMeasurementsToWord = (
   measurements: Measurement[],
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
 ): void => {
+  // Exit early if no data to export
+  if (measurements.length === 0 && (!screenshots || screenshots.length === 0)) {
+    throw new Error("Keine Daten zum Exportieren vorhanden");
+  }
+
   let htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -162,7 +168,10 @@ export const exportMeasurementsToWord = (
     <body>
       <h1>Drohnenvermessung</h1>
       <p>Datum: ${new Date().toLocaleDateString('de-DE')}</p>
-      
+  `;
+  
+  if (measurements.length > 0) {
+    htmlContent += `
       <h2>Messdaten</h2>
       <table>
         <thead>
@@ -173,22 +182,23 @@ export const exportMeasurementsToWord = (
           </tr>
         </thead>
         <tbody>
-  `;
-  
-  measurements.forEach(m => {
-    htmlContent += `
-      <tr>
-        <td>${m.description || '-'}</td>
-        <td>${m.type === 'length' ? 'Länge' : 'Höhe'}</td>
-        <td>${m.value.toFixed(2)} ${m.unit}</td>
-      </tr>
     `;
-  });
-  
-  htmlContent += `
+    
+    measurements.forEach(m => {
+      htmlContent += `
+        <tr>
+          <td>${m.description || '-'}</td>
+          <td>${m.type === 'length' ? 'Länge' : 'Höhe'}</td>
+          <td>${m.value.toFixed(2)} ${m.unit}</td>
+        </tr>
+      `;
+    });
+    
+    htmlContent += `
         </tbody>
       </table>
-  `;
+    `;
+  }
   
   if (screenshots && screenshots.length > 0) {
     htmlContent += `<h2>Aufnahmen</h2>`;
