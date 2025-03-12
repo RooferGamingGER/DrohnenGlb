@@ -8,8 +8,8 @@ import { optimizeImageData } from './captureUtils';
  * Exports measurements and screenshots to PDF format
  */
 export const exportMeasurementsToPDF = async (
-  measurements: Measurement[] = [],
-  screenshots: Screenshot[] = []
+  measurements: Measurement=,
+  screenshots: Screenshot=
 ): Promise<void> => {
   try {
     if (!measurements.length && !screenshots.length) {
@@ -50,8 +50,13 @@ export const exportMeasurementsToPDF = async (
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const date = new Date().toLocaleDateString('de-DE');
-      doc.text(`Datum: ${date}`, pageWidth - margin - 100, margin + 10);
-      doc.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - margin - 100, margin + 20);
+      
+      // Calculate text width for proper alignment
+      const dateTextWidth = doc.getTextWidth(`Datum: ${date}`);
+      const pageTextWidth = doc.getTextWidth(`Seite ${pageNumber} von ${totalPages}`);
+      
+      doc.text(`Datum: ${date}`, pageWidth - margin - dateTextWidth, margin + 10);
+      doc.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - margin - pageTextWidth, margin + 20);
 
       doc.setLineWidth(0.3);
       doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
