@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface UseModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
+  onLoadComplete?: () => void;
 }
 
 interface ModelViewerState {
@@ -32,7 +33,7 @@ interface ModelViewerState {
   loadedModel: THREE.Group | null;
 }
 
-export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
+export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerProps) => {
   const { toast } = useToast();
   const [state, setState] = useState<ModelViewerState>({
     isLoading: false,
@@ -389,6 +390,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       
       setMeasurements(prev => prev.filter(m => m.id !== id));
     }
+  };
+
+  const setProgress = (value: number) => {
+    setState(prev => ({ ...prev, progress: value }));
   };
 
   useEffect(() => {
@@ -918,6 +923,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       });
 
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+      
+      if (onLoadComplete) {
+        onLoadComplete();
+      }
 
       return model;
     } catch (error) {
@@ -1054,6 +1063,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     measurementGroupRef,
     renderer: rendererRef.current,
     scene: sceneRef.current,
-    camera: cameraRef.current
+    camera: cameraRef.current,
+    setProgress
   };
 };
