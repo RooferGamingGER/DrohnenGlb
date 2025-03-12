@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -157,12 +156,18 @@ const ModelViewer: React.FC = () => {
     });
   };
 
-  const handleExportMeasurements = () => {
+  const handleExportMeasurements = async () => {
     if (modelViewer.measurements.length > 0) {
       try {
-        // Try PDF export first
+        // Show loading toast
+        const loadingToast = toast({
+          title: "Export wird vorbereitet",
+          description: "Bitte warten Sie, während der Export vorbereitet wird...",
+        });
+        
+        // Try PDF export first with async/await pattern
         try {
-          exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
+          await exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
           toast({
             title: "Export erfolgreich",
             description: "Die Messungen wurden als PDF-Datei exportiert.",

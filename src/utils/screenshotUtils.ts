@@ -50,6 +50,52 @@ const dataURLToBlob = (dataURL: string): Blob => {
   return new Blob([uInt8Array], { type: contentType });
 };
 
+// Helper function to optimize image data (reduce size while preserving quality)
+const optimizeImageData = async (dataUrl: string, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        
+        // Calculate the new dimensions while maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          const ratio = maxWidth / width;
+          width = maxWidth;
+          height = height * ratio;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        // Draw the image with new dimensions
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to data URL with reduced quality
+        const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(optimizedDataUrl);
+      };
+      
+      img.onerror = () => {
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.src = dataUrl;
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 // Exportiert Messungen als Excel-Datei
 export const exportMeasurementsToExcel = (measurements: Measurement[]): void => {
   // Daten vorbereiten
@@ -161,10 +207,10 @@ export const exportMeasurementsToWord = (
 };
 
 // Exportiert Messungen als PDF mit Screenshots (Korrigierte Version)
-export const exportMeasurementsToPDF = (
+export const exportMeasurementsToPDF = async (
   measurements: Measurement[], 
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
-): void => {
+): Promise<void> => {
   try {
     // Prüfen, ob Messungen vorhanden sind
     if (!measurements || measurements.length === 0) {
@@ -275,37 +321,65 @@ export const exportMeasurementsToPDF = (
       doc.text('Screenshots', margin, yPos);
       yPos += 10;
       
-      const imgWidth = contentWidth;
-      const imgHeight = 80;
-      
-      screenshots.forEach((screenshot, index) => {
+      // Process screenshots sequentially to avoid memory issues
+      for (let i = 0; i < screenshots.length; i++) {
+        const screenshot = screenshots[i];
+        
         // Prüfen, ob ein Seitenumbruch nötig ist
-        if (yPos + imgHeight + 30 > doc.internal.pageSize.getHeight()) {
+        if (yPos + 100 > doc.internal.pageSize.getHeight()) {
           doc.addPage();
           yPos = margin;
         }
         
         try {
+          // Optimize image before adding to PDF
+          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 700, 0.7);
+          
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
-          doc.text(`Screenshot ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
+          doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
           yPos += 5;
           
-          doc.addImage(
-            screenshot.imageDataUrl,
-            'PNG',
-            margin,
-            yPos,
-            imgWidth,
-            imgHeight
-          );
+          // Load image and calculate dimensions to maintain aspect ratio
+          const img = new Image();
+          img.src = optimizedDataUrl;
           
-          yPos += imgHeight + 15;
+          // Wait for image to load to get dimensions
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              // Calculate dimensions to maintain aspect ratio within available width
+              const imgWidth = contentWidth;
+              const aspectRatio = img.width / img.height;
+              const imgHeight = imgWidth / aspectRatio;
+              
+              try {
+                doc.addImage(
+                  optimizedDataUrl,
+                  'JPEG',
+                  margin,
+                  yPos,
+                  imgWidth,
+                  imgHeight
+                );
+                
+                yPos += imgHeight + 15;
+              } catch (addImageError) {
+                console.warn(`Screenshot ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
+              }
+              
+              resolve();
+            };
+            
+            img.onerror = () => {
+              console.warn(`Screenshot ${i + 1} konnte nicht geladen werden`);
+              resolve();
+            };
+          });
         } catch (imgError) {
-          console.warn(`Screenshot ${index + 1} konnte nicht hinzugefügt werden:`, imgError);
+          console.warn(`Screenshot ${i + 1} konnte nicht verarbeitet werden:`, imgError);
           yPos += 5;
         }
-      });
+      }
     }
     
     // PDF speichern
