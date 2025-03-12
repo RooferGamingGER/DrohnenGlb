@@ -11,27 +11,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileDown, X } from 'lucide-react';
+import { Download, FileDown, X, Save } from 'lucide-react';
 import { saveScreenshot } from '@/utils/screenshotUtils';
 
 interface ScreenshotDialogProps {
   imageDataUrl: string | null;
   open: boolean;
   onClose: () => void;
+  onSave?: (imageDataUrl: string, description: string) => void;
 }
 
 const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ 
   imageDataUrl, 
   open, 
-  onClose 
+  onClose,
+  onSave 
 }) => {
   const [filename, setFilename] = useState('screenshot');
   const [description, setDescription] = useState('');
 
-  const handleSave = () => {
+  const handleDownload = () => {
     if (imageDataUrl) {
       const finalFilename = `${filename || 'screenshot'}${description ? `_${description.replace(/\s+/g, '_')}` : ''}.png`;
       saveScreenshot(imageDataUrl, finalFilename);
+    }
+  };
+  
+  const handleSave = () => {
+    if (imageDataUrl && onSave) {
+      onSave(imageDataUrl, description);
       onClose();
     }
   };
@@ -42,7 +50,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Screenshot speichern</DialogTitle>
+          <DialogTitle>Screenshot</DialogTitle>
           <DialogDescription>
             Geben Sie einen Namen und eine Beschreibung für den Screenshot ein.
           </DialogDescription>
@@ -80,15 +88,25 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           </div>
         </div>
         
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="sm:justify-between flex flex-wrap gap-2">
           <Button variant="outline" onClick={onClose}>
             <X className="mr-2 h-4 w-4" />
             Abbrechen
           </Button>
-          <Button onClick={handleSave} className="ml-2">
-            <Download className="mr-2 h-4 w-4" />
-            Speichern
-          </Button>
+          
+          <div className="flex gap-2">
+            {onSave && (
+              <Button onClick={handleSave} variant="secondary">
+                <Save className="mr-2 h-4 w-4" />
+                Zur Messung hinzufügen
+              </Button>
+            )}
+            
+            <Button onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Herunterladen
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

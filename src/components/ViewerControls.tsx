@@ -8,6 +8,7 @@ import {
   Ruler, 
   Camera, 
   FileSpreadsheet,
+  FilePdf,
   Home,
   X
 } from 'lucide-react';
@@ -47,11 +48,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         <div className="flex md:flex-row flex-wrap gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onReset} className="h-8 w-8">
+              <Button variant="outline" size="icon" onClick={onReset} className="h-8 w-8 bg-background/90">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
               <p>Ansicht zurücksetzen</p>
             </TooltipContent>
           </Tooltip>
@@ -59,11 +60,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {showUpload && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8">
+                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8 bg-background/90">
                   <Home className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
                 <p>Neues Projekt</p>
               </TooltipContent>
             </Tooltip>
@@ -75,7 +76,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 variant={showMeasurementTools ? "default" : "outline"} 
                 size="icon" 
                 onClick={toggleMeasurementTools}
-                className="h-8 w-8"
+                className="h-8 w-8 bg-background/90"
               >
                 {showMeasurementTools ? (
                   <X className="h-4 w-4" />
@@ -84,7 +85,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
               <p>{showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}</p>
             </TooltipContent>
           </Tooltip>
@@ -92,11 +93,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {onScreenshot && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onScreenshot} className="h-8 w-8">
+                <Button variant="outline" size="icon" onClick={onScreenshot} className="h-8 w-8 bg-background/90">
                   <Camera className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
                 <p>Screenshot erstellen</p>
               </TooltipContent>
             </Tooltip>
@@ -105,11 +106,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {onExportMeasurements && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onExportMeasurements} className="h-8 w-8">
-                  <FileSpreadsheet className="h-4 w-4" />
+                <Button variant="outline" size="icon" onClick={onExportMeasurements} className="h-8 w-8 bg-background/90">
+                  <FilePdf className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
                 <p>Messungen exportieren</p>
               </TooltipContent>
             </Tooltip>
@@ -117,7 +118,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onFullscreen} className="h-8 w-8">
+              <Button variant="outline" size="icon" onClick={onFullscreen} className="h-8 w-8 bg-background/90">
                 {isFullscreen ? (
                   <Minimize className="h-4 w-4" />
                 ) : (
@@ -125,7 +126,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
               <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
             </TooltipContent>
           </Tooltip>

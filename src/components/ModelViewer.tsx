@@ -9,7 +9,7 @@ import MeasurementTools from '@/components/MeasurementTools';
 import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 import { useToast } from '@/hooks/use-toast';
-import { captureScreenshot, exportMeasurementsToExcel } from '@/utils/screenshotUtils';
+import { captureScreenshot, exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,6 +18,7 @@ const ModelViewer: React.FC = () => {
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
+  const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
   
   const modelViewer = useModelViewer({
     containerRef
@@ -104,6 +105,7 @@ const ModelViewer: React.FC = () => {
       modelViewer.resetView();
       modelViewer.clearMeasurements();
       setShowMeasurementTools(false);
+      setSavedScreenshots([]);
       
       // Clear the container to allow a new model to be uploaded
       if (containerRef.current) {
@@ -136,12 +138,25 @@ const ModelViewer: React.FC = () => {
     }
   };
 
+  const handleSaveScreenshot = (imageDataUrl: string, description: string) => {
+    const newScreenshot = {
+      id: Date.now().toString(),
+      imageDataUrl,
+      description
+    };
+    setSavedScreenshots(prev => [...prev, newScreenshot]);
+    toast({
+      title: "Screenshot gespeichert",
+      description: "Der Screenshot wurde zur Messung hinzugefügt.",
+    });
+  };
+
   const handleExportMeasurements = () => {
     if (modelViewer.measurements.length > 0) {
-      exportMeasurementsToExcel(modelViewer.measurements);
+      exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
       toast({
         title: "Export erfolgreich",
-        description: "Die Messungen wurden als Excel-Datei exportiert.",
+        description: "Die Messungen wurden als PDF-Datei exportiert.",
       });
     } else {
       toast({
@@ -171,16 +186,7 @@ const ModelViewer: React.FC = () => {
 
   return (
     <div className="relative h-full w-full flex flex-col">
-      <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
-        <div className="flex items-center">
-          <img 
-            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png" 
-            alt="Logo" 
-            className="h-8 w-auto mr-2"
-          />
-          <h1 className="text-lg font-semibold">DrohnenGLB</h1>
-        </div>
-        
+      <div className={`flex items-center justify-end w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
         <ViewerControls
           onReset={handleResetView}
           onFullscreen={handleFullscreen}
@@ -255,6 +261,7 @@ const ModelViewer: React.FC = () => {
             measurements={modelViewer.measurements}
             canUndo={modelViewer.canUndo}
             onClose={toggleMeasurementTools}
+            screenshots={savedScreenshots}
           />
         </div>
       )}
@@ -269,6 +276,7 @@ const ModelViewer: React.FC = () => {
         imageDataUrl={screenshotData}
         open={showScreenshotDialog}
         onClose={() => setShowScreenshotDialog(false)}
+        onSave={handleSaveScreenshot}
       />
     </div>
   );
