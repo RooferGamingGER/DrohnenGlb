@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -59,6 +60,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const draggedPointRef = useRef<THREE.Mesh | null>(null);
   const lastClickTimeRef = useRef<number>(0);
+  const lastTouchTimeRef = useRef<number>(0);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -85,6 +87,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     labels: THREE.Sprite[];
     meshes: THREE.Mesh[];
   } | null>(null);
+
+  const touchStartPositionRef = useRef<{x: number, y: number} | null>(null);
+  const isTouchMoveRef = useRef<boolean>(false);
 
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
@@ -204,9 +209,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               description: "Bewegen Sie den Punkt an die gewünschte Position und lassen Sie die Maustaste los.",
               duration: 3000,
             });
-          } else {
-            pointMesh.userData.lastClickTime = currentTime;
           }
+        } else {
+          pointMesh.userData.lastClickTime = currentTime;
         }
       }
     }
@@ -217,6 +222,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     const touch = event.touches[0];
     const rect = containerRef.current.getBoundingClientRect();
+    
+    // Store the initial touch position to detect movement
+    touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
+    isTouchMoveRef.current = false;
+    
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
@@ -233,13 +243,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         const currentTime = new Date().getTime();
         const pointMesh = intersects[0].object as THREE.Mesh;
         const pointId = pointMesh.name;
+        setHoveredPointId(pointId);
         
         if (pointMesh.userData) {
-          const lastClickTime = pointMesh.userData.lastClickTime || 0;
+          const lastTouchTime = lastTouchTimeRef.current || 0;
           
-          if (isDoubleClick(currentTime, lastClickTime)) {
+          // If it's a double-tap (within 500ms), activate dragging mode
+          if (isDoubleClick(currentTime, lastTouchTime) && !isDraggingPoint) {
             event.preventDefault();
-            setHoveredPointId(pointId);
+            
             setIsDraggingPoint(true);
             draggedPointRef.current = pointMesh;
             
@@ -262,43 +274,53 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
                 description: "Bewegen Sie den Punkt an die gewünschte Position und heben Sie den Finger.",
                 duration: 3000,
               });
-            } else {
-              pointMesh.userData.lastClickTime = currentTime;
             }
-          } else {
-            pointMesh.userData.lastClickTime = currentTime;
           }
+          
+          lastTouchTimeRef.current = currentTime;
         }
       }
     }
   };
 
   const handleTouchMove = (event: TouchEvent) => {
-    if (!containerRef.current || !isDraggingPoint || !draggedPointRef.current || 
-        !modelRef.current || !cameraRef.current || event.touches.length !== 1) return;
-    
-    event.preventDefault();
+    if (!containerRef.current || event.touches.length !== 1) return;
     
     const touch = event.touches[0];
-    const rect = containerRef.current.getBoundingClientRect();
-    mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-    mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
-    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
-    
-    const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
-    
-    if (intersects.length > 0) {
-      const newPosition = intersects[0].point.clone();
+    // Check if the touch has moved significantly from the start position
+    if (touchStartPositionRef.current) {
+      const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
       
-      draggedPointRef.current.position.copy(newPosition);
+      // If movement is more than 10px, consider it a drag operation
+      if (deltaX > 10 || deltaY > 10) {
+        isTouchMoveRef.current = true;
+      }
+    }
+    
+    // Handle point dragging
+    if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
+      event.preventDefault();
       
-      if (selectedMeasurementId !== null && selectedPointIndex !== null) {
-        updateMeasurementPointPosition(
-          selectedMeasurementId, 
-          selectedPointIndex, 
-          newPosition
-        );
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+      
+      if (intersects.length > 0) {
+        const newPosition = intersects[0].point.clone();
+        draggedPointRef.current.position.copy(newPosition);
+        
+        if (selectedMeasurementId !== null && selectedPointIndex !== null) {
+          updateMeasurementPointPosition(
+            selectedMeasurementId, 
+            selectedPointIndex, 
+            newPosition
+          );
+        }
       }
     }
   };
@@ -330,6 +352,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
+    // If we were dragging a point, finalize it
     if (isDraggingPoint) {
       setIsDraggingPoint(false);
       
@@ -351,7 +374,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
+    } 
+    // If it was a tap without much movement and we're in measurement mode, handle the tap
+    else if (!isTouchMoveRef.current && activeTool !== 'none') {
+      handleMeasurementTap(event);
     }
+    
+    // Reset the touch tracking variables
+    touchStartPositionRef.current = null;
+    isTouchMoveRef.current = false;
   };
 
   const updateMeasurementPointPosition = (
@@ -630,7 +661,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     containerRef.current.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
-    containerRef.current.addEventListener('touchstart', handleTouchStart);
+    containerRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
     
@@ -854,9 +885,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       return;
     }
     
-    event.preventDefault();
+    // Determine if this is a deliberate tap or a cancelled drag
+    if (isTouchMoveRef.current) {
+      return;
+    }
     
-    const touch = event.touches[0];
+    const touch = event.changedTouches[0]; // Use changedTouches for the touch that ended
     const rect = containerRef.current.getBoundingClientRect();
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
@@ -954,24 +988,24 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     if (activeTool !== 'none') {
       containerRef.current.addEventListener('click', handleMeasurementClick);
-      containerRef.current.addEventListener('touchstart', handleMeasurementTap);
       
       if (controlsRef.current) {
-        controlsRef.current.enableRotate = false;
+        // In measurement mode, still allow rotation but with some limitation
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.rotateSpeed = 0.4; // Reduce rotate speed in measurement mode
       }
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
-      containerRef.current.removeEventListener('touchstart', handleMeasurementTap);
       setTemporaryPoints([]);
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
+        controlsRef.current.rotateSpeed = 0.7; // Reset to normal rotate speed
       }
     }
     
     return () => {
       containerRef.current?.removeEventListener('click', handleMeasurementClick);
-      containerRef.current?.removeEventListener('touchstart', handleMeasurementTap);
     };
   }, [activeTool, temporaryPoints]);
 
@@ -1227,4 +1261,3 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress
   };
 };
-
