@@ -49,7 +49,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [temporaryPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
 
-  // Dragging state
   const [isDraggingPoint, setIsDraggingPoint] = useState(false);
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
@@ -88,33 +87,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   const handleMouseMove = (event: MouseEvent) => {
     if (!containerRef.current) return;
     
-    // Update mouse position
     const rect = containerRef.current.getBoundingClientRect();
     mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
-    // Handle dragging of measurement points
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
       
-      // Calculate mouse movement delta
       const deltaX = mouseRef.current.x - previousMouseRef.current.x;
       const deltaY = mouseRef.current.y - previousMouseRef.current.y;
       
-      // Update raycaster with current mouse position
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
-      // Find intersection with the model
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
       if (intersects.length > 0) {
-        // Move the point to the new intersection position
         const newPosition = intersects[0].point.clone();
         
-        // Update the dragged point's position
         draggedPointRef.current.position.copy(newPosition);
         
-        // Update the measurement in state
         if (selectedMeasurementId !== null && selectedPointIndex !== null) {
           updateMeasurementPointPosition(
             selectedMeasurementId, 
@@ -123,9 +114,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           );
         }
       }
-    }
-    // Normal hover detection for model or measurement points
-    else if (activeTool !== 'none' && modelRef.current && cameraRef.current) {
+    } else if (activeTool !== 'none' && modelRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
@@ -134,12 +123,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       } else {
         setHoverPoint(null);
       }
-    }
-    // Check if we're hovering over any measurement points
-    else if (activeTool === 'none' && measurementGroupRef.current && cameraRef.current) {
+    } else if (activeTool === 'none' && measurementGroupRef.current && cameraRef.current) {
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
-      // Filter for meshes only (points)
       const pointObjects = measurementGroupRef.current.children.filter(
         child => child instanceof THREE.Mesh && child.name.startsWith('point-')
       );
@@ -151,13 +137,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         setHoveredPointId(pointId);
         document.body.style.cursor = 'grab';
         
-        // Update the point material to show it's hoverable
         if (intersects[0].object instanceof THREE.Mesh) {
           intersects[0].object.material = createDraggablePointMaterial(true);
         }
       } else {
         if (hoveredPointId) {
-          // Reset any previously hovered point material
           const prevHoveredPoint = measurementGroupRef.current.children.find(
             child => child.name === hoveredPointId
           );
@@ -176,31 +160,25 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       document.body.style.cursor = 'auto';
     }
     
-    // Store the current mouse position for the next frame
     previousMouseRef.current.copy(mouseRef.current);
   };
 
   const handleMouseDown = (event: MouseEvent) => {
     if (!containerRef.current || !measurementGroupRef.current) return;
     
-    // Check if we're clicking on a measurement point
     if (hoveredPointId && !isDraggingPoint) {
       event.preventDefault();
       event.stopPropagation();
       
-      // Find the point mesh
       const pointMesh = measurementGroupRef.current.children.find(
         child => child.name === hoveredPointId
       ) as THREE.Mesh;
       
       if (pointMesh) {
-        // Start dragging
         setIsDraggingPoint(true);
         draggedPointRef.current = pointMesh;
         document.body.style.cursor = 'grabbing';
         
-        // Get measurement ID and point index from the point name
-        // Format: point-{measurementId}-{pointIndex}
         const nameParts = hoveredPointId.split('-');
         if (nameParts.length >= 3) {
           const measurementId = nameParts[1];
@@ -209,7 +187,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           setSelectedMeasurementId(measurementId);
           setSelectedPointIndex(pointIndex);
           
-          // Disable orbit controls while dragging
           if (controlsRef.current) {
             controlsRef.current.enabled = false;
           }
@@ -220,17 +197,14 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const handleMouseUp = (event: MouseEvent) => {
     if (isDraggingPoint) {
-      // Finish dragging
       setIsDraggingPoint(false);
       draggedPointRef.current = null;
       document.body.style.cursor = hoveredPointId ? 'grab' : 'auto';
       
-      // Re-enable orbit controls
       if (controlsRef.current) {
         controlsRef.current.enabled = true;
       }
       
-      // Clear selection
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
     }
@@ -244,7 +218,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     setMeasurements(prevMeasurements => {
       return prevMeasurements.map(measurement => {
         if (measurement.id === measurementId) {
-          // Create a copy of points with updated position
           const updatedPoints = [...measurement.points];
           
           if (updatedPoints[pointIndex]) {
@@ -255,23 +228,20 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
             };
           }
           
-          // Calculate new measurement value
           let newValue: number;
           if (measurement.type === 'length') {
             newValue = calculateDistance(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
-          } else { // height
+          } else {
             newValue = calculateHeight(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
           }
           
-          // Update label position and text
           if (measurement.labelObject) {
-            // Update label position (middle point)
             let labelPosition: THREE.Vector3;
             
             if (measurement.type === 'length') {
@@ -279,8 +249,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 updatedPoints[0].position,
                 updatedPoints[1].position
               ).multiplyScalar(0.5);
-              labelPosition.y += 0.1; // Slightly above the line
-            } else { // height
+              labelPosition.y += 0.1;
+            } else {
               const midHeight = (
                 updatedPoints[0].position.y + 
                 updatedPoints[1].position.y
@@ -291,29 +261,23 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 midHeight,
                 updatedPoints[0].position.z
               );
-              labelPosition.x += 0.1; // Slightly to the right
+              labelPosition.x += 0.1;
             }
             
-            // Update sprite position
             measurement.labelObject.position.copy(labelPosition);
             
-            // Update text
             const labelText = `${newValue.toFixed(2)} ${measurement.unit}`;
             
-            // We need to recreate the sprite with updated text
             const newSprite = createTextSprite(
               labelText, 
               labelPosition,
               measurement.type === 'length' ? 0x00ff00 : 0x0000ff
             );
             
-            // Copy user data and scale
             newSprite.userData = measurement.labelObject.userData;
             newSprite.scale.copy(measurement.labelObject.scale);
             
-            // Remove old sprite and add new one
             if (measurementGroupRef.current) {
-              // Dispose old sprite materials
               if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
                 measurement.labelObject.material.map?.dispose();
                 measurement.labelObject.material.dispose();
@@ -323,10 +287,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
               measurementGroupRef.current.add(newSprite);
             }
             
-            // Update line positions
             if (measurement.lineObjects && measurement.lineObjects.length > 0) {
               if (measurement.type === 'length') {
-                // For length, just update the start and end points
                 const lineGeometry = new THREE.BufferGeometry().setFromPoints([
                   updatedPoints[0].position,
                   updatedPoints[1].position
@@ -334,8 +296,7 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
                 
                 measurement.lineObjects[0].geometry.dispose();
                 measurement.lineObjects[0].geometry = lineGeometry;
-              } else { // height
-                // For height, we have a vertical line
+              } else {
                 const verticalPoint = new THREE.Vector3(
                   updatedPoints[0].position.x,
                   updatedPoints[1].position.y,
@@ -506,10 +467,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            // Keep sprites facing the camera
             child.quaternion.copy(cameraRef.current!.quaternion);
           
-            // Dynamically scale labels based on distance
             if (child.userData && child.userData.isLabel) {
               updateLabelScale(child, cameraRef.current);
             }
@@ -544,7 +503,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
     window.addEventListener('resize', handleResize);
     
-    // Add mouse event listeners for dragging points
     containerRef.current.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     
@@ -573,7 +531,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   }, []);
 
   const handleMeasurementClick = (event: MouseEvent) => {
-    // Skip if we're currently dragging a point
     if (isDraggingPoint) return;
     
     if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
@@ -615,8 +572,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     const point = new THREE.Mesh(pointGeometry, pointMaterial);
     point.position.copy(position);
     
-    // Set a unique name for the point so we can identify it later when dragging
-    // The name will be updated with the measurement ID after finalization
     point.name = `point-temp-${temporaryPoints.length}`;
     
     measurementGroupRef.current.add(point);
@@ -676,7 +631,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
           
-          // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -706,7 +660,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
           const labelText = `${value.toFixed(2)} ${unit}`;
           const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
           
-          // Make sure new sprites are correctly initialized for dynamic scaling
           labelSprite.userData = {
             ...labelSprite.userData,
             isLabel: true,
@@ -741,7 +694,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     
     const measurementId = createMeasurementId();
     
-    // Update point names with the new measurement ID for easy identification
     if (currentMeasurementRef.current && currentMeasurementRef.current.meshes) {
       currentMeasurementRef.current.meshes.forEach((mesh, index) => {
         mesh.name = `point-${measurementId}-${index}`;
@@ -1025,16 +977,13 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const initScene = () => {
     if (rendererRef.current && sceneRef.current && cameraRef.current) {
-      // Clear the scene
       while (sceneRef.current.children.length > 0) {
         sceneRef.current.remove(sceneRef.current.children[0]);
       }
       
-      // Reset the camera position
       cameraRef.current.position.set(0, 5, 10);
       cameraRef.current.lookAt(0, 0, 0);
       
-      // Add basic lighting back to the scene
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
       sceneRef.current.add(ambientLight);
       
@@ -1042,14 +991,11 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       directionalLight.position.set(1, 1, 1);
       sceneRef.current.add(directionalLight);
       
-      // Add grid helper back to the scene
       const gridHelper = new THREE.GridHelper(20, 20);
       sceneRef.current.add(gridHelper);
       
-      // Render the empty scene
       rendererRef.current.render(sceneRef.current, cameraRef.current);
       
-      // Reset internal state if needed
       setActiveTool('none');
       setState({
         isLoading: false,
@@ -1059,6 +1005,16 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
       });
       setMeasurements([]);
     }
+  };
+
+  const toggleMeasurementsVisibility = (visible: boolean) => {
+    if (!measurementGroupRef.current) return;
+    
+    measurementGroupRef.current.traverse((child) => {
+      if (child.name === 'hoverPoint') return;
+      
+      child.visible = visible;
+    });
   };
 
   return {
@@ -1077,6 +1033,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     updateMeasurement,
     canUndo,
     initScene,
+    toggleMeasurementsVisibility,
+    measurementGroupRef,
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current

@@ -1,9 +1,10 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileUp } from 'lucide-react';
+import { Upload, FileUp, EyeOff, Eye } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
@@ -21,6 +22,7 @@ const ModelViewer: React.FC = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
+  const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
   const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
@@ -203,6 +205,21 @@ const ModelViewer: React.FC = () => {
     setShowMeasurementTools(prev => !prev);
   }, []);
 
+  const toggleMeasurementsVisibility = useCallback(() => {
+    setMeasurementsVisible(prev => !prev);
+    
+    if (modelViewer.measurementGroupRef?.current) {
+      modelViewer.toggleMeasurementsVisibility(!measurementsVisible);
+      
+      toast({
+        title: measurementsVisible ? "Messungen ausgeblendet" : "Messungen eingeblendet",
+        description: measurementsVisible ? 
+          "Messungen wurden für Screenshots ausgeblendet." : 
+          "Messungen wurden wieder eingeblendet."
+      });
+    }
+  }, [measurementsVisible, modelViewer]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && modelViewer.activeTool !== 'none') {
@@ -279,10 +296,31 @@ const ModelViewer: React.FC = () => {
             </div>
           </div>
         )}
+        
+        {/* Measurement visibility toggle button */}
+        {modelViewer.loadedModel && modelViewer.measurements.length > 0 && (
+          <div className="absolute top-4 left-4 z-10">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="bg-background/70 backdrop-blur-sm"
+              onClick={toggleMeasurementsVisibility}
+            >
+              {measurementsVisible ? (
+                <><EyeOff size={16} className="mr-1" /> Messungen ausblenden</>
+              ) : (
+                <><Eye size={16} className="mr-1" /> Messungen einblenden</>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
       
-      {showMeasurementTools && (
-        <div className={`${isMobile ? 'fixed top-[60px] left-0 right-0 px-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}>
+      {/* Always render the MeasurementTools if they are enabled, but positioning is conditional */}
+      {modelViewer.loadedModel && (
+        <div 
+          className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''} ${showMeasurementTools ? 'block' : 'hidden'}`}
+        >
           <MeasurementTools
             activeTool={modelViewer.activeTool}
             onToolChange={handleToolChange}
