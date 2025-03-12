@@ -58,29 +58,37 @@ export const exportMeasurementsToPDF = async (
     };
     
     const addPageFooter = (pageNumber: number) => {
-      const totalPages = doc.getNumberOfPages();
-      
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(128, 128, 128);
-      
-      const footerText = 'Kostenloser Service von Drohnenvermessung by RooferGaming® - Weitere Informationen erhalten sie unter drohnenvermessung-roofergaming.de';
-      
-      doc.text(
+    const totalPages = doc.getNumberOfPages();
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(128, 128, 128);
+
+    const footerLine1 = 'Weitere Informationen: drohnenvermessung-roofergaming.de';
+    const footerLine2 = 'Kostenloser Service von Drohnenvermessung by RooferGaming®';
+
+    doc.text(
         `Seite ${pageNumber} von ${totalPages}`,
         pageWidth / 2,
         pageHeight - 10,
         { align: 'center' }
-      );
-      
-      doc.setLineWidth(0.1);
-      doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
-      
-      doc.text(footerText, pageWidth / 2, pageHeight - 20, { 
+    );
+
+    doc.setLineWidth(0.1);
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+
+    // Erste Zeile
+    doc.text(footerLine1, pageWidth / 2, pageHeight - 20, {
         align: 'center',
         maxWidth: pageWidth - (margin * 4)
-      });
-    };
+    });
+
+    // Zweite Zeile
+    doc.text(footerLine2, pageWidth / 2, pageHeight - 25, {
+        align: 'center',
+        maxWidth: pageWidth - (margin * 4)
+    });
+};
     
     addPageHeader();
     
