@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   auth,
@@ -192,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log(`Registrierung abgeschlossen in ${performance.now() - registerStartTime}ms`);
       return !!firebaseUser;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registrierungsfehler in AuthContext:", error);
       throw error;
     }

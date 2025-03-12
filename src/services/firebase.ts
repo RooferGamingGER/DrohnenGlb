@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -247,7 +246,7 @@ export const createUserInFirebase = async (
       email,
       isAdmin,
       uid: userCredential.user.uid,
-      status: 'pending', // Neuer Benutzer benötigt Freischaltung
+      status: 'pending',
       createdAt: new Date().toISOString()
     });
 
