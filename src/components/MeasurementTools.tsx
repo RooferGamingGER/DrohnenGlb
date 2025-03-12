@@ -46,15 +46,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     if (savedPosition) {
       try {
         const parsed = JSON.parse(savedPosition);
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const containerWidth = 240;
-        const containerHeight = 300;
-
-        const x = Math.max(0, Math.min(parsed.x, viewportWidth - containerWidth));
-        const y = Math.max(0, Math.min(parsed.y, viewportHeight - containerHeight));
-        
-        setPosition({ x, y });
+        setPosition(constrainPosition(parsed.x, parsed.y));
       } catch (e) {
         console.error('Error parsing saved position:', e);
         setPosition({ x: 20, y: 80 });
@@ -62,20 +54,25 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   }, []);
 
+  const constrainPosition = (x: number, y: number) => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const containerWidth = containerRef.current?.offsetWidth || 240;
+    const containerHeight = containerRef.current?.offsetHeight || 300;
+    
+    // Ensure at least 40px of the container remains visible
+    const minVisibleX = 40;
+    const minVisibleY = 40;
+    
+    const constrainedX = Math.max(minVisibleX - containerWidth, Math.min(x, viewportWidth - minVisibleX));
+    const constrainedY = Math.max(minVisibleY - containerHeight, Math.min(y, viewportHeight - minVisibleY));
+    
+    return { x: constrainedX, y: constrainedY };
+  };
+
   useEffect(() => {
     const handleResize = () => {
-      if (containerRef.current) {
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const containerWidth = containerRef.current.offsetWidth;
-        const containerHeight = containerRef.current.offsetHeight;
-
-        setPosition(prevPosition => {
-          const x = Math.max(0, Math.min(prevPosition.x, viewportWidth - containerWidth));
-          const y = Math.max(0, Math.min(prevPosition.y, viewportHeight - containerHeight));
-          return { x, y };
-        });
-      }
+      setPosition(prev => constrainPosition(prev.x, prev.y));
     };
 
     window.addEventListener('resize', handleResize);
@@ -120,16 +117,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       const newX = moveClientX - offsetX;
       const newY = moveClientY - offsetY;
       
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      const containerWidth = rect.width;
-      const containerHeight = rect.height;
-      
-      const constrainedX = Math.max(0, Math.min(newX, viewportWidth - containerWidth));
-      const constrainedY = Math.max(0, Math.min(newY, viewportHeight - containerHeight));
-      
-      setPosition({ x: constrainedX, y: constrainedY });
+      setPosition(constrainPosition(newX, newY));
     };
     
     const handleEnd = () => {

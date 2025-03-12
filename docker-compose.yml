@@ -9,11 +9,15 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - api
     restart: unless-stopped
     networks:
       - frontend-network
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/conf.d:/etc/nginx/conf.d
 
   # Backend API
   api:
@@ -33,6 +37,8 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=dronenglb
       - JWT_SECRET=replace_this_with_secure_random_string
+      - ADMIN_EMAIL=info@drohnenvermessung-roofergaming.de
+      - ADMIN_PASSWORD=change_this_secure_password
     restart: unless-stopped
     volumes:
       - ./backend/uploads:/app/uploads
@@ -54,6 +60,16 @@ services:
     restart: unless-stopped
     networks:
       - backend-network
+
+  # Certbot service for SSL certificates
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email info@drohnenvermessung-roofergaming.de --agree-tos --no-eff-email -d example.com -d www.example.com
+    depends_on:
+      - app
 
 networks:
   frontend-network:

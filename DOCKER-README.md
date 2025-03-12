@@ -9,6 +9,7 @@ Diese Anleitung hilft dir, die DrohnenGLB-Anwendung mit Docker auf einem Ubuntu-
 - Docker installiert
 - Docker Compose installiert
 - Git installiert
+- Domain, die auf den Server verweist (für SSL)
 
 ## Installation auf Ubuntu Server
 
@@ -33,44 +34,73 @@ sudo usermod -aG docker $USER
 ### 3. Docker Compose installieren (falls noch nicht installiert)
 
 ```bash
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 ```
 
-### 4. Anwendung klonen und starten
+### 4. Anwendung klonen und vorbereiten
 
 ```bash
 git clone <repository-url> dronenglb
 cd dronenglb
 
-# Umgebungsvariablen anpassen (falls nötig)
-# Sichere JWT_SECRET generieren und ersetzen
-nano .env
-
-# Docker Container starten
-sudo docker-compose up -d
+# Verzeichnisstruktur für SSL erstellen
+mkdir -p nginx/ssl
+mkdir -p certbot/conf
+mkdir -p certbot/www
 ```
 
-### 5. Ersteinrichtung
+### 5. Umgebungsvariablen anpassen
 
-Nach dem ersten Start muss ein Administratorkonto erstellt werden. Führe dazu folgenden Befehl aus:
+Bearbeiten Sie die docker-compose.yml Datei:
 
 ```bash
-sudo docker-compose exec api node src/scripts/create-admin.js
+nano docker-compose.yml
 ```
 
-Folge den Anweisungen, um den Admin-Benutzer zu erstellen.
+Ändern Sie die folgenden Werte:
+- `JWT_SECRET`: Ersetzen Sie durch einen sicheren zufälligen String
+- `ADMIN_PASSWORD`: Geben Sie ein sicheres Passwort für den Administrator an
+- Bei certbot: Ersetzen Sie example.com mit Ihrer Domain
 
-## Anwendung aktualisieren
-
-Um die Anwendung zu aktualisieren, führe folgende Befehle aus:
+### 6. SSL-Zertifikate einrichten
 
 ```bash
-cd dronenglb
-git pull
+# Nur Web-Server starten
+sudo docker-compose up -d app
+
+# Certbot ausführen (Domain anpassen!)
+sudo docker-compose run --rm certbot certonly --webroot --webroot-path=/var/www/certbot -d example.com -d www.example.com
+```
+
+### 7. HTTPS aktivieren
+
+Bearbeiten Sie die nginx.conf und entfernen Sie die Kommentarzeichen vom HTTPS-Server-Block:
+
+```bash
+nano nginx.conf
+```
+
+### 8. Docker Container starten
+
+```bash
 sudo docker-compose down
-sudo docker-compose build
 sudo docker-compose up -d
+```
+
+Der Admin-Benutzer info@drohnenvermessung-roofergaming.de wird automatisch erstellt, wenn die Container starten.
+
+## Zertifikatserneuerung
+
+Let's Encrypt-Zertifikate laufen nach 90 Tagen ab. Richten Sie einen Cron-Job ein:
+
+```bash
+sudo crontab -e
+```
+
+Fügen Sie hinzu:
+```
+0 3 * * * cd /pfad/zu/dronenglb && docker-compose run --rm certbot renew --quiet && docker-compose exec app nginx -s reload
 ```
 
 ## Datensicherung
@@ -85,6 +115,12 @@ sudo docker-compose exec db pg_dump -U postgres dronenglb > backup_$(date +%Y%m%
 
 ```bash
 sudo tar -czvf uploads_backup_$(date +%Y%m%d).tar.gz backend/uploads/
+```
+
+### Zertifikate sichern
+
+```bash
+sudo tar -czvf certbot_backup_$(date +%Y%m%d).tar.gz certbot/
 ```
 
 ## Fehlersuche
@@ -116,15 +152,9 @@ sudo docker system prune -a
 
 ## Sicherheitshinweise
 
-1. Ändere das JWT_SECRET in der .env-Datei auf einen sicheren Wert
-2. Setze sichere Passwörter für die Datenbank
-3. Konfiguriere eine Firewall und erlaube nur die benötigten Ports
-4. Setze HTTPS mit Let's Encrypt auf
+1. Ändern Sie das JWT_SECRET in der docker-compose.yml zu einem sicheren Wert
+2. Setzen Sie sichere Passwörter für die Datenbank und den Admin-Benutzer
+3. Konfigurieren Sie eine Firewall und erlaube nur die benötigten Ports (80, 443, SSH)
+4. Aktivieren Sie HTTPS mit Let's Encrypt wie beschrieben
 
-## Systemanforderungen
-
-- Mindestens 2 GB RAM
-- 20 GB freier Speicherplatz
-- 2 CPU-Kerne empfohlen
-
-Bei Fragen oder Problemen, bitte ein Issue im GitHub-Repository erstellen.
+Für eine umfassendere Anleitung, siehe die INSTALLATION.md Datei.
