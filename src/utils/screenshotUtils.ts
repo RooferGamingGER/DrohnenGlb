@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -143,7 +144,7 @@ export const exportMeasurementsToWord = (
       <h1>Drohnenvermessung</h1>
       <p>Datum: ${new Date().toLocaleDateString('de-DE')}</p>
       
-      <h2>Messungen</h2>
+      <h2>Messdaten</h2>
       <table>
         <thead>
           <tr>
@@ -171,13 +172,13 @@ export const exportMeasurementsToWord = (
   `;
   
   if (screenshots && screenshots.length > 0) {
-    htmlContent += `<h2>Screenshots</h2>`;
+    htmlContent += `<h2>Aufnahmen</h2>`;
     
     screenshots.forEach((screenshot, index) => {
       htmlContent += `
         <div class="screenshot">
-          <h3>Screenshot ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}</h3>
-          <img src="${screenshot.imageDataUrl}" alt="Screenshot ${index + 1}">
+          <h3>Aufnahme ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}</h3>
+          <img src="${screenshot.imageDataUrl}" alt="Aufnahme ${index + 1}">
         </div>
       `;
     });
@@ -317,9 +318,9 @@ export const exportMeasurementsToPDF = async (
         try {
           const optimizedDataUrl = await optimizeImageData(
             screenshot.imageDataUrl, 
-            800, 
-            0.8, 
-            250
+            600, // Reduced from 800 to ensure it fits better on mobile
+            0.7, // Slightly reduced quality for better compression
+            200  // Reduced DPI for better fit
           );
           
           const img = new Image();
@@ -329,11 +330,13 @@ export const exportMeasurementsToPDF = async (
             img.onload = () => {
               const titleHeight = 8;
               const aspectRatio = img.width / img.height;
-              const imgWidth = contentWidth * 0.95;
+              // Calculate a safer image width with more margin space
+              const imgWidth = contentWidth * 0.85; // Reduced from 0.95 to 0.85
               const imgHeight = imgWidth / aspectRatio;
-              const requiredSpace = titleHeight + imgHeight + 15;
+              const requiredSpace = titleHeight + imgHeight + 25; // Added more buffer space
             
-              if (yPos + requiredSpace > pageHeight - 30) {
+              // Make sure we always start a new page if less than 40px is available
+              if (yPos + requiredSpace > pageHeight - 40) {
                 doc.addPage();
                 addPageHeader();
                 yPos = margin + 30;
@@ -354,7 +357,7 @@ export const exportMeasurementsToPDF = async (
                 doc.addImage(
                   optimizedDataUrl,
                   'JPEG',
-                  margin + contentWidth * 0.025,
+                  margin + ((contentWidth - imgWidth) / 2), // Center the image
                   yPos,
                   imgWidth,
                   imgHeight,
@@ -363,7 +366,7 @@ export const exportMeasurementsToPDF = async (
                   0
                 );
                 
-                yPos += imgHeight + 15;
+                yPos += imgHeight + 25; // Added more space after images
               } catch (addImageError) {
                 console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
                 yPos += 5;
