@@ -16,31 +16,35 @@ const Header = () => {
   return (
     <header className="border-b bg-background p-4">
       <div className="container mx-auto flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold">
-          Drohnen App
+        <Link to="/" className="flex items-center">
+          <img 
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png" 
+            alt="Drohnenvermessung by RooferGaming" 
+            className="h-10 mr-2"
+          />
+          <span className="text-xl font-bold hidden md:inline">Drohnen App</span>
         </Link>
         
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              <span className="text-sm">
+              <span className="text-sm hidden sm:inline">
                 Angemeldet als: <b>{user?.email}</b>
               </span>
               {user?.isAdmin && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin">Admin Dashboard</Link>
+                <Button variant="outline" asChild size="sm" className="h-8">
+                  <Link to="/admin">Admin</Link>
                 </Button>
               )}
-              <Button variant="outline" onClick={handleLogout}>
+              <Button variant="outline" onClick={handleLogout} size="sm" className="h-8">
                 Abmelden
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild size="sm" className="h-8">
                 <Link to="/login">Anmelden</Link>
               </Button>
-              {/* Register button removed */}
             </>
           )}
         </div>

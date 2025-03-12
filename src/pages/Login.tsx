@@ -6,7 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { useLoginForm } from '@/hooks/useLoginForm';
-import PerformanceMetrics from '@/components/PerformanceMetrics';
 import { Loader2 } from 'lucide-react';
 
 const Login = () => {
@@ -19,7 +18,6 @@ const Login = () => {
     setRememberMe,
     isLoading,
     progress,
-    performanceMetrics,
     handleSubmit
   } = useLoginForm();
 
@@ -38,6 +36,11 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md space-y-6 p-8">
         <div className="text-center">
+          <img 
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png" 
+            alt="Drohnenvermessung by RooferGaming" 
+            className="h-32 mx-auto mb-4"
+          />
           <h1 className="text-3xl font-bold">Anmelden</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Melden Sie sich mit Ihrem Konto an
@@ -114,10 +117,6 @@ const Login = () => {
             ) : "Anmelden"}
           </Button>
         </form>
-
-        {Object.keys(performanceMetrics).length > 0 && (
-          <PerformanceMetrics metrics={performanceMetrics} />
-        )}
       </Card>
     </div>
   );

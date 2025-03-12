@@ -1,147 +1,137 @@
 
-import { useState } from 'react';
-import { Slider } from '@/components/ui/slider';
-import { RotateCcw, Maximize, Minus, Plus, RotateCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from 'react';
+import { Button } from "@/components/ui/button";
+import { 
+  RefreshCw, 
+  Maximize, 
+  Minimize, 
+  Ruler, 
+  Camera, 
+  FileSpreadsheet,
+  Home,
+  X
+} from 'lucide-react';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Link } from 'react-router-dom';
 
 interface ViewerControlsProps {
-  lightRotation: { x: number; y: number };
-  setLightRotation: (rotation: { x: number; y: number }) => void;
-  lightIntensity: number;
-  setLightIntensity: (intensity: number) => void;
-  resetView: () => void;
-  resetLight: () => void;
+  onReset: () => void;
+  onFullscreen: () => void;
+  onScreenshot?: () => void;
+  onExportMeasurements?: () => void;
+  onNewProject?: () => void;
+  isFullscreen?: boolean;
+  showMeasurementTools: boolean;
+  toggleMeasurementTools: () => void;
+  showUpload?: boolean;
 }
 
 const ViewerControls: React.FC<ViewerControlsProps> = ({
-  lightRotation,
-  setLightRotation,
-  lightIntensity, 
-  setLightIntensity,
-  resetView,
-  resetLight
+  onReset,
+  onFullscreen,
+  onScreenshot,
+  onExportMeasurements,
+  onNewProject,
+  isFullscreen,
+  showMeasurementTools,
+  toggleMeasurementTools,
+  showUpload
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const handleLightXChange = (value: number[]) => {
-    setLightRotation({ ...lightRotation, x: value[0] });
-  };
-
-  const handleLightYChange = (value: number[]) => {
-    setLightRotation({ ...lightRotation, y: value[0] });
-  };
-
-  const handleLightIntensityChange = (value: number[]) => {
-    setLightIntensity(value[0]);
-  };
-
   return (
-    <div 
-      className={cn(
-        "glass fixed right-4 p-4 rounded-lg shadow-sm transition-all duration-300 z-10",
-        isExpanded ? "w-[300px]" : "w-auto"
-      )}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className={cn("font-medium text-sm", !isExpanded && "hidden")}>
-          Modellsteuerung
-        </h3>
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-2 hover:bg-secondary rounded-md transition-colors"
-          aria-label={isExpanded ? "Minimieren" : "Maximieren"}
-        >
-          <Maximize className="w-4 h-4" />
-        </button>
-      </div>
-
-      {isExpanded && (
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Lichtposition X</span>
-              <button 
-                onClick={() => setLightRotation({...lightRotation, x: 0})}
-                className="text-xs p-1 hover:bg-secondary rounded transition-colors"
+    <div className="flex items-center gap-2">
+      <TooltipProvider>
+        <div className="flex md:flex-row flex-wrap gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={onReset} className="h-8 w-8">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Ansicht zurücksetzen</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          {showUpload && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8">
+                  <Home className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Neues Projekt</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant={showMeasurementTools ? "default" : "outline"} 
+                size="icon" 
+                onClick={toggleMeasurementTools}
+                className="h-8 w-8"
               >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Minus className="w-3 h-3 text-muted-foreground" />
-              <Slider
-                value={[lightRotation.x]}
-                min={-180}
-                max={180}
-                step={1}
-                onValueChange={handleLightXChange}
-              />
-              <Plus className="w-3 h-3 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Lichtposition Y</span>
-              <button 
-                onClick={() => setLightRotation({...lightRotation, y: 0})}
-                className="text-xs p-1 hover:bg-secondary rounded transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <RotateCw className="w-3 h-3 text-muted-foreground rotate-90" />
-              <Slider
-                value={[lightRotation.y]}
-                min={-180}
-                max={180}
-                step={1}
-                onValueChange={handleLightYChange}
-              />
-              <RotateCw className="w-3 h-3 text-muted-foreground -rotate-90" />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Lichtintensität</span>
-              <button 
-                onClick={() => setLightIntensity(1)}
-                className="text-xs p-1 hover:bg-secondary rounded transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Minus className="w-3 h-3 text-muted-foreground" />
-              <Slider
-                value={[lightIntensity]}
-                min={0}
-                max={2}
-                step={0.05}
-                onValueChange={handleLightIntensityChange}
-              />
-              <Plus className="w-3 h-3 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div className="flex justify-between gap-2 pt-2">
-            <button
-              onClick={resetView}
-              className="flex-1 p-2 text-sm border border-border rounded hover:bg-secondary transition-colors"
-            >
-              Ansicht zurücksetzen
-            </button>
-            <button
-              onClick={resetLight}
-              className="flex-1 p-2 text-sm border border-border rounded hover:bg-secondary transition-colors"
-            >
-              Licht zurücksetzen
-            </button>
-          </div>
+                {showMeasurementTools ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <Ruler className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          {onScreenshot && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={onScreenshot} className="h-8 w-8">
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Screenshot erstellen</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          {onExportMeasurements && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={onExportMeasurements} className="h-8 w-8">
+                  <FileSpreadsheet className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Messungen exportieren</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={onFullscreen} className="h-8 w-8">
+                {isFullscreen ? (
+                  <Minimize className="h-4 w-4" />
+                ) : (
+                  <Maximize className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
-      )}
+      </TooltipProvider>
     </div>
   );
 };
