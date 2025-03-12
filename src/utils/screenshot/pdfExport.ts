@@ -64,8 +64,8 @@ export const exportMeasurementsToPDF = async (
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(128, 128, 128);
 
-    const footerLine1 = 'Kostenloser Service von Drohnenvermessung by RooferGaming®';
-    const footerLine2 = 'Weitere Informationen: drohnenvermessung-roofergaming.de';
+    const footerLine1 = 'Weitere Informationen: drohnenvermessung-roofergaming.de';
+    const footerLine2 = 'Kostenloser Service von Drohnenvermessung by RooferGaming®';
 
     doc.text(
         `Seite ${pageNumber} von ${totalPages}`,
