@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -16,6 +15,7 @@ export interface Measurement {
   unit: string;
   description?: string;
   isActive?: boolean;
+  visible?: boolean;
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
@@ -137,4 +137,3 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
     transparent: true
   });
 };
-

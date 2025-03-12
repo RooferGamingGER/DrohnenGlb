@@ -8,20 +8,15 @@ import {
   Auth,
   UserCredential,
   setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  inMemoryPersistence
+  browserLocalPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
   collection, 
   doc, 
   setDoc, 
-  getDoc,
   getDocs,
   query,
-  deleteDoc,
-  updateDoc,
   enableIndexedDbPersistence,
   Firestore
 } from "firebase/firestore";
@@ -183,7 +178,6 @@ export const getAllUsers = async () => {
   }
 };
 
-// Rest der Funktionen
 export const logoutFromFirebase = async (): Promise<boolean> => {
   try {
     await signOut(auth);
@@ -224,31 +218,5 @@ export const createUserInFirebase = async (
       throw new Error('Das Passwort ist zu schwach.');
     }
     throw error;
-  }
-};
-
-export const deleteUserFromFirebase = async (userId: string): Promise<boolean> => {
-  try {
-    await deleteDoc(doc(db, "users", userId));
-    return true;
-  } catch (error) {
-    console.error("Fehler beim Löschen des Benutzers:", error);
-    return false;
-  }
-};
-
-export const updateUserInFirebase = async (
-  userId: string,
-  updates: { email?: string; password?: string }
-): Promise<boolean> => {
-  try {
-    const userRef = doc(db, "users", userId);
-    if (updates.email) {
-      await updateDoc(userRef, { email: updates.email });
-    }
-    return true;
-  } catch (error) {
-    console.error("Fehler beim Aktualisieren des Benutzers:", error);
-    return false;
   }
 };
