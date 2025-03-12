@@ -1,12 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Tooltip,
   TooltipContent,
@@ -52,21 +51,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
-  const isPortrait = isMobile && window.innerHeight > window.innerWidth;
-
-  useEffect(() => {
-    const handleOrientationChange = () => {
-      const newIsPortrait = window.innerHeight > window.innerWidth;
-      if (newIsPortrait && activeTool !== 'none') {
-        onToolChange('none');
-      }
-    };
-
-    window.addEventListener('resize', handleOrientationChange);
-    return () => {
-      window.removeEventListener('resize', handleOrientationChange);
-    };
-  }, [activeTool, onToolChange]);
 
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
@@ -139,14 +123,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
     >
-      {isPortrait && (
-        <Alert variant="destructive" className="mb-2">
-          <AlertDescription className="text-xs">
-            Messwerkzeuge sind im Hochformat deaktiviert. Bitte drehen Sie Ihr Gerät.
-          </AlertDescription>
-        </Alert>
-      )}
-      
       <div className="flex flex-col gap-2">
         <TooltipProvider delayDuration={300}>
           <div className={cn(
@@ -189,13 +165,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         : "hover:bg-secondary"
                     )}
                     aria-label="Länge messen"
-                    disabled={isPortrait}
                   >
                     <Ruler size={18} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>{isPortrait ? "Im Hochformat deaktiviert" : "Länge messen"}</p>
+                  <p>Länge messen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -210,13 +185,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         : "hover:bg-secondary"
                     )}
                     aria-label="Höhe messen"
-                    disabled={isPortrait}
                   >
                     <ArrowUpDown size={18} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>{isPortrait ? "Im Hochformat deaktiviert" : "Höhe messen"}</p>
+                  <p>Höhe messen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -227,7 +201,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       onClick={onUndoLastPoint}
                       className="p-2 rounded-md hover:bg-secondary transition-colors"
                       aria-label="Letzten Punkt rückgängig machen"
-                      disabled={isPortrait}
                     >
                       <Undo size={18} />
                     </button>
@@ -293,23 +266,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {isPortrait && isMobile && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="p-2 rounded-md hover:bg-secondary transition-colors"
-                      aria-label="Gerät drehen"
-                    >
-                      <RotateCcw size={18} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Bitte Gerät ins Querformat drehen</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              
-              {onClose && !isMobile && (
+              {onClose && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
