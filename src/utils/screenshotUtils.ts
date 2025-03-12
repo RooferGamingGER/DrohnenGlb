@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -18,10 +17,6 @@ export const captureScreenshot = (
   camera: THREE.Camera,
   isMobile: boolean = false
 ): string | null => {
-  if (isMobile && window.innerHeight > window.innerWidth) {
-    return null; // Return null if in portrait mode on mobile
-  }
-  
   renderer.render(scene, camera);
   const dataUrl = renderer.domElement.toDataURL('image/png');
   return dataUrl;

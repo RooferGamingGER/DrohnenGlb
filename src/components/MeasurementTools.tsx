@@ -266,7 +266,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {onClose && !isMobile && (
+              {onClose && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button

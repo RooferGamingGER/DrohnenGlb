@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -19,7 +20,8 @@ const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const mobileInfo = useIsMobile();
+  const isMobile = mobileInfo.isMobile;
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -125,17 +127,20 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleTakeScreenshot = () => {
+    // Check if in portrait mode on mobile
+    const isPortrait = window.innerHeight > window.innerWidth;
+    
+    if (isMobile && isPortrait) {
+      toast({
+        title: "Portrait-Modus erkannt",
+        description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+    
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
-      if (isMobile && window.innerHeight > window.innerWidth) {
-        toast({
-          title: "Hinweis",
-          description: "Screenshots sind nur im Querformat möglich. Bitte drehen Sie ihr Gerät.",
-          variant: "destructive",
-          duration: 3000,
-        });
-        return;
-      }
-      
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,

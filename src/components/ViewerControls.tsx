@@ -16,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ViewerControlsProps {
   onReset: () => void;
@@ -40,6 +41,9 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   toggleMeasurementTools,
   showUpload
 }) => {
+  const mobileInfo = useIsMobile();
+  const isMobile = mobileInfo.isMobile;
+
   return (
     <div className="flex items-center gap-2">
       <TooltipProvider delayDuration={300}>
@@ -74,7 +78,12 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {onScreenshot && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onScreenshot} className="h-8 w-8 bg-background/90">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={onScreenshot} 
+                  className="h-8 w-8 bg-background/90"
+                >
                   <Camera className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
