@@ -104,7 +104,6 @@ export const exportMeasurementsToPDF = async (
                 startY: tableStartY,
                 head: [['Beschreibung', 'Typ', 'Messwert']],
                 body: tableData,
-                margin: { left: margin, right: margin },
                 theme: 'grid',
                 styles: { fontSize: 10, cellPadding: 3 },
                 headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -114,10 +113,12 @@ export const exportMeasurementsToPDF = async (
                     addPageHeader();
                     addPageFooter();
                 },
-                // Ensure there's enough space for header and footer
+                // Configure all margin properties in one place
                 margin: {
                     top: headerHeight,
-                    bottom: footerHeight
+                    bottom: footerHeight,
+                    left: margin,
+                    right: margin
                 }
             });
 
