@@ -126,12 +126,24 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleTakeScreenshot = () => {
+    const mobileInfo = useIsMobile();
+    
+    if (mobileInfo.isMobile && mobileInfo.isPortrait) {
+      toast({
+        title: "Portrait-Modus erkannt",
+        description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+    
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
         modelViewer.camera,
-        isMobile
+        mobileInfo.isMobile
       );
       
       if (dataUrl) {
