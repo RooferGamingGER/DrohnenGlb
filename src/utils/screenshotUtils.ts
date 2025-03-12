@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -116,8 +115,8 @@ export const exportMeasurementsToExcel = (measurements: Measurement[]): void => 
   ];
   ws['!cols'] = columnWidths;
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Messungen');
-  XLSX.writeFile(wb, 'messungen.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'Messdaten');
+  XLSX.writeFile(wb, 'messdaten.xlsx');
 };
 
 export const exportMeasurementsToWord = (
@@ -195,7 +194,7 @@ export const exportMeasurementsToWord = (
 
 export const exportMeasurementsToPDF = async (
   measurements: Measurement[], 
-  screenshots: { id: string, imageDataUrl: string, description: string }[] = []
+  screenshots: { id: string, imageDataUrl: string, description: string, filename?: string }[] = []
 ): Promise<void> => {
   try {
     if (!measurements || measurements.length === 0) {
@@ -281,7 +280,7 @@ export const exportMeasurementsToPDF = async (
     
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Messungen', margin, yPos);
+    doc.text('Messdaten', margin, yPos);
     yPos += 10;
     
     const tableData = measurements.map(m => [
@@ -315,7 +314,7 @@ export const exportMeasurementsToPDF = async (
     if (screenshots && screenshots.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Screenshots', margin, yPos);
+      doc.text('Aufnahmen', margin, yPos);
       yPos += 10;
       
       for (let i = 0; i < screenshots.length; i++) {
@@ -349,7 +348,18 @@ export const exportMeasurementsToPDF = async (
               
               doc.setFontSize(11);
               doc.setFont('helvetica', 'bold');
-              doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
+              
+              // Use filename if available, or "Aufnahme X"
+              const title = screenshot.filename 
+                ? screenshot.filename 
+                : `Aufnahme ${i + 1}`;
+                
+              // Add description if available
+              const displayTitle = screenshot.description 
+                ? `${title}: ${screenshot.description}` 
+                : title;
+                
+              doc.text(displayTitle, margin, yPos);
               yPos += titleHeight;
               
               try {
@@ -367,7 +377,7 @@ export const exportMeasurementsToPDF = async (
                 
                 yPos += imgHeight + 15;
               } catch (addImageError) {
-                console.warn(`Screenshot ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
+                console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
                 yPos += 5;
               }
               
@@ -375,12 +385,12 @@ export const exportMeasurementsToPDF = async (
             };
             
             img.onerror = () => {
-              console.warn(`Screenshot ${i + 1} konnte nicht geladen werden`);
+              console.warn(`Aufnahme ${i + 1} konnte nicht geladen werden`);
               resolve();
             };
           });
         } catch (imgError) {
-          console.warn(`Screenshot ${i + 1} konnte nicht verarbeitet werden:`, imgError);
+          console.warn(`Aufnahme ${i + 1} konnte nicht verarbeitet werden:`, imgError);
           yPos += 5;
         }
       }

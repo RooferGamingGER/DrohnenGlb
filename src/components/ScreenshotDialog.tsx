@@ -18,7 +18,7 @@ interface ScreenshotDialogProps {
   imageDataUrl: string | null;
   open: boolean;
   onClose: () => void;
-  onSave?: (imageDataUrl: string, description: string) => void;
+  onSave?: (imageDataUrl: string, description: string, filename: string) => void;
 }
 
 const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({ 
@@ -39,7 +39,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
   
   const handleSave = () => {
     if (imageDataUrl && onSave) {
-      onSave(imageDataUrl, description);
+      onSave(imageDataUrl, description, filename);
       onClose();
     }
   };
@@ -50,9 +50,9 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Screenshot</DialogTitle>
+          <DialogTitle>Aufnahme</DialogTitle>
           <DialogDescription>
-            Geben Sie einen Namen und eine Beschreibung für den Screenshot ein.
+            Geben Sie einen Namen und eine Beschreibung für die Aufnahme ein.
           </DialogDescription>
         </DialogHeader>
         
@@ -82,7 +82,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           <div className="border rounded-md overflow-hidden">
             <img 
               src={imageDataUrl} 
-              alt="Screenshot Vorschau" 
+              alt="Aufnahme Vorschau" 
               className="w-full object-contain max-h-64"
             />
           </div>

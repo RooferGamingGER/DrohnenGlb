@@ -46,7 +46,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   allMeasurementsVisible = true,
   screenshots,
   isMobile = false,
-  scrollThreshold = 5
+  scrollThreshold = isMobile ? 3 : 5
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -266,7 +266,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {onClose && (
+              {onClose && !isMobile && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
