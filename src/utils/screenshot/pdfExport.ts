@@ -8,41 +8,32 @@ import { optimizeImageData } from './captureUtils';
  * Exports measurements and screenshots to PDF format
  */
 export const exportMeasurementsToPDF = async (
-  measurements: Measurement=,
-  screenshots: Screenshot=
-): Promise<void => {
+  measurements: Measurement[],
+  screenshots: Screenshot[]
+): Promise<void> => {
   try {
     if (!measurements.length && !screenshots.length) {
       throw new Error("Keine Messdaten oder Aufnahmen vorhanden");
     }
 
-    const doc = new JsPDFModule({
-      compress: true
-    });
+    const doc = new JsPDFModule({ compress: true });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
-
-    // Header settings
     const logoSize = 15;
-    const headerHeight = margin + logoSize + 10; // Adjust as needed
-    const rightMargin = 10; // Consistent right margin
+    const headerHeight = margin + logoSize + 10;
+    const footerHeight = 20;
+    let totalPages = 1;
 
+    // Kopfzeile hinzufügen
     const addPageHeader = (pageNumber: number, totalPages: number) => {
       try {
         const logoImg = new Image();
         logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
 
-        doc.addImage(
-          logoImg,
-          'PNG',
-          margin,
-          margin,
-          logoSize,
-          logoSize
-        );
+        doc.addImage(logoImg, 'PNG', margin, margin, logoSize, logoSize);
       } catch (logoError) {
         console.warn("Logo konnte nicht geladen werden:", logoError);
       }
@@ -53,24 +44,20 @@ export const exportMeasurementsToPDF = async (
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const date = new Date().toLocaleDateString('de-DE');
 
-      // Calculate text width and position for right alignment
+      const date = new Date().toLocaleDateString('de-DE');
       const dateText = `Datum: ${date}`;
       const pageText = `Seite ${pageNumber} von ${totalPages}`;
-      const dateTextWidth = doc.getTextWidth(dateText);
-      const pageTextWidth = doc.getTextWidth(pageText);
 
-      const dateX = pageWidth - rightMargin - dateTextWidth;
-      const pageX = pageWidth - rightMargin - pageTextWidth;
-
-      doc.text(dateText, dateX, margin + 10);
-      doc.text(pageText, pageX, margin + 20);
+      const textRightAlignX = pageWidth - margin; // Rechtsbündig
+      doc.text(dateText, textRightAlignX, margin + 10, { align: 'right' });
+      doc.text(pageText, textRightAlignX, margin + 20, { align: 'right' });
 
       doc.setLineWidth(0.3);
-      doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
+      doc.line(margin, margin + 25, pageWidth - margin, margin + 25);
     };
 
+    // Fußzeile hinzufügen
     const addPageFooter = () => {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
@@ -81,18 +68,13 @@ export const exportMeasurementsToPDF = async (
       doc.setLineWidth(0.1);
       doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
 
-      doc.text(footerLine, pageWidth / 2, pageHeight - 20, {
-        align: 'center',
-        maxWidth: pageWidth - (margin * 4)
-      });
+      doc.text(footerLine, pageWidth / 2, pageHeight - 10, { align: 'center' });
     };
 
-    let totalPages = 1;
-
     addPageHeader(1, totalPages);
+    let yPos = headerHeight + margin; // Startpunkt für Inhalte
 
-    let yPos = headerHeight + margin; // Start content below header + margin
-
+    // Messdaten-Tabelle hinzufügen
     if (measurements.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -111,24 +93,16 @@ export const exportMeasurementsToPDF = async (
         body: tableData,
         margin: { left: margin, right: margin },
         theme: 'grid',
-        styles: {
-          fontSize: 10,
-          cellPadding: 3
-        },
-        headStyles: {
-          fillColor: [66, 66, 66],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold'
-        },
-        alternateRowStyles: {
-          fillColor: [245, 245, 245]
-        }
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
       });
 
       yPos = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    if (screenshots && screenshots.length > 0) {
+    // Screenshots hinzufügen
+    if (screenshots.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Aufnahmen', margin, yPos);
@@ -139,11 +113,7 @@ export const exportMeasurementsToPDF = async (
 
         try {
           const optimizedDataUrl = await optimizeImageData(
-            screenshot.imageDataUrl,
-            1200,
-            0.92,
-            300,
-            true
+            screenshot.imageDataUrl, 1200, 0.92, 300, true
           );
 
           const img = new Image();
@@ -153,18 +123,15 @@ export const exportMeasurementsToPDF = async (
             img.onload = () => {
               const titleHeight = 10;
               const aspectRatio = img.width / img.height;
-
               const imgWidth = contentWidth * 0.85;
               const imgHeight = imgWidth / aspectRatio;
-
               const requiredSpace = titleHeight + imgHeight + 50;
-              const footerHeight = 25;
 
               if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
                 doc.addPage();
                 totalPages++;
                 addPageHeader(totalPages, totalPages);
-                yPos = headerHeight + margin; // Reset yPos for new page
+                yPos = headerHeight + margin;
               }
 
               doc.setFontSize(11);
@@ -180,19 +147,7 @@ export const exportMeasurementsToPDF = async (
 
               try {
                 const xPos = margin + ((contentWidth - imgWidth) / 2);
-
-                doc.addImage(
-                  optimizedDataUrl,
-                  'JPEG',
-                  xPos,
-                  yPos,
-                  imgWidth,
-                  imgHeight,
-                  undefined,
-                  'MEDIUM',
-                  0
-                );
-
+                doc.addImage(optimizedDataUrl, 'JPEG', xPos, yPos, imgWidth, imgHeight);
                 yPos += imgHeight + 45;
               } catch (addImageError) {
                 console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
@@ -214,6 +169,7 @@ export const exportMeasurementsToPDF = async (
       }
     }
 
+    // Seitenzahlen und Fußzeilen auf allen Seiten aktualisieren
     const finalTotalPages = doc.getNumberOfPages();
     for (let i = 1; i <= finalTotalPages; i++) {
       doc.setPage(i);
