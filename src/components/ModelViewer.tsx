@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -104,7 +103,6 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleTakeScreenshot = () => {
-    // Check if in portrait mode on mobile
     const isPortrait = window.innerHeight > window.innerWidth;
     
     if (isMobile && isPortrait) {

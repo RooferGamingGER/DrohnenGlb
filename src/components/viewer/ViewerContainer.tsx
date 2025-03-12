@@ -1,11 +1,10 @@
 
-import { useRef, forwardRef, ReactNode } from 'react';
+import { forwardRef, ReactNode } from 'react';
 
 interface ViewerContainerProps {
   children: ReactNode;
   onDragOver: (event: React.DragEvent) => void;
   onDrop: (event: React.DragEvent) => void;
-  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 const ViewerContainer = forwardRef<HTMLDivElement, ViewerContainerProps>(
