@@ -10,7 +10,7 @@ import { optimizeImageData } from './captureUtils';
 export const exportMeasurementsToPDF = async (
   measurements: Measurement=,
   screenshots: Screenshot=
-): Promise<void> => {
+): Promise<void => {
   try {
     if (!measurements.length && !screenshots.length) {
       throw new Error("Keine Messdaten oder Aufnahmen vorhanden");
@@ -28,6 +28,7 @@ export const exportMeasurementsToPDF = async (
     // Header settings
     const logoSize = 15;
     const headerHeight = margin + logoSize + 10; // Adjust as needed
+    const rightMargin = 10; // Consistent right margin
 
     const addPageHeader = (pageNumber: number, totalPages: number) => {
       try {
@@ -54,14 +55,17 @@ export const exportMeasurementsToPDF = async (
       doc.setFont('helvetica', 'normal');
       const date = new Date().toLocaleDateString('de-DE');
 
-      // Calculate text width for proper alignment
-      const dateTextWidth = doc.getTextWidth(`Datum: ${date}`);
-      const pageTextWidth = doc.getTextWidth(`Seite ${pageNumber} von ${totalPages}`);
+      // Calculate text width and position for right alignment
+      const dateText = `Datum: ${date}`;
+      const pageText = `Seite ${pageNumber} von ${totalPages}`;
+      const dateTextWidth = doc.getTextWidth(dateText);
+      const pageTextWidth = doc.getTextWidth(pageText);
 
-      const rightMargin = 30; // Increased right margin
+      const dateX = pageWidth - rightMargin - dateTextWidth;
+      const pageX = pageWidth - rightMargin - pageTextWidth;
 
-      doc.text(`Datum: ${date}`, pageWidth - rightMargin - dateTextWidth, margin + 10);
-      doc.text(`Seite ${pageNumber} von ${totalPages}`, pageWidth - rightMargin - pageTextWidth, margin + 20);
+      doc.text(dateText, dateX, margin + 10);
+      doc.text(pageText, pageX, margin + 20);
 
       doc.setLineWidth(0.3);
       doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
@@ -87,7 +91,7 @@ export const exportMeasurementsToPDF = async (
 
     addPageHeader(1, totalPages);
 
-    let yPos = headerHeight + 10; // Start content below the header
+    let yPos = headerHeight + margin; // Start content below header + margin
 
     if (measurements.length > 0) {
       doc.setFontSize(14);
@@ -160,7 +164,7 @@ export const exportMeasurementsToPDF = async (
                 doc.addPage();
                 totalPages++;
                 addPageHeader(totalPages, totalPages);
-                yPos = headerHeight + 10; // Reset yPos for the new page
+                yPos = headerHeight + margin; // Reset yPos for new page
               }
 
               doc.setFontSize(11);
