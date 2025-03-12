@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Square } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ interface MeasurementToolsProps {
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
   measurements: Measurement[];
   canUndo: boolean;
+  onClose?: () => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -30,10 +31,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onUndoLastPoint,
   onUpdateMeasurement,
   measurements,
-  canUndo
+  canUndo,
+  onClose
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [showMeasurementsList, setShowMeasurementsList] = useState(false);
 
   // Automatically disable measurement tool when editing a description
   useEffect(() => {
@@ -88,16 +91,30 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
+  const toggleMeasurementsList = () => {
+    setShowMeasurementsList(!showMeasurementsList);
+  };
+
   return (
     <div 
-      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg"
+      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg max-w-[240px]"
       onClick={handleContainerClick}
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
     >
-      <div className="flex flex-col gap-2">
+      {/* Close button for mobile view */}
+      {onClose && (
+        <button 
+          onClick={onClose}
+          className="sm:hidden absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+      
+      <div className="flex flex-row sm:flex-col gap-2 justify-center">
         <TooltipProvider>
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-row sm:flex-col items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -158,6 +175,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               </TooltipContent>
             </Tooltip>
             
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('area')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'area' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Fläche messen"
+                >
+                  <Square size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Fläche messen</p>
+              </TooltipContent>
+            </Tooltip>
+            
             {canUndo && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -196,59 +233,89 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       </div>
       
       {measurements.length > 0 && (
-        <div className="text-xs space-y-1 max-w-[200px]">
-          <h3 className="font-medium">Messungen:</h3>
-          <ul className="space-y-2">
-            {measurements.map((m) => (
-              <li key={m.id} className="bg-background/40 p-2 rounded">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-2">
-                    {m.type === 'length' && <Ruler size={14} />}
-                    {m.type === 'height' && <ArrowUpDown size={14} />}
-                    <span>{m.value.toFixed(2)} {m.unit}</span>
-                  </span>
-                  <div className="flex items-center">
-                    <button 
-                      onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
-                      className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
-                      aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
-                    >
-                      {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
-                    </button>
-                    <button 
-                      onClick={(e) => handleDeleteMeasurement(m.id, e)}
-                      className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                      aria-label="Messung löschen"
-                    >
-                      <X size={14} />
-                    </button>
+        <div className="text-xs">
+          <button
+            onClick={toggleMeasurementsList}
+            className="w-full px-2 py-1 bg-secondary text-secondary-foreground rounded flex items-center justify-between font-medium"
+          >
+            <span>Messungen ({measurements.length})</span>
+            <ChevronIcon isOpen={showMeasurementsList} />
+          </button>
+          
+          {showMeasurementsList && (
+            <ul className="mt-2 space-y-2 max-h-[40vh] overflow-y-auto">
+              {measurements.map((m) => (
+                <li key={m.id} className="bg-background/40 p-2 rounded">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-2">
+                      {m.type === 'length' && <Ruler size={14} />}
+                      {m.type === 'height' && <ArrowUpDown size={14} />}
+                      {m.type === 'area' && <Square size={14} />}
+                      <span>{m.value.toFixed(2)} {m.unit}</span>
+                    </span>
+                    <div className="flex items-center">
+                      <button 
+                        onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
+                        className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                        aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
+                      >
+                        {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteMeasurement(m.id, e)}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        aria-label="Messung löschen"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                
-                {editingId === m.id ? (
-                  <Input
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onClick={handleInputClick}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder="Beschreibung hinzufügen"
-                    className="h-7 text-xs"
-                    autoFocus
-                  />
-                ) : (
-                  m.description && (
-                    <p className="text-muted-foreground text-xs break-words">
-                      {m.description}
-                    </p>
-                  )
-                )}
-              </li>
-            ))}
-          </ul>
+                  
+                  {editingId === m.id ? (
+                    <Input
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onClick={handleInputClick}
+                      onKeyDown={handleInputKeyDown}
+                      placeholder="Beschreibung hinzufügen"
+                      className="h-7 text-xs"
+                      autoFocus
+                    />
+                  ) : (
+                    m.description && (
+                      <p className="text-muted-foreground text-xs break-words">
+                        {m.description}
+                      </p>
+                    )
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
   );
 };
+
+// Simple chevron icon component that rotates based on open state
+const ChevronIcon = ({ isOpen }: { isOpen: boolean }) => (
+  <svg 
+    width="12" 
+    height="12" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform transform ${isOpen ? 'rotate-180' : ''}`}
+  >
+    <path 
+      d="M6 9L12 15L18 9" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+  </svg>
+);
 
 export default MeasurementTools;

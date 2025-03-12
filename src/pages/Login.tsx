@@ -6,7 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { useLoginForm } from '@/hooks/useLoginForm';
-import PerformanceMetrics from '@/components/PerformanceMetrics';
 import { Loader2 } from 'lucide-react';
 
 const Login = () => {
@@ -19,11 +18,10 @@ const Login = () => {
     setRememberMe,
     isLoading,
     progress,
-    performanceMetrics,
     handleSubmit
   } = useLoginForm();
 
-  // Optimierte Statusnachrichten mit feingranularen Übergängen
+  // Optimized status messages
   const getProgressStatus = (progress: number) => {
     if (progress < 10) return "Anmeldung wird initialisiert...";
     if (progress < 25) return "Verbindung wird hergestellt...";
@@ -36,9 +34,9 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md space-y-6 p-8">
+      <Card className="w-full max-w-md space-y-6 p-6 sm:p-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Anmelden</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Anmelden</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Melden Sie sich mit Ihrem Konto an
           </p>
@@ -114,10 +112,6 @@ const Login = () => {
             ) : "Anmelden"}
           </Button>
         </form>
-
-        {Object.keys(performanceMetrics).length > 0 && (
-          <PerformanceMetrics metrics={performanceMetrics} />
-        )}
       </Card>
     </div>
   );
