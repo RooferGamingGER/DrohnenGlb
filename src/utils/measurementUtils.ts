@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -130,7 +129,7 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   );
 };
 
-// Create draggable point material
+// Update draggable point material to be more visible
 export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
     color: isHovered ? 0xffff00 : 0xff0000,
@@ -142,7 +141,7 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
 // Create draggable measurement point with increased size for better touch interaction
 export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
   // Increased size for better touch/click targets
-  const pointGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+  const pointGeometry = new THREE.SphereGeometry(0.12, 16, 16); // Doubled size
   const pointMaterial = createDraggablePointMaterial();
   const point = new THREE.Mesh(pointGeometry, pointMaterial);
   point.position.copy(position);
@@ -162,7 +161,7 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
 export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0x00ff00): THREE.Line => {
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: color,
-    linewidth: 3, // Thicker line (note: this has limitations in WebGL)
+    linewidth: 5, // Increased line thickness
   });
   
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
