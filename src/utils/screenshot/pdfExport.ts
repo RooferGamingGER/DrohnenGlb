@@ -29,15 +29,6 @@ export const exportMeasurementsToPDF = async (
 
     // Kopfzeile hinzufügen
     const addPageHeader = (pageNumber: number, totalPages: number) => {
-      try {
-        const logoImg = new Image();
-        logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
-
-        doc.addImage(logoImg, 'PNG', margin, margin, logoSize, logoSize);
-      } catch (logoError) {
-        console.warn("Logo konnte nicht geladen werden:", logoError);
-      }
-
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('DrohnenGLB by RooferGaming', margin + 20, margin + 10);
@@ -49,7 +40,7 @@ export const exportMeasurementsToPDF = async (
       const dateText = `Datum: ${date}`;
       const pageText = `Seite ${pageNumber} von ${totalPages}`;
 
-      const textRightAlignX = pageWidth - margin; // Rechtsbündig
+      const textRightAlignX = pageWidth - margin;
       doc.text(dateText, textRightAlignX, margin + 10, { align: 'right' });
       doc.text(pageText, textRightAlignX, margin + 20, { align: 'right' });
 
@@ -72,7 +63,7 @@ export const exportMeasurementsToPDF = async (
     };
 
     addPageHeader(1, totalPages);
-    let yPos = headerHeight + margin; // Startpunkt für Inhalte
+    let yPos = headerHeight + margin;
 
     // Messdaten-Tabelle hinzufügen
     if (measurements.length > 0) {
@@ -169,7 +160,7 @@ export const exportMeasurementsToPDF = async (
       }
     }
 
-    // Seitenzahlen und Fußzeilen auf allen Seiten aktualisieren
+    // **Seitenzahlen & Fußzeilen auf allen Seiten korrigieren**
     const finalTotalPages = doc.getNumberOfPages();
     for (let i = 1; i <= finalTotalPages; i++) {
       doc.setPage(i);
