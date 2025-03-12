@@ -1,11 +1,10 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   auth,
   loginWithFirebase, 
   logoutFromFirebase,
   createUserInFirebase,
-  deleteUserFromFirebase,
-  updateUserInFirebase,
   getAllUsers
 } from '../services/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -30,10 +29,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
-  createUser: (email: string, password: string, isAdmin: boolean) => Promise<boolean>;
-  deleteUser: (userId: string) => Promise<boolean>;
-  updateUser: (userId: string, updates: { email?: string; password?: string }) => Promise<boolean>;
-  users: User[];
   isAuthenticated: boolean;
 }
 
@@ -41,7 +36,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
   const { toast } = useToast();
 
   const userAdminCache = new Map<string, boolean>();
@@ -158,107 +152,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (email: string, password: string): Promise<boolean> => {
-    const firebaseUser = await createUserInFirebase(email, password, false);
-    return !!firebaseUser;
-  };
-
-  const createUser = async (email: string, password: string, isAdmin: boolean): Promise<boolean> => {
-    if (!user?.isAdmin) {
-      toast({
-        title: "Keine Berechtigung",
-        description: "Sie benötigen Admin-Rechte, um Benutzer zu erstellen.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    const firebaseUser = await createUserInFirebase(email, password, isAdmin);
-    
-    if (firebaseUser) {
-      toast({
-        title: "Erfolg",
-        description: `Benutzer ${email} wurde erfolgreich erstellt.`,
-      });
+    try {
+      console.log("Registrierungsprozess startet für:", email);
+      const registerStartTime = performance.now();
       
-      const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
-        id: user.uid || user.id,
-        email: user.email || '',
-        username: user.email || '',
-        isAdmin: user.isAdmin || false
-      }));
-      setUsers(formattedUsers);
-      return true;
-    } else {
-      toast({
-        title: "Fehler",
-        description: "Der Benutzer konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
-      return false;
+      const firebaseUser = await createUserInFirebase(email, password, false);
+      
+      console.log(`Registrierung abgeschlossen in ${performance.now() - registerStartTime}ms`);
+      return !!firebaseUser;
+    } catch (error) {
+      console.error("Registrierungsfehler in AuthContext:", error);
+      throw error;
     }
   };
-
-  const deleteUser = async (userId: string): Promise<boolean> => {
-    if (!user?.isAdmin) return false;
-    const success = await deleteUserFromFirebase(userId);
-    if (success) {
-      const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
-        id: user.uid || user.id,
-        email: user.email || '',
-        username: user.email || '',
-        isAdmin: user.isAdmin || false
-      }));
-      setUsers(formattedUsers);
-    }
-    return success;
-  };
-
-  const updateUser = async (
-    userId: string, 
-    updates: { email?: string; password?: string }
-  ): Promise<boolean> => {
-    if (!user?.isAdmin) return false;
-    const success = await updateUserInFirebase(userId, updates);
-    if (success && updates.email) {
-      const updatedUsers = await getAllUsers();
-      const formattedUsers = updatedUsers.map((user: FirestoreUser) => ({
-        id: user.uid || user.id,
-        email: user.email || '',
-        username: user.email || '',
-        isAdmin: user.isAdmin || false
-      }));
-      setUsers(formattedUsers);
-    }
-    return success;
-  };
-
-  useEffect(() => {
-    if (user?.isAdmin) {
-      const loadUsers = async () => {
-        try {
-          const startTime = performance.now();
-          console.log("Lade Benutzerliste...");
-          
-          const usersList = await getAllUsers();
-          const formattedUsers: User[] = usersList.map((user: FirestoreUser) => ({
-            id: user.uid || user.id,
-            email: user.email || '',
-            username: user.email || '',
-            isAdmin: user.isAdmin || false
-          }));
-          
-          setUsers(formattedUsers);
-          console.log(`Benutzerliste geladen in ${performance.now() - startTime}ms:`, formattedUsers.length);
-        } catch (error) {
-          console.error("Fehler beim Laden der Benutzer:", error);
-        }
-      };
-
-      loadUsers();
-    }
-  }, [user]);
 
   return (
     <AuthContext.Provider
@@ -267,10 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         register,
-        createUser,
-        deleteUser,
-        updateUser,
-        users,
         isAuthenticated: !!user,
       }}
     >

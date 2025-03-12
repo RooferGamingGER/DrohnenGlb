@@ -83,52 +83,62 @@ export const exportMeasurementsToPDF = (
   measurements: Measurement[], 
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
 ): void => {
-  const doc = new jsPDF();
-  
-  // Konfiguration
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 10;
-  const contentWidth = pageWidth - (margin * 2);
-  
-  // Füge Logo und Überschrift hinzu
-  const logoSize = 15;
-  const logoImg = new Image();
-  logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
-  
-  doc.addImage(
-    logoImg, 
-    'PNG', 
-    margin, 
-    margin, 
-    logoSize, 
-    logoSize
-  );
-  
-  // Überschrift
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Drohnenvermessung', margin + logoSize + 5, margin + 10);
-  
-  // Datum
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const date = new Date().toLocaleDateString('de-DE');
-  doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
-  
-  // Trennlinie
-  doc.setLineWidth(0.5);
-  doc.line(margin, margin + logoSize + 10, pageWidth - margin, margin + logoSize + 10);
-  
-  let yPos = margin + logoSize + 20;
-  
-  // Messungen Überschrift
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Messungen', margin, yPos);
-  yPos += 10;
-  
-  // Wenn Messungen vorhanden sind, erstelle eine Tabelle
-  if (measurements.length > 0) {
+  try {
+    // Prüfen, ob Messungen vorhanden sind
+    if (!measurements || measurements.length === 0) {
+      throw new Error("Keine Messungen vorhanden");
+    }
+    
+    const doc = new jsPDF();
+    
+    // Konfiguration
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // Füge Logo und Überschrift hinzu
+    try {
+      const logoSize = 15;
+      const logoImg = new Image();
+      logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
+      
+      doc.addImage(
+        logoImg, 
+        'PNG', 
+        margin, 
+        margin, 
+        logoSize, 
+        logoSize
+      );
+    } catch (logoError) {
+      console.warn("Logo konnte nicht geladen werden:", logoError);
+      // Fahre ohne Logo fort
+    }
+    
+    // Überschrift
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Drohnenvermessung', margin + 20, margin + 10);
+    
+    // Datum
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const date = new Date().toLocaleDateString('de-DE');
+    doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
+    
+    // Trennlinie
+    doc.setLineWidth(0.5);
+    doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
+    
+    let yPos = margin + 30;
+    
+    // Messungen Überschrift
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Messungen', margin, yPos);
+    yPos += 10;
+    
+    // Messungstabelle erstellen
     const tableData = measurements.map(m => [
       m.description || '-',
       m.type === 'length' ? 'Länge' : 'Höhe',
@@ -152,48 +162,51 @@ export const exportMeasurementsToPDF = (
     
     // @ts-ignore - Typings issue with .lastAutoTable
     yPos = doc.lastAutoTable.finalY + 15;
-  } else {
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Keine Messungen vorhanden', margin, yPos);
-    yPos += 15;
-  }
-  
-  // Screenshots hinzufügen, falls vorhanden
-  if (screenshots.length > 0) {
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Screenshots', margin, yPos);
-    yPos += 10;
     
-    const imgWidth = contentWidth;
-    const imgHeight = 80;
-    
-    screenshots.forEach((screenshot, index) => {
-      // Prüfen, ob ein Seitenumbruch nötig ist
-      if (yPos + imgHeight + 30 > doc.internal.pageSize.getHeight()) {
-        doc.addPage();
-        yPos = margin;
-      }
-      
-      doc.setFontSize(12);
+    // Screenshots hinzufügen, falls vorhanden
+    if (screenshots && screenshots.length > 0) {
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Screenshot ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
-      yPos += 5;
+      doc.text('Screenshots', margin, yPos);
+      yPos += 10;
       
-      doc.addImage(
-        screenshot.imageDataUrl,
-        'PNG',
-        margin,
-        yPos,
-        imgWidth,
-        imgHeight
-      );
+      const imgWidth = contentWidth;
+      const imgHeight = 80;
       
-      yPos += imgHeight + 15;
-    });
+      screenshots.forEach((screenshot, index) => {
+        // Prüfen, ob ein Seitenumbruch nötig ist
+        if (yPos + imgHeight + 30 > doc.internal.pageSize.getHeight()) {
+          doc.addPage();
+          yPos = margin;
+        }
+        
+        try {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Screenshot ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
+          yPos += 5;
+          
+          doc.addImage(
+            screenshot.imageDataUrl,
+            'PNG',
+            margin,
+            yPos,
+            imgWidth,
+            imgHeight
+          );
+          
+          yPos += imgHeight + 15;
+        } catch (imgError) {
+          console.warn(`Screenshot ${index + 1} konnte nicht hinzugefügt werden:`, imgError);
+          yPos += 5;
+        }
+      });
+    }
+    
+    // PDF speichern
+    doc.save('drohnenvermessung.pdf');
+  } catch (error) {
+    console.error("Fehler beim Exportieren als PDF:", error);
+    throw error;
   }
-  
-  // PDF speichern
-  doc.save('drohnenvermessung.pdf');
 };
