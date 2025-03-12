@@ -641,8 +641,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls.panSpeed = 0.8;
     
     controls.rotateSpeed = 0.5;
-    controls.touchRotateSpeed = 0.3;
-    
     controls.enableZoom = true;
     controls.screenSpacePanning = true;
     
@@ -654,10 +652,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         
         controlsRef.current.rotateSpeed = 0.5 * (distance / 5);
         controlsRef.current.panSpeed = 0.6 * (distance / 5);
-        
-        if ('touchRotateSpeed' in controlsRef.current) {
-          (controlsRef.current as any).touchRotateSpeed = 0.3 * (distance / 5);
-        }
       }
     };
     
@@ -1324,3 +1318,4 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress
   };
 };
+
