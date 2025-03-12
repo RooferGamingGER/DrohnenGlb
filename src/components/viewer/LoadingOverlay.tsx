@@ -14,7 +14,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ progress }) => {
         </h3>
         <Progress value={progress} className="h-2" />
         <p className="text-sm text-muted-foreground text-center">
-          {progress < 70 ? "Datei wird hochgeladen..." : "Modell wird verarbeitet..."}
+          {progress < 50 ? "Datei wird hochgeladen..." : progress < 99 ? "Modell wird verarbeitet..." : "Ladevorgang abgeschlossen"}
         </p>
       </div>
     </div>
