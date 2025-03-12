@@ -211,6 +211,13 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
+    // Header height (for safe area calculation)
+    const headerHeight = 25;
+    // Footer height (for safe area calculation)
+    const footerHeight = 30;
+    // Safe content area height
+    const safeContentHeight = pageHeight - headerHeight - footerHeight;
+    
     const addPageHeader = () => {
       try {
         const logoSize = 15;
@@ -316,11 +323,12 @@ export const exportMeasurementsToPDF = async (
         const screenshot = screenshots[i];
         
         try {
+          // Further reduce size for mobile screenshots to ensure they fit properly
           const optimizedDataUrl = await optimizeImageData(
             screenshot.imageDataUrl, 
-            600, // Reduced from 800 to ensure it fits better on mobile
-            0.7, // Slightly reduced quality for better compression
-            200  // Reduced DPI for better fit
+            550, // Even more reduced size for safety
+            0.65, // Further reduced quality for better compression
+            180  // Lower DPI for better fit
           );
           
           const img = new Image();
@@ -328,15 +336,19 @@ export const exportMeasurementsToPDF = async (
           
           await new Promise<void>((resolve) => {
             img.onload = () => {
-              const titleHeight = 8;
+              const titleHeight = 10;
               const aspectRatio = img.width / img.height;
-              // Calculate a safer image width with more margin space
-              const imgWidth = contentWidth * 0.85; // Reduced from 0.95 to 0.85
+              
+              // Use a more conservative width to leave more margin space
+              const imgWidth = contentWidth * 0.75; // More conservative width
               const imgHeight = imgWidth / aspectRatio;
-              const requiredSpace = titleHeight + imgHeight + 25; // Added more buffer space
-            
-              // Make sure we always start a new page if less than 40px is available
-              if (yPos + requiredSpace > pageHeight - 40) {
+              
+              // Add extra buffer space to ensure no overlap with footer
+              const requiredSpace = titleHeight + imgHeight + 35; 
+              
+              // Ensure we start a new page if there's not enough space
+              // Include more buffer space to prevent footer overlap
+              if (yPos + requiredSpace > (pageHeight - footerHeight - 10)) {
                 doc.addPage();
                 addPageHeader();
                 yPos = margin + 30;
@@ -354,10 +366,13 @@ export const exportMeasurementsToPDF = async (
               yPos += titleHeight;
               
               try {
+                // Center the image horizontally
+                const xPos = margin + ((contentWidth - imgWidth) / 2);
+                
                 doc.addImage(
                   optimizedDataUrl,
                   'JPEG',
-                  margin + ((contentWidth - imgWidth) / 2), // Center the image
+                  xPos,
                   yPos,
                   imgWidth,
                   imgHeight,
@@ -366,7 +381,8 @@ export const exportMeasurementsToPDF = async (
                   0
                 );
                 
-                yPos += imgHeight + 25; // Added more space after images
+                // Add more space after images to ensure no footer overlap
+                yPos += imgHeight + 30;
               } catch (addImageError) {
                 console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
                 yPos += 5;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
@@ -239,7 +238,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side={isMobile ? "bottom" : "right"}>
+                      <TooltipContent side="bottom">
                         <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -291,7 +290,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         <div className="text-xs space-y-1 max-w-full">
           <h3 className="font-medium">Messungen</h3>
           
-          <ScrollArea className={measurements.length > (isMobile ? 3 : 5) ? (isMobile ? "max-h-[150px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
+          <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "max-h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
               {measurements.map((m) => (
                 <li key={m.id} className="bg-background/40 p-2 rounded">
