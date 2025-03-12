@@ -16,6 +16,7 @@ export interface Measurement {
   unit: string;
   description?: string;
   isActive?: boolean;
+  visible?: boolean;
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
