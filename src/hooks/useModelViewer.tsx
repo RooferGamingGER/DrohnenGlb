@@ -927,3 +927,4 @@ const handleTouchEnd = (event: TouchEvent) => {
     
     setMeasurements([]);
     setTemporaryPoints([]);
+    currentMeasurementRef
