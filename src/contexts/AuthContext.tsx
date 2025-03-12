@@ -5,7 +5,8 @@ import {
   loginWithFirebase, 
   logoutFromFirebase,
   createUserInFirebase,
-  getAllUsers
+  getAllUsers,
+  checkUserStatus
 } from '../services/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,6 +15,7 @@ export interface User {
   email: string;
   username?: string;
   isAdmin: boolean;
+  status: string;
 }
 
 interface FirestoreUser {
@@ -21,6 +23,7 @@ interface FirestoreUser {
   uid: string;
   email: string;
   isAdmin: boolean;
+  status?: string;
   createdAt?: string;
 }
 
@@ -30,6 +33,7 @@ interface AuthContextType {
   logout: () => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
   isAuthenticated: boolean;
+  isApproved: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -89,11 +93,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const isAdmin = await checkIfUserIsAdmin(firebaseUser.uid);
           console.log(`Admin-Status vollständig geprüft in ${performance.now() - adminCheckStart}ms`);
           
+          // Überprüfe den Freischaltungsstatus
+          const status = await checkUserStatus(firebaseUser.uid);
+          
+          // Wenn der Benutzer noch nicht freigeschaltet ist, abmelden
+          if (status !== 'approved') {
+            await logoutFromFirebase();
+            toast({
+              title: "Konto nicht freigeschaltet",
+              description: "Ihr Konto wurde noch nicht freigeschaltet. Bitte warten Sie auf die Freischaltung durch einen Administrator.",
+              variant: "destructive",
+            });
+            setUser(null);
+            return;
+          }
+          
           const userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             username: firebaseUser.email || '',
-            isAdmin: isAdmin
+            isAdmin: isAdmin,
+            status: status
           };
           console.log("Benutzer erfolgreich geladen:", userData.email);
           setUser(userData);
@@ -110,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isSubscribed = false;
       unsubscribe();
     };
-  }, [checkIfUserIsAdmin]);
+  }, [checkIfUserIsAdmin, toast]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -126,11 +146,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isAdmin = await checkIfUserIsAdmin(firebaseUser.user.uid);
         console.log(`Admin-Status geprüft in ${performance.now() - adminCheckStartTime}ms: ${isAdmin ? "Admin" : "Kein Admin"}`);
         
+        // Überprüfe den Freischaltungsstatus
+        const status = await checkUserStatus(firebaseUser.user.uid);
+        
         setUser({
           id: firebaseUser.user.uid,
           email: firebaseUser.user.email || '',
           username: firebaseUser.user.email || '',
-          isAdmin: isAdmin
+          isAdmin: isAdmin,
+          status: status
         });
         
         console.log(`Gesamter Login-Prozess abgeschlossen in ${performance.now() - loginStartTime}ms`);
@@ -158,6 +182,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const firebaseUser = await createUserInFirebase(email, password, false);
       
+      if (firebaseUser) {
+        toast({
+          title: "Registrierung erfolgreich",
+          description: "Ihre Registrierung wurde erfolgreich abgeschlossen. Ein Administrator wird Ihr Konto in Kürze freischalten.",
+          variant: "default",
+        });
+      }
+      
       console.log(`Registrierung abgeschlossen in ${performance.now() - registerStartTime}ms`);
       return !!firebaseUser;
     } catch (error) {
@@ -174,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         register,
         isAuthenticated: !!user,
+        isApproved: user?.status === 'approved'
       }}
     >
       {children}

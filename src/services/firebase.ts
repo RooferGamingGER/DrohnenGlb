@@ -17,6 +17,8 @@ import {
   setDoc, 
   getDocs,
   query,
+  getDoc,
+  where,
   enableIndexedDbPersistence,
   Firestore
 } from "firebase/firestore";
@@ -92,6 +94,16 @@ export const loginWithFirebase = async (email: string, password: string): Promis
       )
     ]) as UserCredential;
     
+    // Nach erfolgreicher Authentifizierung, prüfen ob der Benutzer freigeschaltet ist
+    const userDoc = await getDoc(doc(db, "users", authResult.user.uid));
+    const userData = userDoc.data();
+    
+    if (!userData || userData.status !== 'approved') {
+      // Benutzer ist nicht freigeschaltet, also automatisch abmelden
+      await signOut(auth);
+      throw new Error("Ihr Konto wurde noch nicht freigeschaltet. Bitte warten Sie auf die Freischaltung durch einen Administrator.");
+    }
+    
     const endTime = performance.now();
     const duration = endTime - startTime;
     
@@ -110,6 +122,10 @@ export const loginWithFirebase = async (email: string, password: string): Promis
     if (error.message === "Login Timeout nach 3 Sekunden") {
       console.error(`Login Timeout nach ${duration.toFixed(2)}ms - Server antwortet nicht`);
       throw new Error("Die Anmeldung dauert zu lange. Bitte versuchen Sie es später erneut.");
+    }
+    
+    if (error.message.includes("nicht freigeschaltet")) {
+      throw error; // Eigene Fehlermeldung weitergeben
     }
     
     // Provide more helpful error messages
@@ -178,6 +194,36 @@ export const getAllUsers = async () => {
   }
 };
 
+// Funktion zum Senden einer E-Mail-Benachrichtigung über eine neue Registrierung
+// Dies wird über die Firebase Cloud Function implementiert
+const notifyAdminAboutNewUser = async (user: { email: string, uid: string }) => {
+  try {
+    // Hier würde normaleweise ein API-Aufruf an eine Cloud Function stattfinden,
+    // die eine E-Mail an den Administrator sendet.
+    // Da wir keine Cloud Function haben, simulieren wir dies durch einen Konsolenaufruf
+    console.log(`Neue Benutzerregistrierung: ${user.email} (${user.uid})`);
+    console.log("Hinweis: Eine echte E-Mail-Benachrichtigung würde hier über eine Firebase Cloud Function erfolgen");
+    
+    // Mockup der E-Mail-Benachrichtigung
+    console.log(`
+      Betreff: Neue Benutzerregistrierung - ${user.email}
+      
+      Eine neue Benutzerregistrierung wurde vorgenommen.
+      
+      E-Mail: ${user.email}
+      User ID: ${user.uid}
+      Zeitpunkt: ${new Date().toLocaleString()}
+      
+      Um diesen Benutzer freizuschalten, besuchen Sie das Admin-Dashboard.
+    `);
+    
+    return true;
+  } catch (error) {
+    console.error("Fehler beim Benachrichtigen des Administrators:", error);
+    return false;
+  }
+};
+
 export const logoutFromFirebase = async (): Promise<boolean> => {
   try {
     await signOut(auth);
@@ -196,15 +242,25 @@ export const createUserInFirebase = async (
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // Erstelle Firestore-Dokument für den Benutzer
+    // Erstelle Firestore-Dokument für den Benutzer mit Freischaltungs-Status
     await setDoc(doc(db, "users", userCredential.user.uid), {
       email,
       isAdmin,
       uid: userCredential.user.uid,
+      status: 'pending', // Neuer Benutzer benötigt Freischaltung
       createdAt: new Date().toISOString()
     });
 
-    console.log("Benutzer erfolgreich erstellt:", userCredential.user.uid);
+    // Benachrichtige den Administrator über die neue Registrierung
+    await notifyAdminAboutNewUser({
+      email: email,
+      uid: userCredential.user.uid
+    });
+
+    // Automatisch abmelden, da der Benutzer noch nicht freigeschaltet ist
+    await signOut(auth);
+
+    console.log("Benutzer erfolgreich erstellt und Administrator benachrichtigt:", userCredential.user.uid);
     return userCredential;
   } catch (error: any) {
     console.error("Fehler beim Erstellen des Benutzers:", error);
@@ -218,5 +274,32 @@ export const createUserInFirebase = async (
       throw new Error('Das Passwort ist zu schwach.');
     }
     throw error;
+  }
+};
+
+// Neue Funktion zum Überprüfen des Benutzerstatus
+export const checkUserStatus = async (uid: string): Promise<string> => {
+  try {
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (!userDoc.exists()) {
+      return 'not-found';
+    }
+    
+    const userData = userDoc.data();
+    return userData.status || 'pending';
+  } catch (error) {
+    console.error("Fehler beim Überprüfen des Benutzerstatus:", error);
+    return 'error';
+  }
+};
+
+// Neue Funktion zum Freischalten eines Benutzers (nur für Administratoren)
+export const approveUser = async (uid: string): Promise<boolean> => {
+  try {
+    await setDoc(doc(db, "users", uid), { status: 'approved' }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error("Fehler beim Freischalten des Benutzers:", error);
+    return false;
   }
 };
