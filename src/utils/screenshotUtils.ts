@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -17,21 +16,9 @@ export const captureScreenshot = (
   scene: THREE.Scene,
   camera: THREE.Camera,
   isMobile: boolean = false
-): string => {
+): string | null => {
   if (isMobile && window.innerHeight > window.innerWidth) {
-    // We need to cast to PerspectiveCamera to access aspect and updateProjectionMatrix
-    const perspCamera = camera as THREE.PerspectiveCamera;
-    const originalAspect = perspCamera.aspect;
-    perspCamera.aspect = 16 / 9;
-    perspCamera.updateProjectionMatrix();
-    
-    renderer.render(scene, camera);
-    const dataUrl = renderer.domElement.toDataURL('image/png');
-    
-    perspCamera.aspect = originalAspect;
-    perspCamera.updateProjectionMatrix();
-    
-    return dataUrl;
+    return null; // Return null if in portrait mode on mobile
   }
   
   renderer.render(scene, camera);
@@ -60,9 +47,9 @@ const dataURLToBlob = (dataUrl: string): Blob => {
 
 const optimizeImageData = async (
   dataUrl: string, 
-  maxWidth: number = 800, 
-  quality: number = 0.8, 
-  targetDPI: number = 250,
+  maxWidth: number = 1200, 
+  quality: number = 0.92, 
+  targetDPI: number = 300, 
   forceLandscape: boolean = false
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -243,9 +230,6 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Define the footer height for use in page break calculations
-    const footerHeight = 25;
-    
     const addPageHeader = () => {
       try {
         const logoSize = 15;
@@ -353,9 +337,9 @@ export const exportMeasurementsToPDF = async (
         try {
           const optimizedDataUrl = await optimizeImageData(
             screenshot.imageDataUrl, 
-            480,
-            0.55,
-            140,
+            1200,
+            0.92,
+            300,
             true
           );
           
@@ -367,10 +351,11 @@ export const exportMeasurementsToPDF = async (
               const titleHeight = 10;
               const aspectRatio = img.width / img.height;
               
-              const imgWidth = contentWidth * 0.65;
+              const imgWidth = contentWidth * 0.85;
               const imgHeight = imgWidth / aspectRatio;
               
               const requiredSpace = titleHeight + imgHeight + 50;
+              const footerHeight = 25;
               
               if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
                 doc.addPage();
@@ -437,4 +422,3 @@ export const exportMeasurementsToPDF = async (
     throw error;
   }
 };
-

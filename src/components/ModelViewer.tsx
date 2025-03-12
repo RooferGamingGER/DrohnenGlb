@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -127,20 +126,33 @@ const ModelViewer: React.FC = () => {
 
   const handleTakeScreenshot = () => {
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
+      if (isMobile && window.innerHeight > window.innerWidth) {
+        toast({
+          title: "Hinweis",
+          description: "Screenshots sind nur im Querformat möglich. Bitte drehen Sie ihr Gerät.",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return;
+      }
+      
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
         modelViewer.camera,
-        isMobile // Pass the isMobile flag to ensure landscape orientation
+        isMobile
       );
-      setScreenshotData(dataUrl);
-      setShowScreenshotDialog(true);
+      
+      if (dataUrl) {
+        setScreenshotData(dataUrl);
+        setShowScreenshotDialog(true);
+      }
     } else {
       toast({
         title: "Fehler",
         description: "Screenshot konnte nicht erstellt werden.",
         variant: "destructive",
-        duration: 5000,
+        duration: 3000,
       });
     }
   };
