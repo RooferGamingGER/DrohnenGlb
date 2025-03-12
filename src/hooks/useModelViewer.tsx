@@ -545,37 +545,67 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setState(prev => ({ ...prev, progress: value }));
   };
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+  const toggleMeasurementsVisibility = (visible: boolean) => {
+    if (!measurementGroupRef.current) return;
+    
+    measurementGroupRef.current.children.forEach(child => {
+      if (child.name.startsWith('point-') || child.name.startsWith('line-') || child.userData?.isLabel) {
+        child.visible = visible;
+      }
+    });
+  };
 
+  const updateMeasurement = (id: string, updates: Partial<Measurement>) => {
+    setMeasurements(prevMeasurements => {
+      return prevMeasurements.map(measurement => {
+        if (measurement.id === id) {
+          return { ...measurement, ...updates };
+        }
+        return measurement;
+      });
+    });
+  };
+
+  const initScene = () => {
+    if (!containerRef.current) return;
+    
+    if (sceneRef.current && modelRef.current) {
+      sceneRef.current.remove(modelRef.current);
+    }
+    
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-
+    
     const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
     const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
     camera.position.z = 5;
     cameraRef.current = camera;
-
+    
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMappingExposure = 1;
+    
+    if (containerRef.current.firstChild) {
+      containerRef.current.removeChild(containerRef.current.firstChild);
+    }
+    
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
-
+    
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
-
+    
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
-
+    
     lightsRef.current = {
       directional: directionalLight,
       ambient: ambientLight
     };
-
+    
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
@@ -589,7 +619,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     measurementGroup.name = "measurements";
     scene.add(measurementGroup);
     measurementGroupRef.current = measurementGroup;
-
+    
     const animate = () => {
       if (controlsRef.current) {
         controlsRef.current.update();
@@ -599,7 +629,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
             child.quaternion.copy(cameraRef.current!.quaternion);
-          
+            
             if (child.userData && child.userData.isLabel) {
               updateLabelScale(child, cameraRef.current);
             }
@@ -615,6 +645,16 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     };
     
     requestRef.current = requestAnimationFrame(animate);
+  };
+
+  const resetView = () => {
+    resetCamera();
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    initScene();
 
     const handleResize = () => {
       if (
@@ -1169,11 +1209,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     isLoading: state.isLoading,
     progress: state.progress,
     error: state.error,
-    model: modelRef.current,
+    loadedModel: state.loadedModel,
     background,
     
     loadModel,
     resetCamera,
+    resetView,
     zoomToFit,
     
     setBackgroundColor,
@@ -1186,6 +1227,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     deleteMeasurement,
     clearMeasurements,
     canUndo,
+    
+    setProgress,
+    renderer: rendererRef.current,
+    scene: sceneRef.current,
+    camera: cameraRef.current,
+    measurementGroupRef,
+    toggleMeasurementsVisibility,
+    updateMeasurement,
+    initScene,
     
     getRenderer: () => rendererRef.current,
     getCamera: () => cameraRef.current,
