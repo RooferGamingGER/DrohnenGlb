@@ -39,7 +39,10 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           GLB-Datei hochladen
         </h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-          Ziehen Sie eine GLB-Datei hierher oder klicken Sie, um eine Datei auszuwählen
+          Wähle Sie Ihre GLB-Datei um mit dem Upload zu beginnen. 
+        </p>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-3">
+          Hinweis: GLB-Dateien können vom Server direkt vom Server heruntergeladen werden. Hierfür das Textured Model (glTF) laden. 
         </p>
         <Button>
           <Upload className="mr-2 h-4 w-4" />

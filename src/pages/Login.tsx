@@ -60,7 +60,7 @@ const Login = () => {
     if (registerPassword.length < 6) {
       toast({
         title: "Fehler",
-        description: "Das Passwort muss mindestens 6 Zeichen lang sein.",
+        description: "Das Passwort muss mindestens 6 Zeichen lang sein. Ebenfalls sind Groß- und Kleinbuchstaben, 1 Sonderzeichen und 1 Zahl erforderlich",
         variant: "destructive"
       });
       return;
@@ -236,7 +236,7 @@ const Login = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={isRegisterLoading}
-                placeholder="Passwort erneut eingeben"
+                placeholder="Passwort bestätigen"
                 minLength={6}
               />
             </div>
