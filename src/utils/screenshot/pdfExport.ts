@@ -31,7 +31,6 @@ export const exportMeasurementsToPDF = async (
     const logoSize = 15;
     const headerHeight = margin + logoSize + 10;
     const footerHeight = 20;
-    let totalPages = 1;
 
     // 🔹 Kopfzeile mit Logo
     const addPageHeader = () => {
@@ -75,6 +74,7 @@ export const exportMeasurementsToPDF = async (
       doc.text(footerLine, pageWidth / 2, pageHeight - 10, { align: 'center' });
     };
 
+    // 🔹 Erste Seite mit Kopfzeile
     addPageHeader();
     let yPos = headerHeight + margin;
 
@@ -105,8 +105,12 @@ export const exportMeasurementsToPDF = async (
       yPos = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    // 🔹 Screenshots hinzufügen
+    // 🔹 Neue Seite für Aufnahmen
     if (screenshots.length > 0) {
+      doc.addPage();
+      addPageHeader();
+      yPos = headerHeight + margin;
+
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Aufnahmen', margin, yPos);
@@ -134,7 +138,6 @@ export const exportMeasurementsToPDF = async (
               // 🔹 Falls zu wenig Platz -> Neue Seite
               if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
                 doc.addPage();
-                totalPages++;
                 addPageHeader();
                 yPos = headerHeight + margin;
               }
