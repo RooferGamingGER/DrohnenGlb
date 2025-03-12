@@ -1038,5 +1038,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    setMeasurements,
   };
 };
