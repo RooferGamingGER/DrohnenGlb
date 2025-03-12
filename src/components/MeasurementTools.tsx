@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
@@ -44,7 +43,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
 
-  // Automatically disable measurement tool when editing a description
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
@@ -55,7 +53,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
-    // Disable measurement tool after deleting
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -64,7 +61,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when starting to edit
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -99,7 +95,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleContainerClick = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when clicking anywhere in the container
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -226,7 +221,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             </div>
             
             <div className="flex items-center gap-2">
-              {/* Toggle measurements list button (only on mobile) */}
               {isMobile && measurements.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -244,8 +238,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {/* Close button if onClose is provided */}
-              {onClose && (
+              {onClose && !isMobile && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -268,7 +261,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       
       {measurements.length > 0 && showMeasurementsList && (
         <div className="text-xs space-y-1 max-w-full">
-          <h3 className="font-medium">Messungen:</h3>
+          <h3 className="font-medium">Messungen</h3>
           <ul className="space-y-2">
             {measurements.map((m) => (
               <li key={m.id} className="bg-background/40 p-2 rounded">

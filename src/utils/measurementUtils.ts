@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -138,4 +137,3 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
     transparent: true
   });
 };
-

@@ -8,8 +8,7 @@ import {
   Ruler, 
   Camera, 
   FileText,
-  Home,
-  X
+  Home
 } from 'lucide-react';
 import { 
   Tooltip,
@@ -72,16 +71,12 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant={showMeasurementTools ? "default" : "outline"} 
+                variant="outline" 
                 size="icon" 
                 onClick={toggleMeasurementTools}
                 className="h-8 w-8 bg-background/90"
               >
-                {showMeasurementTools ? (
-                  <X className="h-4 w-4" />
-                ) : (
-                  <Ruler className="h-4 w-4" />
-                )}
+                <Ruler className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left" className="bg-background/90 border border-gray-300">

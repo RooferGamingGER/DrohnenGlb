@@ -53,7 +53,7 @@ const dataURLToBlob = (dataURL: string): Blob => {
 const optimizeImageData = async (
   dataUrl: string, 
   maxWidth: number = 800, 
-  quality: number = 0.5, 
+  quality: number = 0.4, 
   targetDPI: number = 150
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -67,9 +67,8 @@ const optimizeImageData = async (
         let height = img.height;
         
         // Calculate pixel dimensions for target DPI (150 DPI)
-        // Standard resolution conversion: 1 inch = 96 pixels at 96dpi
-        // So if we want 150dpi, we multiply by (150/96)
-        const scaleFactor = targetDPI / 96;
+        // Reduce DPI factor for smaller file size
+        const scaleFactor = targetDPI / 150; // Originally was 96, now using 150 as base
         
         if (width > maxWidth) {
           const ratio = maxWidth / width;
@@ -77,7 +76,7 @@ const optimizeImageData = async (
           height = height * ratio;
         }
         
-        // Apply DPI scaling (for higher quality when printing)
+        // Apply scaled down DPI scaling for smaller file sizes
         const finalWidth = Math.round(width * scaleFactor);
         const finalHeight = Math.round(height * scaleFactor);
         
@@ -90,17 +89,17 @@ const optimizeImageData = async (
           return;
         }
         
-        // Set DPI properly for high quality printing
+        // Set DPI properly for moderate quality (reduced for performance)
         ctx.scale(scaleFactor, scaleFactor);
         
         // Enable image smoothing for better quality
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingQuality = 'medium'; // Changed from 'high' to 'medium'
         
         // Draw the image with new dimensions
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to data URL with reduced quality JPEG (quality of 0.4 for smaller files)
+        // Convert to data URL with reduced quality JPEG for smaller files
         const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(optimizedDataUrl);
       };
@@ -226,7 +225,7 @@ export const exportMeasurementsToWord = (
   saveAs(blob, 'drohnenvermessung.html');
 };
 
-// Exportiert Messungen als PDF mit Screenshots (Korrigierte Version)
+// Exportiert Messungen als PDF mit Screenshots (Optimierte Version)
 export const exportMeasurementsToPDF = async (
   measurements: Measurement[], 
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
@@ -238,7 +237,9 @@ export const exportMeasurementsToPDF = async (
     }
     
     // Verwende den korrekten Import
-    const doc = new JsPDFModule();
+    const doc = new JsPDFModule({
+      compress: true // Enable compression to reduce file size
+    });
     
     // Konfiguration
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -266,78 +267,61 @@ export const exportMeasurementsToPDF = async (
     }
     
     // Überschrift
-    doc.setFontSize(20);
+    doc.setFontSize(16); // Reduced from 20 to 16
     doc.setFont('helvetica', 'bold');
     doc.text('Drohnenvermessung', margin + 20, margin + 10);
     
     // Datum
-    doc.setFontSize(10);
+    doc.setFontSize(9); // Reduced from 10 to 9
     doc.setFont('helvetica', 'normal');
     const date = new Date().toLocaleDateString('de-DE');
     doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
     
     // Trennlinie
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.3); // Reduced from 0.5 to 0.3
     doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
     
     let yPos = margin + 30;
     
     // Messungen Überschrift
-    doc.setFontSize(16);
+    doc.setFontSize(14); // Reduced from 16 to 14
     doc.setFont('helvetica', 'bold');
     doc.text('Messungen', margin, yPos);
     yPos += 10;
     
-    // Messungstabelle erstellen - manuelle Implementierung ohne autoTable
-    const cellPadding = 5;
-    const colWidths = [contentWidth * 0.5, contentWidth * 0.2, contentWidth * 0.3];
-    const rowHeight = 10;
+    // Use autoTable for better performance and smaller file size
+    const tableData = measurements.map(m => [
+      m.description || '-',
+      m.type === 'length' ? 'Länge' : 'Höhe',
+      `${m.value.toFixed(2)} ${m.unit}`
+    ]);
     
-    // Tabellenkopf zeichnen
-    doc.setFillColor(66, 66, 66);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(margin, yPos, contentWidth, rowHeight, 'F');
-    
-    doc.setFontSize(10);
-    doc.text('Beschreibung', margin + cellPadding, yPos + rowHeight - cellPadding/2);
-    doc.text('Typ', margin + colWidths[0] + cellPadding, yPos + rowHeight - cellPadding/2);
-    doc.text('Messwert', margin + colWidths[0] + colWidths[1] + cellPadding, yPos + rowHeight - cellPadding/2);
-    
-    yPos += rowHeight;
-    
-    // Tabelleninhalt zeichnen
-    doc.setTextColor(0, 0, 0);
-    doc.setFillColor(255, 255, 255);
-    
-    measurements.forEach((m, index) => {
-      const isEvenRow = index % 2 === 0;
-      
-      if (isEvenRow) {
-        doc.setFillColor(245, 245, 245);
-      } else {
-        doc.setFillColor(255, 255, 255);
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Beschreibung', 'Typ', 'Messwert']],
+      body: tableData,
+      margin: { left: margin, right: margin },
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3
+      },
+      headStyles: {
+        fillColor: [66, 66, 66],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
       }
-      
-      doc.rect(margin, yPos, contentWidth, rowHeight, 'F');
-      doc.setDrawColor(220, 220, 220);
-      doc.rect(margin, yPos, contentWidth, rowHeight, 'S');
-      
-      const description = m.description || '-';
-      const type = m.type === 'length' ? 'Länge' : 'Höhe';
-      const value = `${m.value.toFixed(2)} ${m.unit}`;
-      
-      doc.text(description, margin + cellPadding, yPos + rowHeight - cellPadding/2);
-      doc.text(type, margin + colWidths[0] + cellPadding, yPos + rowHeight - cellPadding/2);
-      doc.text(value, margin + colWidths[0] + colWidths[1] + cellPadding, yPos + rowHeight - cellPadding/2);
-      
-      yPos += rowHeight;
     });
     
-    yPos += 15;
+    // Get the Y position after the table
+    yPos = (doc as any).lastAutoTable.finalY + 15;
     
     // Screenshots hinzufügen, falls vorhanden
     if (screenshots && screenshots.length > 0) {
-      doc.setFontSize(16);
+      doc.setFontSize(14); // Reduced from 16 to 14
       doc.setFont('helvetica', 'bold');
       doc.text('Screenshots', margin, yPos);
       yPos += 10;
@@ -348,8 +332,8 @@ export const exportMeasurementsToPDF = async (
         
         // Optimize image before adding to PDF
         try {
-          // Use 150 DPI and quality of 0.4 for smaller file size
-          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 700, 0.4, 150);
+          // Use 150 DPI and quality of 0.3 for smaller file size (reduced from 0.4)
+          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 600, 0.3, 150);
           
           // Get dimensions of the optimized image to maintain aspect ratio
           const img = new Image();
@@ -360,9 +344,9 @@ export const exportMeasurementsToPDF = async (
             img.onload = () => {
               // Check if we need a new page before adding the screenshot
               // Reserve space for the title + actual image + padding
-              const titleHeight = 10;
+              const titleHeight = 8; // Reduced from 10 to 8
               const aspectRatio = img.width / img.height;
-              const imgWidth = contentWidth; // Use full content width
+              const imgWidth = contentWidth * 0.9; // 90% of content width to reduce file size
               const imgHeight = imgWidth / aspectRatio;
               const requiredSpace = titleHeight + imgHeight + 15; // Added some padding
             
@@ -373,20 +357,23 @@ export const exportMeasurementsToPDF = async (
               }
               
               // Add screenshot title
-              doc.setFontSize(12);
+              doc.setFontSize(10); // Reduced from 12 to 10
               doc.setFont('helvetica', 'bold');
               doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
               yPos += titleHeight;
               
-              // Add screenshot image
+              // Add screenshot image with compression options
               try {
                 doc.addImage(
                   optimizedDataUrl,
                   'JPEG',
-                  margin,
+                  margin + contentWidth * 0.05, // Center the image by adding 5% margin
                   yPos,
                   imgWidth,
-                  imgHeight
+                  imgHeight,
+                  undefined,
+                  'FAST', // Use FAST compression
+                  0  // 0 rotation
                 );
                 
                 yPos += imgHeight + 15; // Add space after the image

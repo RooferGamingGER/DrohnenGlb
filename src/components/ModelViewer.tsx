@@ -1,10 +1,9 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileUp, EyeOff, Eye } from 'lucide-react';
+import { Upload, FileUp, EyeOff, Eye, X } from 'lucide-react';
 import MeasurementTools from '@/components/MeasurementTools';
 import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
@@ -39,7 +38,6 @@ const ModelViewer: React.FC = () => {
     
     const file = files[0];
     
-    // Check file type
     if (!file.name.toLowerCase().endsWith('.glb')) {
       toast({
         title: "Ungültiges Dateiformat",
@@ -56,7 +54,6 @@ const ModelViewer: React.FC = () => {
       console.error('Error loading model:', error);
     }
     
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -76,7 +73,6 @@ const ModelViewer: React.FC = () => {
     
     const file = files[0];
     
-    // Check file type
     if (!file.name.toLowerCase().endsWith('.glb')) {
       toast({
         title: "Ungültiges Dateiformat",
@@ -107,28 +103,24 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleNewProject = () => {
-    // Instead of reloading, just reset the viewer and allow a new upload
     if (modelViewer.loadedModel) {
       modelViewer.resetView();
       modelViewer.clearMeasurements();
       setShowMeasurementTools(false);
       setSavedScreenshots([]);
       
-      // Clear the container to allow a new model to be uploaded
       if (containerRef.current) {
         while (containerRef.current.firstChild) {
           containerRef.current.removeChild(containerRef.current.firstChild);
         }
       }
       
-      // Initialize a new Three.js scene
       modelViewer.initScene();
     }
   };
 
   const handleTakeScreenshot = () => {
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
-      // Take screenshot of the entire container instead of just the renderer
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
@@ -140,7 +132,8 @@ const ModelViewer: React.FC = () => {
       toast({
         title: "Fehler",
         description: "Screenshot konnte nicht erstellt werden.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000,
       });
     }
   };
@@ -161,13 +154,11 @@ const ModelViewer: React.FC = () => {
   const handleExportMeasurements = async () => {
     if (modelViewer.measurements.length > 0) {
       try {
-        // Show loading toast
         const loadingToast = toast({
           title: "Export wird vorbereitet",
           description: "Bitte warten Sie, während der Export vorbereitet wird...",
         });
         
-        // Try PDF export first with async/await pattern
         try {
           await exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
           toast({
@@ -177,7 +168,6 @@ const ModelViewer: React.FC = () => {
         } catch (pdfError) {
           console.error('Error exporting to PDF:', pdfError);
           
-          // Fallback to Word/HTML export if PDF fails
           exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
           toast({
             title: "Export erfolgreich",
@@ -215,22 +205,22 @@ const ModelViewer: React.FC = () => {
         title: measurementsVisible ? "Messungen ausgeblendet" : "Messungen eingeblendet",
         description: measurementsVisible ? 
           "Messungen wurden für Screenshots ausgeblendet." : 
-          "Messungen wurden wieder eingeblendet."
+          "Messungen wurden wieder eingeblendet.",
+        duration: 5000,
       });
     }
-  }, [measurementsVisible, modelViewer]);
+  }, [measurementsVisible, modelViewer, toast]);
 
   const toggleSingleMeasurementVisibility = useCallback((id: string) => {
-    // Find the measurement
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (measurement) {
-      // Toggle the visibility
       const newVisibility = measurement.visible === false ? true : false;
       modelViewer.updateMeasurement(id, { visible: newVisibility });
       
       toast({
         title: newVisibility ? "Messung eingeblendet" : "Messung ausgeblendet",
-        description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`
+        description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`,
+        duration: 5000,
       });
     }
   }, [modelViewer, toast]);
@@ -251,16 +241,15 @@ const ModelViewer: React.FC = () => {
   return (
     <div className="relative h-full w-full flex flex-col">
       <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
-        {/* Added margin to make the measurement toggle button more visible */}
-        <div className="mr-4">
-          {modelViewer.loadedModel && showMeasurementTools && (
+        <div>
+          {modelViewer.loadedModel && showMeasurementTools && isMobile && (
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
-              className="bg-background/70 backdrop-blur-sm"
               onClick={toggleMeasurementTools}
+              className="bg-background/70 backdrop-blur-sm flex items-center gap-1"
             >
-              {showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge einblenden"}
+              <X size={16} /> Messwerkzeuge
             </Button>
           )}
         </div>
@@ -326,7 +315,6 @@ const ModelViewer: React.FC = () => {
           </div>
         )}
         
-        {/* Measurement visibility toggle button */}
         {modelViewer.loadedModel && modelViewer.measurements.length > 0 && (
           <div className="absolute top-4 left-4 z-10">
             <Button
@@ -345,7 +333,6 @@ const ModelViewer: React.FC = () => {
         )}
       </div>
       
-      {/* Always render the MeasurementTools if they are enabled, but positioning is conditional */}
       {modelViewer.loadedModel && showMeasurementTools && (
         <div 
           className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}
