@@ -17,7 +17,12 @@ import {
   createMeasurementId,
   createTextSprite,
   updateLabelScale,
-  createDraggablePointMaterial
+  createDraggablePointMaterial,
+  createDraggablePoint,
+  createMeasurementLine,
+  isDoubleClick,
+  togglePointSelection,
+  isPointSelected
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -55,6 +60,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const draggedPointRef = useRef<THREE.Mesh | null>(null);
+  const lastClickTimeRef = useRef<number>(0);
+  const lastTouchTimeRef = useRef<number>(0);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -82,6 +89,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     meshes: THREE.Mesh[];
   } | null>(null);
 
+  const touchStartPositionRef = useRef<{x: number, y: number} | null>(null);
+  const isTouchMoveRef = useRef<boolean>(false);
+
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   
@@ -94,9 +104,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
-      
-      const deltaX = mouseRef.current.x - previousMouseRef.current.x;
-      const deltaY = mouseRef.current.y - previousMouseRef.current.y;
       
       raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
       
@@ -136,7 +143,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (intersects.length > 0) {
         const pointId = intersects[0].object.name;
         setHoveredPointId(pointId);
-        document.body.style.cursor = 'grab';
+        document.body.style.cursor = 'pointer';
         
         if (intersects[0].object instanceof THREE.Mesh) {
           intersects[0].object.material = createDraggablePointMaterial(true);
@@ -168,29 +175,202 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     if (!containerRef.current || !measurementGroupRef.current) return;
     
     if (hoveredPointId && !isDraggingPoint) {
-      event.preventDefault();
-      event.stopPropagation();
-      
+      const currentTime = new Date().getTime();
       const pointMesh = measurementGroupRef.current.children.find(
         child => child.name === hoveredPointId
       ) as THREE.Mesh;
       
-      if (pointMesh) {
-        setIsDraggingPoint(true);
-        draggedPointRef.current = pointMesh;
-        document.body.style.cursor = 'grabbing';
+      if (pointMesh && pointMesh.userData) {
+        const lastClickTime = pointMesh.userData.lastClickTime || 0;
         
-        const nameParts = hoveredPointId.split('-');
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
+        if (isDoubleClick(currentTime, lastClickTime)) {
+          event.preventDefault();
+          event.stopPropagation();
           
-          setSelectedMeasurementId(measurementId);
-          setSelectedPointIndex(pointIndex);
-          
-          if (controlsRef.current) {
-            controlsRef.current.enabled = false;
+          // Check if point is already selected (being dragged earlier)
+          if (isPointSelected(pointMesh)) {
+            // Deactivate the point
+            togglePointSelection(pointMesh);
+            
+            if (controlsRef.current && controlsRef.current.enabled === false) {
+              controlsRef.current.enabled = true;
+            }
+            
+            toast({
+              title: "Punkt deaktiviert",
+              description: "Der Messpunkt wurde deaktiviert.",
+              duration: 3000,
+            });
+            
+            setIsDraggingPoint(false);
+            draggedPointRef.current = null;
+            setSelectedMeasurementId(null);
+            setSelectedPointIndex(null);
+          } else {
+            // Activate the point for dragging
+            setIsDraggingPoint(true);
+            draggedPointRef.current = pointMesh;
+            document.body.style.cursor = 'grabbing';
+            
+            // Select the point visually
+            togglePointSelection(pointMesh);
+            
+            const nameParts = hoveredPointId.split('-');
+            if (nameParts.length >= 3) {
+              const measurementId = nameParts[1];
+              const pointIndex = parseInt(nameParts[2], 10);
+              
+              setSelectedMeasurementId(measurementId);
+              setSelectedPointIndex(pointIndex);
+              
+              if (controlsRef.current) {
+                controlsRef.current.enabled = false;
+              }
+              
+              pointMesh.userData.isBeingDragged = true;
+              
+              toast({
+                title: "Punkt wird verschoben",
+                description: "Bewegen Sie den Punkt an die gewünschte Position und lassen Sie die Maustaste los, oder klicken Sie doppelt, um ihn zu deaktivieren.",
+                duration: 3000,
+              });
+            }
           }
+        } else {
+          pointMesh.userData.lastClickTime = currentTime;
+        }
+      }
+    }
+  };
+
+  const handleTouchStart = (event: TouchEvent) => {
+    if (!containerRef.current || !measurementGroupRef.current || event.touches.length !== 1) return;
+    
+    const touch = event.touches[0];
+    const rect = containerRef.current.getBoundingClientRect();
+    
+    // Store the initial touch position to detect movement
+    touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
+    isTouchMoveRef.current = false;
+    
+    mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    if (cameraRef.current) {
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      
+      const pointObjects = measurementGroupRef.current.children.filter(
+        child => child instanceof THREE.Mesh && child.name.startsWith('point-')
+      );
+      
+      const intersects = raycasterRef.current.intersectObjects(pointObjects, false);
+      
+      if (intersects.length > 0) {
+        const currentTime = new Date().getTime();
+        const pointMesh = intersects[0].object as THREE.Mesh;
+        const pointId = pointMesh.name;
+        setHoveredPointId(pointId);
+        
+        if (pointMesh.userData) {
+          const lastTouchTime = lastTouchTimeRef.current || 0;
+          
+          // If it's a double-tap (within 500ms)
+          if (isDoubleClick(currentTime, lastTouchTime)) {
+            event.preventDefault();
+            
+            // Check if point is already selected (being dragged earlier)
+            if (isPointSelected(pointMesh)) {
+              // Deactivate the point
+              togglePointSelection(pointMesh);
+              
+              if (controlsRef.current && controlsRef.current.enabled === false) {
+                controlsRef.current.enabled = true;
+              }
+              
+              toast({
+                title: "Punkt deaktiviert",
+                description: "Der Messpunkt wurde deaktiviert.",
+                duration: 3000,
+              });
+              
+              setIsDraggingPoint(false);
+              draggedPointRef.current = null;
+              setSelectedMeasurementId(null);
+              setSelectedPointIndex(null);
+            } else {
+              // Activate the point for dragging
+              setIsDraggingPoint(true);
+              draggedPointRef.current = pointMesh;
+              
+              // Select the point visually
+              togglePointSelection(pointMesh);
+              
+              const nameParts = pointId.split('-');
+              if (nameParts.length >= 3) {
+                const measurementId = nameParts[1];
+                const pointIndex = parseInt(nameParts[2], 10);
+                
+                setSelectedMeasurementId(measurementId);
+                setSelectedPointIndex(pointIndex);
+                
+                if (controlsRef.current) {
+                  controlsRef.current.enabled = false;
+                }
+                
+                pointMesh.userData.isBeingDragged = true;
+                
+                toast({
+                  title: "Punkt wird verschoben",
+                  description: "Bewegen Sie den Punkt an die gewünschte Position oder tippen Sie doppelt, um ihn zu deaktivieren.",
+                  duration: 3000,
+                });
+              }
+            }
+          }
+          
+          lastTouchTimeRef.current = currentTime;
+        }
+      }
+    }
+  };
+
+  const handleTouchMove = (event: TouchEvent) => {
+    if (!containerRef.current || event.touches.length !== 1) return;
+    
+    const touch = event.touches[0];
+    
+    // Check if the touch has moved significantly from the start position
+    if (touchStartPositionRef.current) {
+      const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
+      
+      // If movement is more than 10px, consider it a drag operation
+      if (deltaX > 10 || deltaY > 10) {
+        isTouchMoveRef.current = true;
+      }
+    }
+    
+    // Handle point dragging
+    if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
+      event.preventDefault();
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+      
+      if (intersects.length > 0) {
+        const newPosition = intersects[0].point.clone();
+        draggedPointRef.current.position.copy(newPosition);
+        
+        if (selectedMeasurementId !== null && selectedPointIndex !== null) {
+          updateMeasurementPointPosition(
+            selectedMeasurementId, 
+            selectedPointIndex, 
+            newPosition
+          );
         }
       }
     }
@@ -199,16 +379,64 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const handleMouseUp = (event: MouseEvent) => {
     if (isDraggingPoint) {
       setIsDraggingPoint(false);
+      
+      if (draggedPointRef.current?.userData) {
+        draggedPointRef.current.userData.isBeingDragged = false;
+        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
+      }
+      
       draggedPointRef.current = null;
-      document.body.style.cursor = hoveredPointId ? 'grab' : 'auto';
+      document.body.style.cursor = hoveredPointId ? 'pointer' : 'auto';
       
       if (controlsRef.current) {
         controlsRef.current.enabled = true;
       }
       
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
+      toast({
+        title: "Position aktualisiert",
+        description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
+        duration: 3000,
+      });
+      
+      // Keep the measurement and point indices so we know which point was just updated
+      // but clear the dragging state
+      setIsDraggingPoint(false);
     }
+  };
+
+  const handleTouchEnd = (event: TouchEvent) => {
+    // If we were dragging a point, finalize it
+    if (isDraggingPoint) {
+      setIsDraggingPoint(false);
+      
+      if (draggedPointRef.current?.userData) {
+        draggedPointRef.current.userData.isBeingDragged = false;
+        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
+      }
+      
+      draggedPointRef.current = null;
+      
+      if (controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
+      
+      toast({
+        title: "Position aktualisiert",
+        description: "Die Messung wurde an die neue Position angepasst. Doppeltippen Sie auf den Punkt, um ihn zu deaktivieren.",
+        duration: 3000,
+      });
+      
+      // Keep the measurement and point indices but clear the dragging state
+      setIsDraggingPoint(false);
+    } 
+    // If it was a tap without much movement and we're in measurement mode, handle the tap
+    else if (!isTouchMoveRef.current && activeTool !== 'none') {
+      handleMeasurementTap(event);
+    }
+    
+    // Reset the touch tracking variables
+    touchStartPositionRef.current = null;
+    isTouchMoveRef.current = false;
   };
 
   const updateMeasurementPointPosition = (
@@ -397,29 +625,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   useEffect(() => {
-    if (hoverPoint && measurementGroupRef.current && activeTool !== 'none') {
-      const hoverGeometry = new THREE.SphereGeometry(0.03);
-      const hoverMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.5
-      });
-      const hoverMesh = new THREE.Mesh(hoverGeometry, hoverMaterial);
-      hoverMesh.position.copy(hoverPoint);
-      hoverMesh.name = 'hoverPoint';
-      
-      const existingHoverPoint = measurementGroupRef.current.children.find(
-        child => child.name === 'hoverPoint'
-      );
-      if (existingHoverPoint) {
-        measurementGroupRef.current.remove(existingHoverPoint);
-      }
-      
-      measurementGroupRef.current.add(hoverMesh);
-    }
-  }, [hoverPoint, activeTool]);
-
-  useEffect(() => {
     if (!containerRef.current) return;
 
     const scene = new THREE.Scene();
@@ -510,14 +715,20 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     containerRef.current.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
+    containerRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
     
     return () => {
       window.removeEventListener('resize', handleResize);
       
       if (containerRef.current) {
         containerRef.current.removeEventListener('mousedown', handleMouseDown);
+        containerRef.current.removeEventListener('touchstart', handleTouchStart);
       }
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
       
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -572,12 +783,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const addMeasurementPoint = (position: THREE.Vector3) => {
     if (!measurementGroupRef.current) return;
     
-    const pointGeometry = new THREE.SphereGeometry(0.03, 16, 16);
-    const pointMaterial = createDraggablePointMaterial();
-    const point = new THREE.Mesh(pointGeometry, pointMaterial);
-    point.position.copy(position);
-    
-    point.name = `point-temp-${temporaryPoints.length}`;
+    const pointName = `point-temp-${temporaryPoints.length}`;
+    const point = createDraggablePoint(position, pointName);
     
     measurementGroupRef.current.add(point);
     
@@ -596,11 +803,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     if (temporaryPoints.length > 0) {
       const prevPoint = temporaryPoints[temporaryPoints.length - 1].position;
       
-      const lineMaterial = new THREE.LineBasicMaterial({ 
-        color: activeTool === 'length' ? 0x00ff00 : 0x0000ff,
-        linewidth: 2
-      });
-      
       let linePoints: THREE.Vector3[];
       
       if (activeTool === 'height') {
@@ -615,8 +817,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         linePoints = [prevPoint, position];
       }
       
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
-      const line = new THREE.Line(lineGeometry, lineMaterial);
+      const line = createMeasurementLine(
+        linePoints,
+        activeTool === 'length' ? 0x00ff00 : 0x0000ff
+      );
+      
       measurementGroupRef.current.add(line);
       
       if (currentMeasurementRef.current) {
@@ -726,6 +931,46 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     currentMeasurementRef.current = null;
   };
   
+  const handleMeasurementTap = (event: TouchEvent) => {
+    if (isDraggingPoint || event.touches.length !== 1) return;
+    
+    if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
+        !sceneRef.current || !cameraRef.current) {
+      return;
+    }
+    
+    // Determine if this is a deliberate tap or a cancelled drag
+    if (isTouchMoveRef.current) {
+      return;
+    }
+    
+    const touch = event.changedTouches[0]; // Use changedTouches for the touch that ended
+    const rect = containerRef.current.getBoundingClientRect();
+    mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+    
+    const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+    
+    if (intersects.length > 0) {
+      const point = intersects[0].point.clone();
+      const worldPoint = point.clone();
+      
+      setTemporaryPoints(prev => [...prev, { 
+        position: point,
+        worldPosition: worldPoint
+      }]);
+      
+      addMeasurementPoint(point);
+      
+      if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
+        const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
+        finalizeMeasurement(newPoints);
+      }
+    }
+  };
+
   const clearMeasurements = () => {
     if (measurementGroupRef.current) {
       measurements.forEach(measurement => {
@@ -799,7 +1044,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       containerRef.current.addEventListener('click', handleMeasurementClick);
       
       if (controlsRef.current) {
-        controlsRef.current.enableRotate = false;
+        // In measurement mode, still allow rotation but with some limitation
+        controlsRef.current.enableRotate = true;
+        controlsRef.current.rotateSpeed = 0.4; // Reduce rotate speed in measurement mode
       }
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
@@ -807,6 +1054,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
+        controlsRef.current.rotateSpeed = 0.7; // Reset to normal rotate speed
       }
     }
     
