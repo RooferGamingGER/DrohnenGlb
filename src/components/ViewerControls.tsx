@@ -7,7 +7,6 @@ import {
   Minimize, 
   Ruler, 
   Camera, 
-  FileSpreadsheet,
   FileText,
   Home,
   X

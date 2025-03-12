@@ -10,11 +10,13 @@ import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 import { useToast } from '@/hooks/use-toast';
 import { captureScreenshot, exportMeasurementsToPDF } from '@/utils/screenshotUtils';
+import { useMobile } from '@/hooks/use-mobile';
 
 const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const isMobile = useMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
@@ -153,11 +155,20 @@ const ModelViewer: React.FC = () => {
 
   const handleExportMeasurements = () => {
     if (modelViewer.measurements.length > 0) {
-      exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
-      toast({
-        title: "Export erfolgreich",
-        description: "Die Messungen wurden als PDF-Datei exportiert.",
-      });
+      try {
+        exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
+        toast({
+          title: "Export erfolgreich",
+          description: "Die Messungen wurden als PDF-Datei exportiert.",
+        });
+      } catch (error) {
+        console.error('Error exporting measurements:', error);
+        toast({
+          title: "Fehler beim Export",
+          description: "Die Messungen konnten nicht exportiert werden.",
+          variant: "destructive"
+        });
+      }
     } else {
       toast({
         title: "Keine Messungen",
@@ -250,7 +261,7 @@ const ModelViewer: React.FC = () => {
       </div>
       
       {showMeasurementTools && (
-        <div className={`absolute top-20 left-4 z-20 ${isFullscreen ? 'fixed' : ''}`}>
+        <div className={`${isMobile ? 'fixed top-[60px] left-0 right-0 px-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}>
           <MeasurementTools
             activeTool={modelViewer.activeTool}
             onToolChange={handleToolChange}
@@ -262,6 +273,7 @@ const ModelViewer: React.FC = () => {
             canUndo={modelViewer.canUndo}
             onClose={toggleMeasurementTools}
             screenshots={savedScreenshots}
+            isMobile={isMobile}
           />
         </div>
       )}
