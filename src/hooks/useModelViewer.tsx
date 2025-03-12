@@ -1231,24 +1231,34 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   const resetView = () => {
-    if (controlsRef.current && modelRef.current && cameraRef.current) {
-      const box = new THREE.Box3().setFromObject(modelRef.current);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3()).length();
+    if (controlsRef.current) {
+      controlsRef.current.reset();
       
-      const distance = size * 1.5;
-      cameraRef.current.position.copy(center);
-      cameraRef.current.position.z += distance;
-      cameraRef.current.lookAt(center);
+      if (cameraRef.current && sceneRef.current) {
+        const boundingBox = new THREE.Box3().setFromObject(sceneRef.current);
+        const center = new THREE.Vector3();
+        boundingBox.getCenter(center);
+        const size = new THREE.Vector3();
+        boundingBox.getSize(size);
+        
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = cameraRef.current.fov * (Math.PI / 180);
+        let cameraDistance = Math.abs(maxDim / Math.sin(fov / 2));
+        
+        cameraDistance *= 1.2;
+        
+        const direction = new THREE.Vector3(0, 0, 1).normalize();
+        const position = new THREE.Vector3();
+        position.copy(center).add(direction.multiplyScalar(cameraDistance));
+        
+        cameraRef.current.position.copy(position);
+        cameraRef.current.lookAt(center);
+        cameraRef.current.updateProjectionMatrix();
+      }
       
-      controlsRef.current.target.copy(center);
-      controlsRef.current.update();
-      
-      toast({
-        title: "Ansicht zurückgesetzt",
-        description: "Die Modellansicht wurde zurückgesetzt.",
-        duration: 3000,
-      });
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
     }
   };
 
@@ -1318,4 +1328,3 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress
   };
 };
-
