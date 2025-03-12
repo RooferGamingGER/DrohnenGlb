@@ -1038,6 +1038,40 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    initScene: () => {
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        // Clear the scene
+        while (sceneRef.current.children.length > 0) {
+          sceneRef.current.remove(sceneRef.current.children[0]);
+        }
+        
+        // Reset the camera position
+        cameraRef.current.position.set(0, 5, 10);
+        cameraRef.current.lookAt(0, 0, 0);
+        
+        // Add basic lighting back to the scene
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        sceneRef.current.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        sceneRef.current.add(directionalLight);
+        
+        // Add grid helper back to the scene
+        const gridHelper = new THREE.GridHelper(20, 20);
+        sceneRef.current.add(gridHelper);
+        
+        // Render the empty scene
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        
+        // Reset internal state if needed
+        setActiveTool('none');
+        setLoadedModel(null);
+        setMeasurements([]);
+        setIsLoading(false);
+        setError(null);
+      }
+    },
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current

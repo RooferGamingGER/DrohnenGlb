@@ -15,26 +15,11 @@ export const captureScreenshot = (
   scene: THREE.Scene,
   camera: THREE.Camera
 ): string => {
-  // Aktuellen Renderer-Größe merken
-  const originalSize = {
-    width: renderer.domElement.width,
-    height: renderer.domElement.height
-  };
-
-  // Renderer auf viewport-Größe anpassen für bessere Qualität
-  const pixelRatio = window.devicePixelRatio;
-  renderer.setSize(window.innerWidth * pixelRatio, window.innerHeight * pixelRatio, false);
-  renderer.setPixelRatio(1);
-  
-  // Scene rendern
+  // Render the current scene to capture the current state exactly
   renderer.render(scene, camera);
   
-  // Screenshot als DataURL erstellen
+  // Capture the WebGL canvas content
   const dataUrl = renderer.domElement.toDataURL('image/png');
-  
-  // Renderer auf originale Größe zurücksetzen
-  renderer.setSize(originalSize.width, originalSize.height, false);
-  renderer.setPixelRatio(pixelRatio);
   
   return dataUrl;
 };

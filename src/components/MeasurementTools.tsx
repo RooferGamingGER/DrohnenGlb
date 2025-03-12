@@ -98,7 +98,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       onMouseUp={handleContainerClick}
     >
       <div className="flex flex-col gap-2">
-        <TooltipProvider>
+        <TooltipProvider delayDuration={300}>
           <div className="flex flex-col items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -115,7 +115,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Move size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="right">
                 <p>Navigieren</p>
               </TooltipContent>
             </Tooltip>
@@ -135,7 +135,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Ruler size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="right">
                 <p>Länge messen</p>
               </TooltipContent>
             </Tooltip>
@@ -155,7 +155,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <ArrowUpDown size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="right">
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
@@ -171,7 +171,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Undo size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side="right">
                   <p>Letzten Punkt rückgängig machen</p>
                 </TooltipContent>
               </Tooltip>
@@ -188,7 +188,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Trash size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side="right">
                   <p>Alle Messungen löschen</p>
                 </TooltipContent>
               </Tooltip>
@@ -206,7 +206,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <X size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side="right">
                   <p>Schließen</p>
                 </TooltipContent>
               </Tooltip>

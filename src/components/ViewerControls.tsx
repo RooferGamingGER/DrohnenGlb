@@ -17,7 +17,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Link } from 'react-router-dom';
 
 interface ViewerControlsProps {
   onReset: () => void;
@@ -44,7 +43,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 }) => {
   return (
     <div className="flex items-center gap-2">
-      <TooltipProvider>
+      <TooltipProvider delayDuration={300}>
         <div className="flex md:flex-row flex-wrap gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -52,7 +51,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="bottom">
               <p>Ansicht zurücksetzen</p>
             </TooltipContent>
           </Tooltip>
@@ -64,7 +63,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   <Home className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 <p>Neues Projekt</p>
               </TooltipContent>
             </Tooltip>
@@ -85,7 +84,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="bottom">
               <p>{showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}</p>
             </TooltipContent>
           </Tooltip>
@@ -97,7 +96,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   <Camera className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 <p>Screenshot erstellen</p>
               </TooltipContent>
             </Tooltip>
@@ -110,7 +109,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   <FileSpreadsheet className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 <p>Messungen exportieren</p>
               </TooltipContent>
             </Tooltip>
@@ -126,7 +125,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="bottom">
               <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
             </TooltipContent>
           </Tooltip>

@@ -99,18 +99,27 @@ const ModelViewer: React.FC = () => {
   };
 
   const handleNewProject = () => {
+    // Instead of reloading, just reset the viewer and allow a new upload
     if (modelViewer.loadedModel) {
-      // Reset the viewer by clearing the model
       modelViewer.resetView();
+      modelViewer.clearMeasurements();
+      setShowMeasurementTools(false);
+      
+      // Clear the container to allow a new model to be uploaded
       if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+        while (containerRef.current.firstChild) {
+          containerRef.current.removeChild(containerRef.current.firstChild);
+        }
       }
-      window.location.reload(); // Einfache Lösung um alles zurückzusetzen
+      
+      // Initialize a new Three.js scene
+      modelViewer.initScene();
     }
   };
 
   const handleTakeScreenshot = () => {
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
+      // Take screenshot of the entire container instead of just the renderer
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
@@ -162,7 +171,7 @@ const ModelViewer: React.FC = () => {
 
   return (
     <div className="relative h-full w-full flex flex-col">
-      <div className="flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10">
+      <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
         <div className="flex items-center">
           <img 
             src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png" 
@@ -235,17 +244,19 @@ const ModelViewer: React.FC = () => {
       </div>
       
       {showMeasurementTools && (
-        <MeasurementTools
-          activeTool={modelViewer.activeTool}
-          onToolChange={handleToolChange}
-          onClearMeasurements={modelViewer.clearMeasurements}
-          onDeleteMeasurement={modelViewer.deleteMeasurement}
-          onUndoLastPoint={modelViewer.undoLastPoint}
-          onUpdateMeasurement={modelViewer.updateMeasurement}
-          measurements={modelViewer.measurements}
-          canUndo={modelViewer.canUndo}
-          onClose={toggleMeasurementTools}
-        />
+        <div className={`absolute top-20 left-4 z-20 ${isFullscreen ? 'fixed' : ''}`}>
+          <MeasurementTools
+            activeTool={modelViewer.activeTool}
+            onToolChange={handleToolChange}
+            onClearMeasurements={modelViewer.clearMeasurements}
+            onDeleteMeasurement={modelViewer.deleteMeasurement}
+            onUndoLastPoint={modelViewer.undoLastPoint}
+            onUpdateMeasurement={modelViewer.updateMeasurement}
+            measurements={modelViewer.measurements}
+            canUndo={modelViewer.canUndo}
+            onClose={toggleMeasurementTools}
+          />
+        </div>
       )}
       
       {modelViewer.error && (
