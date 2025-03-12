@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -15,8 +14,23 @@ export interface ScreenshotData {
 export const captureScreenshot = (
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
-  camera: THREE.Camera
+  camera: THREE.Camera,
+  isMobile: boolean = false
 ): string => {
+  if (isMobile && window.innerHeight > window.innerWidth) {
+    const originalAspect = camera.aspect;
+    camera.aspect = 16 / 9;
+    camera.updateProjectionMatrix();
+    
+    renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    
+    camera.aspect = originalAspect;
+    camera.updateProjectionMatrix();
+    
+    return dataUrl;
+  }
+  
   renderer.render(scene, camera);
   const dataUrl = renderer.domElement.toDataURL('image/png');
   return dataUrl;
@@ -45,7 +59,8 @@ const optimizeImageData = async (
   dataUrl: string, 
   maxWidth: number = 800, 
   quality: number = 0.8, 
-  targetDPI: number = 250
+  targetDPI: number = 250,
+  forceLandscape: boolean = false
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
@@ -55,6 +70,12 @@ const optimizeImageData = async (
         
         let width = img.width;
         let height = img.height;
+        
+        if (forceLandscape && height > width) {
+          const temp = width;
+          width = height;
+          height = temp;
+        }
         
         const scaleFactor = targetDPI / 150;
         
@@ -80,7 +101,15 @@ const optimizeImageData = async (
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         
-        ctx.drawImage(img, 0, 0, width, height);
+        if (forceLandscape && img.height > img.width) {
+          ctx.save();
+          ctx.translate(width, 0);
+          ctx.rotate(90 * Math.PI / 180);
+          ctx.drawImage(img, 0, 0, height, width);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, 0, 0, width, height);
+        }
         
         const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(optimizedDataUrl);
@@ -211,13 +240,6 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Header height (for safe area calculation)
-    const headerHeight = 25;
-    // Footer height (for safe area calculation)
-    const footerHeight = 30;
-    // Safe content area height
-    const safeContentHeight = pageHeight - headerHeight - footerHeight;
-    
     const addPageHeader = () => {
       try {
         const logoSize = 15;
@@ -323,12 +345,12 @@ export const exportMeasurementsToPDF = async (
         const screenshot = screenshots[i];
         
         try {
-          // Further reduce size for mobile screenshots to ensure they fit properly
           const optimizedDataUrl = await optimizeImageData(
             screenshot.imageDataUrl, 
-            500, // Further reduced size for safety
-            0.6, // Lower quality for better compression
-            150  // Lower DPI for better fit
+            480,
+            0.55,
+            140,
+            true
           );
           
           const img = new Image();
@@ -339,16 +361,12 @@ export const exportMeasurementsToPDF = async (
               const titleHeight = 10;
               const aspectRatio = img.width / img.height;
               
-              // Use a more conservative width to leave more margin space
-              const imgWidth = contentWidth * 0.7; // Even more conservative width
+              const imgWidth = contentWidth * 0.65;
               const imgHeight = imgWidth / aspectRatio;
               
-              // Add extra buffer space to ensure no overlap with footer
-              const requiredSpace = titleHeight + imgHeight + 45; // Increased buffer
+              const requiredSpace = titleHeight + imgHeight + 50;
               
-              // Ensure we start a new page if there's not enough space
-              // Include more buffer space to prevent footer overlap
-              if (yPos + requiredSpace > (pageHeight - footerHeight - 15)) {
+              if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
                 doc.addPage();
                 addPageHeader();
                 yPos = margin + 30;
@@ -366,7 +384,6 @@ export const exportMeasurementsToPDF = async (
               yPos += titleHeight;
               
               try {
-                // Center the image horizontally and ensure it has enough margin
                 const xPos = margin + ((contentWidth - imgWidth) / 2);
                 
                 doc.addImage(
@@ -381,8 +398,7 @@ export const exportMeasurementsToPDF = async (
                   0
                 );
                 
-                // Add more space after images to ensure no footer overlap
-                yPos += imgHeight + 40; // Increased space after image
+                yPos += imgHeight + 45;
               } catch (addImageError) {
                 console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
                 yPos += 5;

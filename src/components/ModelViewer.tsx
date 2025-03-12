@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -129,7 +130,8 @@ const ModelViewer: React.FC = () => {
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
-        modelViewer.camera
+        modelViewer.camera,
+        isMobile // Pass the isMobile flag to ensure landscape orientation
       );
       setScreenshotData(dataUrl);
       setShowScreenshotDialog(true);

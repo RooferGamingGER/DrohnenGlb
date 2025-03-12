@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download, X, Save } from 'lucide-react';
 import { saveScreenshot } from '@/utils/screenshotUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ScreenshotDialogProps {
   imageDataUrl: string | null;
@@ -30,6 +31,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
   const [description, setDescription] = useState('');
   const timestamp = new Date().getTime();
   const filename = `Aufnahme_${timestamp}`;
+  const isMobile = useIsMobile();
 
   const handleDownload = () => {
     if (imageDataUrl) {
@@ -54,6 +56,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           <DialogTitle>Aufnahme</DialogTitle>
           <DialogDescription>
             Geben Sie eine Beschreibung für die Aufnahme ein.
+            {isMobile && " (Aufnahme wurde automatisch im Querformat erstellt)"}
           </DialogDescription>
         </DialogHeader>
         
