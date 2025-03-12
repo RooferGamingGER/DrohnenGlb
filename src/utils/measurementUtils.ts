@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -195,19 +196,29 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh | null => {
   // Create a new Float32Array to hold our modified positions
   const newPositions = new Float32Array(count * itemSize);
   
-  // Copy existing values from the position attribute
+  // Copy existing values from the position attribute but replace Y values
   for (let i = 0; i < count; i++) {
-    for (let j = 0; j < itemSize; j++) {
-      const index = i * itemSize + j;
-      // Use getX/getY/getZ for safe access, regardless of buffer type
-      if (j === 0) {
-        newPositions[index] = positionAttribute.getX(i);
-      } else if (j === 1) {
-        // Replace Y value with our avgY + offset
-        newPositions[index] = avgY + offset;
-      } else if (j === 2) {
-        newPositions[index] = positionAttribute.getZ(i);
+    const index = i * itemSize;
+    
+    // Safe way to access buffer values for all attribute types
+    if (positionAttribute instanceof THREE.BufferAttribute || 
+        positionAttribute instanceof THREE.InterleavedBufferAttribute) {
+      // For standard buffer attributes, we can access the data directly
+      for (let j = 0; j < itemSize; j++) {
+        if (j === 1) { // Y component
+          newPositions[index + j] = avgY + offset;
+        } else {
+          // Copy X and Z values as is
+          newPositions[index + j] = positionAttribute.array[index + j];
+        }
       }
+    } else {
+      // For GLBufferAttribute or other types, create a fallback method
+      // This creates a default flat surface at the average height
+      const stride = i * itemSize;
+      newPositions[stride] = points[i % points.length].x;      // X
+      newPositions[stride + 1] = avgY + offset;                // Y
+      newPositions[stride + 2] = points[i % points.length].z;  // Z
     }
   }
   
