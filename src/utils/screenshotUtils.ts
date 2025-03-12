@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -18,15 +19,17 @@ export const captureScreenshot = (
   isMobile: boolean = false
 ): string => {
   if (isMobile && window.innerHeight > window.innerWidth) {
-    const originalAspect = camera.aspect;
-    camera.aspect = 16 / 9;
-    camera.updateProjectionMatrix();
+    // We need to cast to PerspectiveCamera to access aspect and updateProjectionMatrix
+    const perspCamera = camera as THREE.PerspectiveCamera;
+    const originalAspect = perspCamera.aspect;
+    perspCamera.aspect = 16 / 9;
+    perspCamera.updateProjectionMatrix();
     
     renderer.render(scene, camera);
     const dataUrl = renderer.domElement.toDataURL('image/png');
     
-    camera.aspect = originalAspect;
-    camera.updateProjectionMatrix();
+    perspCamera.aspect = originalAspect;
+    perspCamera.updateProjectionMatrix();
     
     return dataUrl;
   }
@@ -240,6 +243,9 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
+    // Define the footer height for use in page break calculations
+    const footerHeight = 25;
+    
     const addPageHeader = () => {
       try {
         const logoSize = 15;
@@ -431,3 +437,4 @@ export const exportMeasurementsToPDF = async (
     throw error;
   }
 };
+
