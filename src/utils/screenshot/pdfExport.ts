@@ -117,9 +117,7 @@ export const exportMeasurementsToPDF = async (
                 // Ensure there's enough space for header and footer
                 margin: {
                     top: headerHeight,
-                    bottom: footerHeight,
-                    left: margin,
-                    right: margin
+                    bottom: footerHeight
                 }
             });
 
