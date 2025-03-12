@@ -5,7 +5,7 @@ import { Screenshot } from './types';
 import { optimizeImageData } from './captureUtils';
 
 /**
- * Exports measurements and screenshots to PDF format
+ * Exports measurements and screenshots to PDF format (DIN A4)
  */
 export const exportMeasurementsToPDF = async (
   measurements: Measurement[],
@@ -16,7 +16,13 @@ export const exportMeasurementsToPDF = async (
       throw new Error("Keine Messdaten oder Aufnahmen vorhanden");
     }
 
-    const doc = new JsPDFModule({ compress: true });
+    // 🔹 PDF im DIN A4 Format (210mm x 297mm)
+    const doc = new JsPDFModule({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true
+    });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -27,8 +33,17 @@ export const exportMeasurementsToPDF = async (
     const footerHeight = 20;
     let totalPages = 1;
 
-    // Kopfzeile hinzufügen
-    const addPageHeader = (pageNumber: number, totalPages: number) => {
+    // 🔹 Kopfzeile mit Logo
+    const addPageHeader = () => {
+      try {
+        const logoImg = new Image();
+        logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
+
+        doc.addImage(logoImg, 'PNG', margin, margin, logoSize, logoSize);
+      } catch (logoError) {
+        console.warn("Logo konnte nicht geladen werden:", logoError);
+      }
+
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('DrohnenGLB by RooferGaming', margin + 20, margin + 10);
@@ -38,17 +53,15 @@ export const exportMeasurementsToPDF = async (
 
       const date = new Date().toLocaleDateString('de-DE');
       const dateText = `Datum: ${date}`;
-      const pageText = `Seite ${pageNumber} von ${totalPages}`;
-
       const textRightAlignX = pageWidth - margin;
+
       doc.text(dateText, textRightAlignX, margin + 10, { align: 'right' });
-      doc.text(pageText, textRightAlignX, margin + 20, { align: 'right' });
 
       doc.setLineWidth(0.3);
       doc.line(margin, margin + 25, pageWidth - margin, margin + 25);
     };
 
-    // Fußzeile hinzufügen
+    // 🔹 Fußzeile
     const addPageFooter = () => {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
@@ -62,10 +75,10 @@ export const exportMeasurementsToPDF = async (
       doc.text(footerLine, pageWidth / 2, pageHeight - 10, { align: 'center' });
     };
 
-    addPageHeader(1, totalPages);
+    addPageHeader();
     let yPos = headerHeight + margin;
 
-    // Messdaten-Tabelle hinzufügen
+    // 🔹 Messdaten-Tabelle
     if (measurements.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -92,7 +105,7 @@ export const exportMeasurementsToPDF = async (
       yPos = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    // Screenshots hinzufügen
+    // 🔹 Screenshots hinzufügen
     if (screenshots.length > 0) {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -118,10 +131,11 @@ export const exportMeasurementsToPDF = async (
               const imgHeight = imgWidth / aspectRatio;
               const requiredSpace = titleHeight + imgHeight + 50;
 
+              // 🔹 Falls zu wenig Platz -> Neue Seite
               if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
                 doc.addPage();
                 totalPages++;
-                addPageHeader(totalPages, totalPages);
+                addPageHeader();
                 yPos = headerHeight + margin;
               }
 
@@ -160,12 +174,11 @@ export const exportMeasurementsToPDF = async (
       }
     }
 
-    // **Seitenzahlen & Fußzeilen auf allen Seiten korrigieren**
+    // 🔹 Fußzeilen auf jeder Seite hinzufügen
     const finalTotalPages = doc.getNumberOfPages();
     for (let i = 1; i <= finalTotalPages; i++) {
       doc.setPage(i);
       addPageFooter();
-      addPageHeader(i, finalTotalPages);
     }
 
     doc.save('Bericht.pdf');
