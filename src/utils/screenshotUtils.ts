@@ -51,7 +51,12 @@ const dataURLToBlob = (dataURL: string): Blob => {
 };
 
 // Helper function to optimize image data (reduce size while preserving quality)
-const optimizeImageData = async (dataUrl: string, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
+const optimizeImageData = async (
+  dataUrl: string, 
+  maxWidth: number = 800, 
+  quality: number = 0.5, 
+  targetDPI: number = 150
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
       const img = new Image();
@@ -62,14 +67,23 @@ const optimizeImageData = async (dataUrl: string, maxWidth: number = 800, qualit
         let width = img.width;
         let height = img.height;
         
+        // Calculate pixel dimensions for 150 DPI
+        // Standard resolution conversion: 1 inch = 96 pixels at 96dpi
+        // So if we want 150dpi, we multiply by (150/96)
+        const scaleFactor = targetDPI / 96;
+        
         if (width > maxWidth) {
           const ratio = maxWidth / width;
           width = maxWidth;
           height = height * ratio;
         }
         
-        canvas.width = width;
-        canvas.height = height;
+        // Apply DPI scaling (for higher quality when printing)
+        const finalWidth = Math.round(width * scaleFactor);
+        const finalHeight = Math.round(height * scaleFactor);
+        
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
         
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -77,10 +91,17 @@ const optimizeImageData = async (dataUrl: string, maxWidth: number = 800, qualit
           return;
         }
         
+        // Set DPI properly for high quality printing
+        ctx.scale(scaleFactor, scaleFactor);
+        
+        // Enable image smoothing for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
         // Draw the image with new dimensions
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to data URL with reduced quality
+        // Convert to data URL with reduced quality JPEG
         const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(optimizedDataUrl);
       };
@@ -222,6 +243,7 @@ export const exportMeasurementsToPDF = async (
     
     // Konfiguration
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
@@ -325,33 +347,39 @@ export const exportMeasurementsToPDF = async (
       for (let i = 0; i < screenshots.length; i++) {
         const screenshot = screenshots[i];
         
-        // Prüfen, ob ein Seitenumbruch nötig ist
-        if (yPos + 100 > doc.internal.pageSize.getHeight()) {
-          doc.addPage();
-          yPos = margin;
-        }
-        
+        // Optimize image before adding to PDF
         try {
-          // Optimize image before adding to PDF
-          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 700, 0.7);
+          // Set target DPI to 150 and reduce quality more aggressively
+          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 700, 0.4, 150);
           
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
-          yPos += 5;
-          
-          // Load image and calculate dimensions to maintain aspect ratio
+          // Get dimensions of the optimized image to maintain aspect ratio
           const img = new Image();
           img.src = optimizedDataUrl;
           
           // Wait for image to load to get dimensions
           await new Promise<void>((resolve) => {
             img.onload = () => {
-              // Calculate dimensions to maintain aspect ratio within available width
-              const imgWidth = contentWidth;
+              // Check if we need a new page before adding the screenshot
+              // Reserve space for the title + actual image + padding
+              const titleHeight = 10;
               const aspectRatio = img.width / img.height;
+              const imgWidth = contentWidth; // Use full content width
               const imgHeight = imgWidth / aspectRatio;
+              const requiredSpace = titleHeight + imgHeight + 15; // Added some padding
               
+              // Add a new page if this screenshot won't fit
+              if (yPos + requiredSpace > pageHeight) {
+                doc.addPage();
+                yPos = margin; // Reset to the top of the new page
+              }
+              
+              // Add screenshot title
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'bold');
+              doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
+              yPos += titleHeight;
+              
+              // Add screenshot image
               try {
                 doc.addImage(
                   optimizedDataUrl,
@@ -362,9 +390,10 @@ export const exportMeasurementsToPDF = async (
                   imgHeight
                 );
                 
-                yPos += imgHeight + 15;
+                yPos += imgHeight + 15; // Add space after the image
               } catch (addImageError) {
                 console.warn(`Screenshot ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
+                yPos += 5; // Add a bit of space even if the image fails
               }
               
               resolve();
@@ -389,3 +418,4 @@ export const exportMeasurementsToPDF = async (
     throw error;
   }
 };
+
