@@ -42,7 +42,10 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           Wähle Sie Ihre GLB-Datei um mit dem Upload zu beginnen. 
         </p>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-3">
-          Hinweis: GLB-Dateien können vom Server direkt vom Server heruntergeladen werden. Hierfür das Textured Model (glTF) laden. 
+          Hinweis: GLB-Dateien können vom Server direkt vom 
+          <a href="https://drohnenvermessung-roofergaming.de" target="_blank">
+          Drohnenvermessung RooferGaming</a> 
+          heruntergeladen werden. Hierfür das Textured Model (glTF) laden. 
         </p>
         <Button>
           <Upload className="mr-2 h-4 w-4" />
