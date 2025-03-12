@@ -32,12 +32,15 @@ export const exportMeasurementsToPDF = async (
     const headerHeight = margin + logoSize + 10;
     const footerHeight = 20;
 
+    // Bildgrößen für 2 Bilder pro Seite
+    const imgWidth = contentWidth;
+    const imgHeight = (pageHeight - headerHeight - footerHeight - 40) / 2; // Platz für 2 Bilder
+
     // 🔹 Kopfzeile mit Logo
     const addPageHeader = () => {
       try {
         const logoImg = new Image();
         logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
-
         doc.addImage(logoImg, 'PNG', margin, margin, logoSize, logoSize);
       } catch (logoError) {
         console.warn("Logo konnte nicht geladen werden:", logoError);
@@ -110,6 +113,7 @@ export const exportMeasurementsToPDF = async (
       doc.addPage();
       addPageHeader();
       yPos = headerHeight + margin;
+      let imageCounter = 0;
 
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -130,17 +134,8 @@ export const exportMeasurementsToPDF = async (
           await new Promise<void>((resolve) => {
             img.onload = () => {
               const titleHeight = 10;
-              const aspectRatio = img.width / img.height;
-              const imgWidth = contentWidth * 0.85;
-              const imgHeight = imgWidth / aspectRatio;
-              const requiredSpace = titleHeight + imgHeight + 50;
-
-              // 🔹 Falls zu wenig Platz -> Neue Seite
-              if (yPos + requiredSpace > (pageHeight - footerHeight - 20)) {
-                doc.addPage();
-                addPageHeader();
-                yPos = headerHeight + margin;
-              }
+              const xPos = margin;
+              const imageYPos = imageCounter % 2 === 0 ? yPos : yPos + imgHeight + 10;
 
               doc.setFontSize(11);
               doc.setFont('helvetica', 'bold');
@@ -150,16 +145,16 @@ export const exportMeasurementsToPDF = async (
                 ? `${title}: ${screenshot.description}`
                 : title;
 
-              doc.text(displayTitle, margin, yPos);
-              yPos += titleHeight;
+              doc.text(displayTitle, margin, imageYPos - 5);
+              doc.addImage(optimizedDataUrl, 'JPEG', xPos, imageYPos, imgWidth, imgHeight);
 
-              try {
-                const xPos = margin + ((contentWidth - imgWidth) / 2);
-                doc.addImage(optimizedDataUrl, 'JPEG', xPos, yPos, imgWidth, imgHeight);
-                yPos += imgHeight + 45;
-              } catch (addImageError) {
-                console.warn(`Aufnahme ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
-                yPos += 5;
+              imageCounter++;
+
+              // 🔹 Falls 2 Bilder auf der Seite sind → Neue Seite
+              if (imageCounter % 2 === 0) {
+                doc.addPage();
+                addPageHeader();
+                yPos = headerHeight + margin;
               }
 
               resolve();
