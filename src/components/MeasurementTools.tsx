@@ -20,6 +20,7 @@ interface MeasurementToolsProps {
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
   measurements: Measurement[];
   canUndo: boolean;
+  onClose?: () => void; // Add the onClose prop as optional
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -30,7 +31,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onUndoLastPoint,
   onUpdateMeasurement,
   measurements,
-  canUndo
+  canUndo,
+  onClose
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -188,6 +190,24 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Alle Messungen löschen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            {/* Add close button if onClose is provided */}
+            {onClose && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-md hover:bg-secondary transition-colors"
+                    aria-label="Messungswerkzeuge schließen"
+                  >
+                    <X size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Schließen</p>
                 </TooltipContent>
               </Tooltip>
             )}

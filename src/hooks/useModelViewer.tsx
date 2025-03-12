@@ -1038,5 +1038,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
+    renderer: rendererRef.current,
+    scene: sceneRef.current,
+    camera: cameraRef.current
   };
 };
