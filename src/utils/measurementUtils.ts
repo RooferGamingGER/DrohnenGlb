@@ -203,12 +203,12 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh | null => {
     // Safe way to access buffer values for all attribute types
     if (positionAttribute instanceof THREE.BufferAttribute || 
         positionAttribute instanceof THREE.InterleavedBufferAttribute) {
-      // For standard buffer attributes, we can access the data directly
+      // For standard buffer attributes, copy values manually for safety
       for (let j = 0; j < itemSize; j++) {
         if (j === 1) { // Y component
           newPositions[index + j] = avgY + offset;
         } else {
-          // Copy X and Z values as is
+          // Copy X and Z values directly
           newPositions[index + j] = positionAttribute.array[index + j];
         }
       }

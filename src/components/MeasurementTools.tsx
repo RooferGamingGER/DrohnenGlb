@@ -37,7 +37,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 20, y: 80 });
   const containerRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
 
@@ -46,11 +46,40 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     if (savedPosition) {
       try {
         const parsed = JSON.parse(savedPosition);
-        setPosition(parsed);
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const containerWidth = 240;
+        const containerHeight = 300;
+
+        const x = Math.max(0, Math.min(parsed.x, viewportWidth - containerWidth));
+        const y = Math.max(0, Math.min(parsed.y, viewportHeight - containerHeight));
+        
+        setPosition({ x, y });
       } catch (e) {
         console.error('Error parsing saved position:', e);
+        setPosition({ x: 20, y: 80 });
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const containerWidth = containerRef.current.offsetWidth;
+        const containerHeight = containerRef.current.offsetHeight;
+
+        setPosition(prevPosition => {
+          const x = Math.max(0, Math.min(prevPosition.x, viewportWidth - containerWidth));
+          const y = Math.max(0, Math.min(prevPosition.y, viewportHeight - containerHeight));
+          return { x, y };
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -94,8 +123,11 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      const constrainedX = Math.max(0, Math.min(newX, viewportWidth - rect.width));
-      const constrainedY = Math.max(0, Math.min(newY, viewportHeight - rect.height));
+      const containerWidth = rect.width;
+      const containerHeight = rect.height;
+      
+      const constrainedX = Math.max(0, Math.min(newX, viewportWidth - containerWidth));
+      const constrainedY = Math.max(0, Math.min(newY, viewportHeight - containerHeight));
       
       setPosition({ x: constrainedX, y: constrainedY });
     };
@@ -167,12 +199,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     top: `${position.y}px`,
     cursor: isDragging ? 'grabbing' : 'auto',
     transform: 'none',
+    maxWidth: '240px',
+    zIndex: 1000,
   };
 
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg max-w-[240px]"
+      className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg"
       onClick={handleContainerClick}
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
