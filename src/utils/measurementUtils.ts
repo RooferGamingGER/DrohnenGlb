@@ -131,9 +131,9 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
 };
 
 // Create draggable point material
-export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
+export const createDraggablePointMaterial = (isHovered: boolean = false, isSelected: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
-    color: isHovered ? 0xffff00 : 0xff0000,
+    color: isSelected ? 0x00ff00 : (isHovered ? 0xffff00 : 0xff0000),
     opacity: isHovered ? 0.8 : 1.0,
     transparent: true
   });
@@ -142,7 +142,7 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
 // Create draggable measurement point with increased size for better touch interaction
 export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
   // Significantly increased size for better touch/click targets
-  const pointGeometry = new THREE.SphereGeometry(0.12, 16, 16);
+  const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);  // Increased size from 0.12 to 0.15
   const pointMaterial = createDraggablePointMaterial();
   const point = new THREE.Mesh(pointGeometry, pointMaterial);
   point.position.copy(position);
@@ -152,7 +152,8 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
   point.userData = {
     isDraggable: true,
     lastClickTime: 0, // To track double-clicks
-    isBeingDragged: false
+    isBeingDragged: false,
+    isSelected: false
   };
   
   return point;
@@ -162,7 +163,7 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
 export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0x00ff00): THREE.Line => {
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: color,
-    linewidth: 5, // Much thicker line for better visibility (note: this has limitations in WebGL)
+    linewidth: 8, // Increased from 5 to 8 for better visibility
     opacity: 0.9,
     transparent: true,
   });
@@ -173,6 +174,27 @@ export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0
 
 // Helper to check if an interaction is a double-click/tap
 export const isDoubleClick = (currentTime: number, lastClickTime: number): boolean => {
-  const doubleClickThreshold = 500; // Increased to 500ms for better touch response
+  const doubleClickThreshold = 500; // 500ms for better touch response
   return (currentTime - lastClickTime) < doubleClickThreshold;
+};
+
+// Toggle point selection state
+export const togglePointSelection = (point: THREE.Mesh): boolean => {
+  if (!point.userData) point.userData = {};
+  
+  // Toggle the selection state
+  point.userData.isSelected = !point.userData.isSelected;
+  
+  // Update the material based on the new selection state
+  if (point.material instanceof THREE.MeshBasicMaterial) {
+    point.material.dispose();
+    point.material = createDraggablePointMaterial(false, point.userData.isSelected);
+  }
+  
+  return point.userData.isSelected;
+};
+
+// Check if a point is currently selected
+export const isPointSelected = (point: THREE.Mesh): boolean => {
+  return point.userData?.isSelected === true;
 };

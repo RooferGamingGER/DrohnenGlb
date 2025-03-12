@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -21,7 +20,9 @@ import {
   createDraggablePointMaterial,
   createDraggablePoint,
   createMeasurementLine,
-  isDoubleClick
+  isDoubleClick,
+  togglePointSelection,
+  isPointSelected
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -186,29 +187,54 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           event.preventDefault();
           event.stopPropagation();
           
-          setIsDraggingPoint(true);
-          draggedPointRef.current = pointMesh;
-          document.body.style.cursor = 'grabbing';
-          
-          const nameParts = hoveredPointId.split('-');
-          if (nameParts.length >= 3) {
-            const measurementId = nameParts[1];
-            const pointIndex = parseInt(nameParts[2], 10);
+          // Check if point is already selected (being dragged earlier)
+          if (isPointSelected(pointMesh)) {
+            // Deactivate the point
+            togglePointSelection(pointMesh);
             
-            setSelectedMeasurementId(measurementId);
-            setSelectedPointIndex(pointIndex);
-            
-            if (controlsRef.current) {
-              controlsRef.current.enabled = false;
+            if (controlsRef.current && controlsRef.current.enabled === false) {
+              controlsRef.current.enabled = true;
             }
             
-            pointMesh.userData.isBeingDragged = true;
-            
             toast({
-              title: "Punkt wird verschoben",
-              description: "Bewegen Sie den Punkt an die gewünschte Position und lassen Sie die Maustaste los.",
+              title: "Punkt deaktiviert",
+              description: "Der Messpunkt wurde deaktiviert.",
               duration: 3000,
             });
+            
+            setIsDraggingPoint(false);
+            draggedPointRef.current = null;
+            setSelectedMeasurementId(null);
+            setSelectedPointIndex(null);
+          } else {
+            // Activate the point for dragging
+            setIsDraggingPoint(true);
+            draggedPointRef.current = pointMesh;
+            document.body.style.cursor = 'grabbing';
+            
+            // Select the point visually
+            togglePointSelection(pointMesh);
+            
+            const nameParts = hoveredPointId.split('-');
+            if (nameParts.length >= 3) {
+              const measurementId = nameParts[1];
+              const pointIndex = parseInt(nameParts[2], 10);
+              
+              setSelectedMeasurementId(measurementId);
+              setSelectedPointIndex(pointIndex);
+              
+              if (controlsRef.current) {
+                controlsRef.current.enabled = false;
+              }
+              
+              pointMesh.userData.isBeingDragged = true;
+              
+              toast({
+                title: "Punkt wird verschoben",
+                description: "Bewegen Sie den Punkt an die gewünschte Position und lassen Sie die Maustaste los, oder klicken Sie doppelt, um ihn zu deaktivieren.",
+                duration: 3000,
+              });
+            }
           }
         } else {
           pointMesh.userData.lastClickTime = currentTime;
@@ -248,32 +274,57 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         if (pointMesh.userData) {
           const lastTouchTime = lastTouchTimeRef.current || 0;
           
-          // If it's a double-tap (within 500ms), activate dragging mode
-          if (isDoubleClick(currentTime, lastTouchTime) && !isDraggingPoint) {
+          // If it's a double-tap (within 500ms)
+          if (isDoubleClick(currentTime, lastTouchTime)) {
             event.preventDefault();
             
-            setIsDraggingPoint(true);
-            draggedPointRef.current = pointMesh;
-            
-            const nameParts = pointId.split('-');
-            if (nameParts.length >= 3) {
-              const measurementId = nameParts[1];
-              const pointIndex = parseInt(nameParts[2], 10);
+            // Check if point is already selected (being dragged earlier)
+            if (isPointSelected(pointMesh)) {
+              // Deactivate the point
+              togglePointSelection(pointMesh);
               
-              setSelectedMeasurementId(measurementId);
-              setSelectedPointIndex(pointIndex);
-              
-              if (controlsRef.current) {
-                controlsRef.current.enabled = false;
+              if (controlsRef.current && controlsRef.current.enabled === false) {
+                controlsRef.current.enabled = true;
               }
               
-              pointMesh.userData.isBeingDragged = true;
-              
               toast({
-                title: "Punkt wird verschoben",
-                description: "Bewegen Sie den Punkt an die gewünschte Position und heben Sie den Finger.",
+                title: "Punkt deaktiviert",
+                description: "Der Messpunkt wurde deaktiviert.",
                 duration: 3000,
               });
+              
+              setIsDraggingPoint(false);
+              draggedPointRef.current = null;
+              setSelectedMeasurementId(null);
+              setSelectedPointIndex(null);
+            } else {
+              // Activate the point for dragging
+              setIsDraggingPoint(true);
+              draggedPointRef.current = pointMesh;
+              
+              // Select the point visually
+              togglePointSelection(pointMesh);
+              
+              const nameParts = pointId.split('-');
+              if (nameParts.length >= 3) {
+                const measurementId = nameParts[1];
+                const pointIndex = parseInt(nameParts[2], 10);
+                
+                setSelectedMeasurementId(measurementId);
+                setSelectedPointIndex(pointIndex);
+                
+                if (controlsRef.current) {
+                  controlsRef.current.enabled = false;
+                }
+                
+                pointMesh.userData.isBeingDragged = true;
+                
+                toast({
+                  title: "Punkt wird verschoben",
+                  description: "Bewegen Sie den Punkt an die gewünschte Position oder tippen Sie doppelt, um ihn zu deaktivieren.",
+                  duration: 3000,
+                });
+              }
             }
           }
           
@@ -331,6 +382,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (draggedPointRef.current?.userData) {
         draggedPointRef.current.userData.isBeingDragged = false;
+        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
       }
       
       draggedPointRef.current = null;
@@ -342,12 +394,13 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       toast({
         title: "Position aktualisiert",
-        description: "Die Messung wurde an die neue Position angepasst.",
+        description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
         duration: 3000,
       });
       
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
+      // Keep the measurement and point indices so we know which point was just updated
+      // but clear the dragging state
+      setIsDraggingPoint(false);
     }
   };
 
@@ -358,6 +411,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (draggedPointRef.current?.userData) {
         draggedPointRef.current.userData.isBeingDragged = false;
+        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
       }
       
       draggedPointRef.current = null;
@@ -368,12 +422,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       toast({
         title: "Position aktualisiert",
-        description: "Die Messung wurde an die neue Position angepasst.",
+        description: "Die Messung wurde an die neue Position angepasst. Doppeltippen Sie auf den Punkt, um ihn zu deaktivieren.",
         duration: 3000,
       });
       
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
+      // Keep the measurement and point indices but clear the dragging state
+      setIsDraggingPoint(false);
     } 
     // If it was a tap without much movement and we're in measurement mode, handle the tap
     else if (!isTouchMoveRef.current && activeTool !== 'none') {
