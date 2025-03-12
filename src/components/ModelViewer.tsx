@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -8,7 +9,11 @@ import MeasurementTools from '@/components/MeasurementTools';
 import ViewerControls from '@/components/ViewerControls';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 import { useToast } from '@/hooks/use-toast';
-import { captureScreenshot, exportMeasurementsToPDF } from '@/utils/screenshotUtils';
+import { 
+  captureScreenshot, 
+  exportMeasurementsToPDF, 
+  exportMeasurementsToWord 
+} from '@/utils/screenshotUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ModelViewer: React.FC = () => {
@@ -155,11 +160,23 @@ const ModelViewer: React.FC = () => {
   const handleExportMeasurements = () => {
     if (modelViewer.measurements.length > 0) {
       try {
-        exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
-        toast({
-          title: "Export erfolgreich",
-          description: "Die Messungen wurden als PDF-Datei exportiert.",
-        });
+        // Try PDF export first
+        try {
+          exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
+          toast({
+            title: "Export erfolgreich",
+            description: "Die Messungen wurden als PDF-Datei exportiert.",
+          });
+        } catch (pdfError) {
+          console.error('Error exporting to PDF:', pdfError);
+          
+          // Fallback to Word/HTML export if PDF fails
+          exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
+          toast({
+            title: "Export erfolgreich",
+            description: "Die Messungen wurden als HTML-Datei exportiert (in Word öffnen).",
+          });
+        }
       } catch (error) {
         console.error('Error exporting measurements:', error);
         toast({

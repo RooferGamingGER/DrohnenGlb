@@ -4,7 +4,9 @@ import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+// Import correctly with named import
+import { jsPDF as JsPDFModule } from "jspdf";
+import autoTable from 'jspdf-autotable';
 
 export interface ScreenshotData {
   imageDataUrl: string;
@@ -78,7 +80,87 @@ export const exportMeasurementsToExcel = (measurements: Measurement[]): void => 
   XLSX.writeFile(wb, 'messungen.xlsx');
 };
 
-// Exportiert Messungen als PDF mit Screenshots
+// Exportiert Messungen als Word-Dokument (docx) - als Alternative zum PDF
+export const exportMeasurementsToWord = (
+  measurements: Measurement[],
+  screenshots: { id: string, imageDataUrl: string, description: string }[] = []
+): void => {
+  // Da wir keine direkte Word-Export-Bibliothek verwenden, erstellen wir ein HTML-Dokument
+  // und speichern es als HTML-Datei, die in Word geöffnet werden kann
+  
+  let htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Drohnenvermessung</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; text-align: left; }
+        .screenshot { margin-bottom: 20px; }
+        .screenshot img { max-width: 100%; height: auto; border: 1px solid #ddd; }
+      </style>
+    </head>
+    <body>
+      <h1>Drohnenvermessung</h1>
+      <p>Datum: ${new Date().toLocaleDateString('de-DE')}</p>
+      
+      <h2>Messungen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Beschreibung</th>
+            <th>Typ</th>
+            <th>Messwert</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  measurements.forEach(m => {
+    htmlContent += `
+      <tr>
+        <td>${m.description || '-'}</td>
+        <td>${m.type === 'length' ? 'Länge' : 'Höhe'}</td>
+        <td>${m.value.toFixed(2)} ${m.unit}</td>
+      </tr>
+    `;
+  });
+  
+  htmlContent += `
+        </tbody>
+      </table>
+  `;
+  
+  if (screenshots && screenshots.length > 0) {
+    htmlContent += `<h2>Screenshots</h2>`;
+    
+    screenshots.forEach((screenshot, index) => {
+      htmlContent += `
+        <div class="screenshot">
+          <h3>Screenshot ${index + 1}${screenshot.description ? ': ' + screenshot.description : ''}</h3>
+          <img src="${screenshot.imageDataUrl}" alt="Screenshot ${index + 1}">
+        </div>
+      `;
+    });
+  }
+  
+  htmlContent += `
+    </body>
+    </html>
+  `;
+  
+  // Erstellen eines Blob mit dem HTML-Inhalt
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  
+  // Download als .html-Datei
+  saveAs(blob, 'drohnenvermessung.html');
+};
+
+// Exportiert Messungen als PDF mit Screenshots (Korrigierte Version)
 export const exportMeasurementsToPDF = (
   measurements: Measurement[], 
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
@@ -89,7 +171,8 @@ export const exportMeasurementsToPDF = (
       throw new Error("Keine Messungen vorhanden");
     }
     
-    const doc = new jsPDF();
+    // Verwende den korrekten Import
+    const doc = new JsPDFModule();
     
     // Konfiguration
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -138,30 +221,52 @@ export const exportMeasurementsToPDF = (
     doc.text('Messungen', margin, yPos);
     yPos += 10;
     
-    // Messungstabelle erstellen
-    const tableData = measurements.map(m => [
-      m.description || '-',
-      m.type === 'length' ? 'Länge' : 'Höhe',
-      `${m.value.toFixed(2)} ${m.unit}`
-    ]);
+    // Messungstabelle erstellen - manuelle Implementierung ohne autoTable
+    const cellPadding = 5;
+    const colWidths = [contentWidth * 0.5, contentWidth * 0.2, contentWidth * 0.3];
+    const rowHeight = 10;
     
-    // @ts-ignore - jsPDF-autotable typings are not complete
-    doc.autoTable({
-      startY: yPos,
-      head: [['Beschreibung', 'Typ', 'Messwert']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255] },
-      margin: { left: margin, right: margin },
-      columnStyles: {
-        0: { cellWidth: contentWidth * 0.5 },
-        1: { cellWidth: contentWidth * 0.2 },
-        2: { cellWidth: contentWidth * 0.3 }
+    // Tabellenkopf zeichnen
+    doc.setFillColor(66, 66, 66);
+    doc.setTextColor(255, 255, 255);
+    doc.rect(margin, yPos, contentWidth, rowHeight, 'F');
+    
+    doc.setFontSize(10);
+    doc.text('Beschreibung', margin + cellPadding, yPos + rowHeight - cellPadding/2);
+    doc.text('Typ', margin + colWidths[0] + cellPadding, yPos + rowHeight - cellPadding/2);
+    doc.text('Messwert', margin + colWidths[0] + colWidths[1] + cellPadding, yPos + rowHeight - cellPadding/2);
+    
+    yPos += rowHeight;
+    
+    // Tabelleninhalt zeichnen
+    doc.setTextColor(0, 0, 0);
+    doc.setFillColor(255, 255, 255);
+    
+    measurements.forEach((m, index) => {
+      const isEvenRow = index % 2 === 0;
+      
+      if (isEvenRow) {
+        doc.setFillColor(245, 245, 245);
+      } else {
+        doc.setFillColor(255, 255, 255);
       }
+      
+      doc.rect(margin, yPos, contentWidth, rowHeight, 'F');
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(margin, yPos, contentWidth, rowHeight, 'S');
+      
+      const description = m.description || '-';
+      const type = m.type === 'length' ? 'Länge' : 'Höhe';
+      const value = `${m.value.toFixed(2)} ${m.unit}`;
+      
+      doc.text(description, margin + cellPadding, yPos + rowHeight - cellPadding/2);
+      doc.text(type, margin + colWidths[0] + cellPadding, yPos + rowHeight - cellPadding/2);
+      doc.text(value, margin + colWidths[0] + colWidths[1] + cellPadding, yPos + rowHeight - cellPadding/2);
+      
+      yPos += rowHeight;
     });
     
-    // @ts-ignore - Typings issue with .lastAutoTable
-    yPos = doc.lastAutoTable.finalY + 15;
+    yPos += 15;
     
     // Screenshots hinzufügen, falls vorhanden
     if (screenshots && screenshots.length > 0) {
