@@ -55,19 +55,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {showUpload && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8 bg-background/90">
-                  <Home className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
-                <p>Neues Projekt</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -124,6 +111,20 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
               <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
             </TooltipContent>
           </Tooltip>
+          
+          {/* New Project button moved to the right with a gap */}
+          {showUpload && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8 bg-background/90 ml-2">
+                  <Home className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+                <p>Neues Projekt</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </TooltipProvider>
     </div>

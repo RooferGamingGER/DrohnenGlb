@@ -27,7 +27,12 @@ const ModelViewer: React.FC = () => {
   const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
   
   const modelViewer = useModelViewer({
-    containerRef
+    containerRef,
+    onLoadComplete: () => {
+      setTimeout(() => {
+        modelViewer.setProgress(100);
+      }, 500);
+    }
   });
   
   const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
@@ -335,6 +340,7 @@ const ModelViewer: React.FC = () => {
             onClose={toggleMeasurementTools}
             screenshots={savedScreenshots}
             isMobile={isMobile}
+            scrollThreshold={isMobile ? 3 : 5}
           />
         </div>
       )}
@@ -356,4 +362,3 @@ const ModelViewer: React.FC = () => {
 };
 
 export default ModelViewer;
-
