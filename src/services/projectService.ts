@@ -49,6 +49,15 @@ export const saveProject = async (
       throw new Error("User not authenticated");
     }
 
+    // Prepare clean measurements without 3D objects to avoid circular references
+    const cleanMeasurements = measurements.map(m => ({
+      ...m,
+      labelObject: undefined,
+      lineObjects: undefined,
+      pointObjects: undefined,
+      areaObject: undefined
+    }));
+
     // Upload the file to Firebase Storage
     const storage = getStorage();
     const fileExtension = file.name.split('.').pop();
@@ -92,7 +101,7 @@ export const saveProject = async (
       fileUrl: downloadURL,
       fileName: file.name,
       fileSize: file.size,
-      measurements: measurements,
+      measurements: cleanMeasurements,
     };
     
     await setDoc(projectRef, projectData);
@@ -157,9 +166,18 @@ export const updateProjectMeasurements = async (
       throw new Error("User not authenticated");
     }
     
+    // Clean measurements to remove 3D objects before storing
+    const cleanMeasurements = measurements.map(m => ({
+      ...m,
+      labelObject: undefined,
+      lineObjects: undefined,
+      pointObjects: undefined,
+      areaObject: undefined
+    }));
+    
     const projectRef = doc(db, "projects", projectId);
     await updateDoc(projectRef, {
-      measurements: measurements,
+      measurements: cleanMeasurements,
       updatedAt: serverTimestamp()
     });
     

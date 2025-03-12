@@ -267,8 +267,21 @@ const ModelViewer: React.FC = () => {
           <>
             {/* Top control bar */}
             <div className="absolute top-0 left-0 right-0 z-20 bg-white/80 backdrop-blur-sm px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">Drohnenaufmaß</span>
+              <div className="flex items-center gap-4">
+                {/* Messwerkzeuge-Button in der mobilen Ansicht */}
+                <button
+                  onClick={toggleMeasurements}
+                  className="sm:hidden flex items-center gap-1 px-2 py-1.5 hover:bg-gray-100 rounded-full transition-colors text-primary"
+                  aria-label="Messwerkzeuge"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M7 17l4-4"></path>
+                    <path d="M17 17H7"></path>
+                    <path d="M17 11H7"></path>
+                  </svg>
+                  <span className="text-xs">Messen</span>
+                </button>
               </div>
               
               <div className="flex items-center gap-2 sm:gap-4">
@@ -320,20 +333,6 @@ const ModelViewer: React.FC = () => {
                 </button>
               </div>
             </div>
-            
-            {/* Tools Button for Mobile */}
-            <button
-              onClick={toggleMeasurements}
-              className="fixed right-4 top-16 sm:hidden z-20 bg-white text-primary shadow p-2 rounded-full hover:bg-gray-50 transition-colors"
-              aria-label="Messwerkzeuge"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 3v18h18"></path>
-                <path d="M7 17l4-4"></path>
-                <path d="M17 17H7"></path>
-                <path d="M17 11H7"></path>
-              </svg>
-            </button>
             
             {/* Measurement Tools Panel - Hidden on Mobile unless toggled */}
             <div 

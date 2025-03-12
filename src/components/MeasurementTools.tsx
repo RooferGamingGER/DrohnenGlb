@@ -1,6 +1,5 @@
-
-import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Square } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, Square, GripVertical } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -37,19 +36,88 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
 
-  // Automatically disable measurement tool when editing a description
+  useEffect(() => {
+    const savedPosition = localStorage.getItem('measurementToolsPosition');
+    if (savedPosition) {
+      try {
+        const parsed = JSON.parse(savedPosition);
+        setPosition(parsed);
+      } catch (e) {
+        console.error('Error parsing saved position:', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (position.x !== 0 || position.y !== 0) {
+      localStorage.setItem('measurementToolsPosition', JSON.stringify(position));
+    }
+  }, [position]);
+
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
       onToolChange('none');
     }
   }, [editingId, activeTool, onToolChange]);
 
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!dragHandleRef.current?.contains(e.target as Node)) return;
+    e.preventDefault();
+    
+    const eventType = 'touches' in e ? 'touch' : 'mouse';
+    const clientX = eventType === 'touch' ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = eventType === 'touch' ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const offsetX = clientX - rect.left;
+    const offsetY = clientY - rect.top;
+    
+    setIsDragging(true);
+    
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!isDragging) return;
+      
+      const moveType = 'touches' in moveEvent ? 'touch' : 'mouse';
+      const moveClientX = moveType === 'touch' ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
+      const moveClientY = moveType === 'touch' ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
+      
+      const newX = moveClientX - offsetX;
+      const newY = moveClientY - offsetY;
+      
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      const constrainedX = Math.max(0, Math.min(newX, viewportWidth - rect.width));
+      const constrainedY = Math.max(0, Math.min(newY, viewportHeight - rect.height));
+      
+      setPosition({ x: constrainedX, y: constrainedY });
+    };
+    
+    const handleEnd = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchend', handleEnd);
+    };
+    
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('touchmove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchend', handleEnd);
+  };
+
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     onDeleteMeasurement(id);
-    // Disable measurement tool after deleting
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -58,7 +126,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleEditStart = (id: string, currentDescription: string = '', event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when starting to edit
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -85,7 +152,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const handleContainerClick = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Disable measurement tool when clicking anywhere in the container
     if (activeTool !== 'none') {
       onToolChange('none');
     }
@@ -95,14 +161,32 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setShowMeasurementsList(!showMeasurementsList);
   };
 
+  const containerStyle = {
+    position: 'fixed' as const,
+    left: `${position.x}px`,
+    top: `${position.y}px`,
+    cursor: isDragging ? 'grabbing' : 'auto',
+    transform: 'none',
+  };
+
   return (
     <div 
+      ref={containerRef}
       className="flex flex-col gap-4 bg-background/70 backdrop-blur-sm p-3 rounded-lg shadow-lg max-w-[240px]"
       onClick={handleContainerClick}
       onMouseDown={handleContainerClick}
       onMouseUp={handleContainerClick}
+      style={containerStyle}
     >
-      {/* Close button for mobile view */}
+      <div 
+        ref={dragHandleRef}
+        className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center cursor-grab hover:bg-secondary/50 rounded-t-lg"
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+      >
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      
       {onClose && (
         <button 
           onClick={onClose}
@@ -112,7 +196,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </button>
       )}
       
-      <div className="flex flex-row sm:flex-col gap-2 justify-center">
+      <div className="flex flex-row sm:flex-col gap-2 justify-center mt-2">
         <TooltipProvider>
           <div className="flex flex-row sm:flex-col items-center gap-2">
             <Tooltip>
@@ -298,7 +382,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   );
 };
 
-// Simple chevron icon component that rotates based on open state
 const ChevronIcon = ({ isOpen }: { isOpen: boolean }) => (
   <svg 
     width="12" 

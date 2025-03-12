@@ -260,3 +260,107 @@ export const createPreviewLine = (startPoint: THREE.Vector3, endPoint: THREE.Vec
   
   return line;
 };
+
+// Prepare measurements for storage (remove 3D objects)
+export const cleanMeasurementsForStorage = (measurements: Measurement[]): Measurement[] => {
+  return measurements.map(m => ({
+    ...m,
+    labelObject: undefined,
+    lineObjects: undefined,
+    pointObjects: undefined,
+    areaObject: undefined
+  }));
+};
+
+// Create 3D visualization objects for a measurement
+export const recreateMeasurementObjects = (
+  measurement: Measurement, 
+  scene: THREE.Scene
+): Measurement => {
+  const updatedMeasurement = { ...measurement };
+  const positions = measurement.points.map(p => p.worldPosition);
+  
+  // Create appropriate visualization based on measurement type
+  if (measurement.type === 'length' && positions.length === 2) {
+    // Create line for length measurement
+    const geometry = new THREE.BufferGeometry().setFromPoints([positions[0], positions[1]]);
+    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const line = new THREE.Line(geometry, material);
+    
+    updatedMeasurement.lineObjects = [line];
+    scene.add(line);
+    
+    // Add label at midpoint
+    const midpoint = new THREE.Vector3().addVectors(positions[0], positions[1]).multiplyScalar(0.5);
+    const labelText = formatMeasurement(measurement.value, measurement.type);
+    const label = createTextSprite(labelText, midpoint);
+    
+    updatedMeasurement.labelObject = label;
+    scene.add(label);
+  } 
+  else if (measurement.type === 'height' && positions.length === 2) {
+    // Create vertical line for height measurement
+    const p1 = positions[0].clone();
+    const p2 = positions[1].clone();
+    
+    // Create the vertical line
+    const linePoints = [
+      p1,
+      new THREE.Vector3(p1.x, p2.y, p1.z), // Vertical point
+      p2
+    ];
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    const line = new THREE.Line(geometry, material);
+    
+    updatedMeasurement.lineObjects = [line];
+    scene.add(line);
+    
+    // Add label at midpoint of vertical segment
+    const midpoint = new THREE.Vector3(p1.x, (p1.y + p2.y) / 2, p1.z);
+    const labelText = formatMeasurement(measurement.value, measurement.type);
+    const label = createTextSprite(labelText, midpoint);
+    
+    updatedMeasurement.labelObject = label;
+    scene.add(label);
+  }
+  else if (measurement.type === 'area' && positions.length >= 3) {
+    // Create lines for area perimeter
+    const lineObjects: THREE.Line[] = [];
+    
+    for (let i = 0; i < positions.length; i++) {
+      const p1 = positions[i];
+      const p2 = positions[(i + 1) % positions.length];
+      
+      const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+      const material = new THREE.LineBasicMaterial({ color: 0x2196f3 });
+      const line = new THREE.Line(geometry, material);
+      
+      lineObjects.push(line);
+      scene.add(line);
+    }
+    
+    updatedMeasurement.lineObjects = lineObjects;
+    
+    // Create area mesh
+    const areaMesh = createAreaMesh(positions);
+    if (areaMesh) {
+      updatedMeasurement.areaObject = areaMesh;
+      scene.add(areaMesh);
+    }
+    
+    // Add label at center of the area
+    const center = new THREE.Vector3();
+    positions.forEach(p => center.add(p));
+    center.divideScalar(positions.length);
+    
+    const labelText = formatMeasurement(measurement.value, measurement.type);
+    const label = createTextSprite(labelText, center);
+    
+    updatedMeasurement.labelObject = label;
+    scene.add(label);
+  }
+  
+  return updatedMeasurement;
+};
