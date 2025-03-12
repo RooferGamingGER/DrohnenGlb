@@ -46,7 +46,7 @@ export const exportMeasurementsToPDF = async (
       
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Drohnenvermessung', margin + 20, margin + 10);
+      doc.text('DrohnenGLB by RooferGaming', margin + 20, margin + 10);
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -220,7 +220,7 @@ export const exportMeasurementsToPDF = async (
       addPageFooter(i);
     }
     
-    doc.save('drohnenvermessung.pdf');
+    doc.save('Bericht.pdf');
   } catch (error) {
     console.error("Fehler beim Exportieren als PDF:", error);
     throw error;
