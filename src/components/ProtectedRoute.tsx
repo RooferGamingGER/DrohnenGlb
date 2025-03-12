@@ -7,18 +7,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isApproved } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) {
     // Nicht authentifizierte Benutzer zur Login-Seite umleiten
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (!isApproved) {
-    // Benutzer ist angemeldet, aber noch nicht freigeschaltet
-    // Hier könnte eine spezielle "Warten auf Freischaltung"-Seite angezeigt werden
-    // Für die Einfachheit leiten wir zurück zur Login-Seite um
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
