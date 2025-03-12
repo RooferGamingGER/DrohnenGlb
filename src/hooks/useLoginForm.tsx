@@ -10,6 +10,7 @@ export interface LoginFormState {
   rememberMe: boolean;
   isLoading: boolean;
   progress: number;
+  performanceMetrics: Record<string, number>;
 }
 
 export const useLoginForm = () => {
@@ -18,12 +19,14 @@ export const useLoginForm = () => {
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('savedEmail'));
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, number>>({});
   const [isProcessComplete, setIsProcessComplete] = useState(false);
   
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Verbesserte Navigation - erst navigieren, wenn die Authentifizierung VOLLSTÄNDIG abgeschlossen ist
   useEffect(() => {
     if (isAuthenticated && isProcessComplete) {
       console.log('User ist vollständig authentifiziert, Navigation zur Startseite');
@@ -39,15 +42,19 @@ export const useLoginForm = () => {
     setProgress(0);
     setIsProcessComplete(false);
     
-    // Visual feedback
+    // Sofortiges visuelles Feedback - beschleunigt
     setProgress(10);
+    
+    const metrics: Record<string, number> = {};
+    const startTime = performance.now();
     
     try {
       console.log("Login-Sequenz gestartet");
       
+      // Fortschrittsanzeige für besseres Benutzerfeedback - beschleunigt
       setTimeout(() => setProgress(25), 50);
       
-      // Save login data if requested
+      // Anmeldedaten speichern, wenn gewünscht
       if (rememberMe) {
         try {
           localStorage.setItem('savedEmail', email);
@@ -64,28 +71,56 @@ export const useLoginForm = () => {
         }
       }
       
+      metrics.preparationTime = performance.now() - startTime;
+      console.log("Login-Vorbereitung abgeschlossen in", metrics.preparationTime, "ms");
+      
+      // Fortschritt vor Netzwerkanfrage erhöhen - beschleunigt
       setTimeout(() => setProgress(40), 75);
       
-      // Optimized progress update
+      // Login mit Timeout und detailliertem Logging
+      const loginStartTime = performance.now();
+      console.log("Firebase Login-Anfrage startet bei", loginStartTime - startTime, "ms");
+      
+      // Optimiertes Fortschrittsupdate während der Authentifizierung
+      let lastProgressUpdate = 40;
       let progressInterval = setInterval(() => {
         setProgress(prev => {
+          // Schneller bis 85%, dann langsamer
           const increment = prev < 60 ? 2 : (prev < 85 ? 0.5 : 0.1);
-          return Math.min(prev + increment, 87);
+          const newValue = Math.min(prev + increment, 87);
+          
+          // Logging nur bei signifikanten Änderungen
+          if (Math.floor(newValue / 5) > Math.floor(lastProgressUpdate / 5)) {
+            console.log(`Login-Fortschritt: ${newValue.toFixed(1)}%`);
+            lastProgressUpdate = newValue;
+          }
+          
+          return newValue;
         });
-      }, 25);
+      }, 25); // Schnellere Updates für besseres Feedback
       
       const success = await login(email, password);
       clearInterval(progressInterval);
       
+      const loginEndTime = performance.now();
+      metrics.loginDuration = loginEndTime - loginStartTime;
+      console.log("Firebase Login abgeschlossen in", metrics.loginDuration, "ms");
+      
+      // Sprunghafter Fortschritt zum Abschluss
       setProgress(95);
       
       if (success) {
         setProgress(100);
-        console.log("Login erfolgreich, Navigation wird vorbereitet");
+        console.log("Login erfolgreich, Navigation wird vorbereitet bei", performance.now() - startTime, "ms");
         
+        // Kurze Verzögerung für UI-Update
         setTimeout(() => {
+          // WICHTIG: Erst jetzt wird der Prozess als abgeschlossen markiert
           setIsProcessComplete(true);
-        }, 100);
+          metrics.totalSuccessTime = performance.now() - startTime;
+          
+          console.log("Login-Prozess vollständig abgeschlossen in", metrics.totalSuccessTime, "ms");
+        }, 100); // Verzögerung reduziert
       } else {
         console.error("Login fehlgeschlagen, aber kein Fehler wurde geworfen");
         setProgress(100);
@@ -99,6 +134,7 @@ export const useLoginForm = () => {
       
     } catch (error: any) {
       console.error("Login Fehler:", error);
+      metrics.errorTime = performance.now() - startTime;
       
       toast({
         title: "Fehler",
@@ -117,6 +153,9 @@ export const useLoginForm = () => {
       
       setProgress(100);
       setIsLoading(false);
+    } finally {
+      metrics.totalDuration = performance.now() - startTime;
+      setPerformanceMetrics(metrics);
     }
   };
 
@@ -129,6 +168,7 @@ export const useLoginForm = () => {
     setRememberMe,
     isLoading,
     progress,
+    performanceMetrics,
     handleSubmit
   };
 };

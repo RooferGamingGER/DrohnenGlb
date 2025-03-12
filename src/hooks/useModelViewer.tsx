@@ -3,7 +3,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { 
   loadGLBModel, 
-  centerModel
+  centerModel, 
+  loadTexture, 
+  BackgroundOption, 
+  backgroundOptions 
 } from '@/utils/modelUtils';
 import {
   MeasurementType,
@@ -37,6 +40,10 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     error: null,
     loadedModel: null,
   });
+  
+  const [background, setBackground] = useState<BackgroundOption>(
+    backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]
+  );
   
   const [activeTool, setActiveTool] = useState<MeasurementType>('none');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -450,7 +457,6 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     if (!containerRef.current) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111111); // Dark background as default
     sceneRef.current = scene;
 
     const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
@@ -942,6 +948,8 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
         loadedModel: model,
       });
 
+      applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
+
       return model;
     } catch (error) {
       console.error('Error loading model:', error);
@@ -970,6 +978,35 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     }
   };
 
+  const applyBackground = async (option: BackgroundOption) => {
+    if (!sceneRef.current || !rendererRef.current) return;
+
+    if (sceneRef.current.background) {
+      if (sceneRef.current.background instanceof THREE.Texture) {
+        sceneRef.current.background.dispose();
+      }
+      sceneRef.current.background = null;
+    }
+
+    rendererRef.current.setClearAlpha(option.id === 'transparent' ? 0 : 1);
+
+    if (option.color) {
+      sceneRef.current.background = new THREE.Color(option.color);
+    } else if (option.texture) {
+      try {
+        const texture = await loadTexture(option.texture);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(10, 10);
+        sceneRef.current.background = texture;
+      } catch (error) {
+        console.error('Error loading texture:', error);
+      }
+    }
+
+    setBackground(option);
+  };
+
   const resetView = () => {
     if (controlsRef.current && modelRef.current && cameraRef.current) {
       const box = new THREE.Box3().setFromObject(modelRef.current);
@@ -989,6 +1026,9 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
   return {
     ...state,
     loadModel,
+    background,
+    setBackground: applyBackground,
+    backgroundOptions,
     resetView,
     activeTool,
     setActiveTool,
@@ -998,6 +1038,5 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
     deleteMeasurement,
     updateMeasurement,
     canUndo,
-    setMeasurements,
   };
 };
