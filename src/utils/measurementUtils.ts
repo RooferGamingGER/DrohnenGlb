@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -188,16 +187,25 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh | null => {
   // Offset the geometry to sit slightly above the measured points
   const offset = 0.02; // Small offset to prevent z-fighting
   
-  // Safely modify buffer geometry attributes
-  if (geometry.attributes.position instanceof THREE.BufferAttribute) {
-    const positions = geometry.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < positions.count; i++) {
-      // Use array access pattern which works with all attribute types
-      const y = positions.array[i * 3 + 1]; // y is at index 1 (after x at index 0)
-      positions.array[i * 3 + 1] = avgY + offset; // Set y value
-    }
-    positions.needsUpdate = true;
+  // Create a new array with the modified position values
+  const positionAttribute = geometry.getAttribute('position');
+  const positions = positionAttribute.array;
+  const count = positionAttribute.count;
+  const itemSize = positionAttribute.itemSize;
+  
+  // Create a new array to store the modified positions
+  const newPositions = new Float32Array(positions.length);
+  
+  // Copy the original values and modify the Y component
+  for (let i = 0; i < count; i++) {
+    const index = i * itemSize;
+    newPositions[index] = positions[index];       // x
+    newPositions[index + 1] = avgY + offset;      // y (modified)
+    newPositions[index + 2] = positions[index + 2]; // z
   }
+  
+  // Update the buffer with the new position values
+  geometry.setAttribute('position', new THREE.BufferAttribute(newPositions, itemSize));
   
   // Create semi-transparent material for the area
   const material = new THREE.MeshBasicMaterial({
