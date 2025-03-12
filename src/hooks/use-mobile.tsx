@@ -33,8 +33,19 @@ export function useIsMobile() {
     }
   }, [])
 
+  // Return both the object with properties and a boolean for backward compatibility
   return {
     isMobile: !!isMobile,
-    isPortrait: !!isPortrait
+    isPortrait: !!isPortrait,
+    // For backward compatibility with code expecting a boolean directly
+    [Symbol.toPrimitive](hint: string) {
+      return hint === 'boolean' ? !!isMobile : undefined;
+    }
   }
+}
+
+// Add a convenience hook for when only the boolean is needed
+export function useIsMobileBoolean(): boolean {
+  const mobileState = useIsMobile();
+  return mobileState.isMobile;
 }

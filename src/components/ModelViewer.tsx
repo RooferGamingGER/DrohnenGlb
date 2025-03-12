@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -19,7 +20,7 @@ const ModelViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const mobileInfo = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -126,7 +127,7 @@ const ModelViewer: React.FC = () => {
 
   const handleTakeScreenshot = () => {
     if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
-      if (isMobile && window.innerHeight > window.innerWidth) {
+      if (mobileInfo.isMobile && mobileInfo.isPortrait) {
         toast({
           title: "Hinweis",
           description: "Screenshots sind nur im Querformat möglich. Bitte drehen Sie ihr Gerät.",
@@ -140,7 +141,7 @@ const ModelViewer: React.FC = () => {
         modelViewer.renderer,
         modelViewer.scene,
         modelViewer.camera,
-        isMobile
+        mobileInfo.isMobile
       );
       
       if (dataUrl) {
@@ -261,7 +262,7 @@ const ModelViewer: React.FC = () => {
     <div className="relative h-full w-full flex flex-col">
       <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
         <div>
-          {modelViewer.loadedModel && showMeasurementTools && isMobile && (
+          {modelViewer.loadedModel && showMeasurementTools && mobileInfo.isMobile && (
             <Button
               variant="outline"
               size="sm"
@@ -337,7 +338,7 @@ const ModelViewer: React.FC = () => {
       
       {modelViewer.loadedModel && showMeasurementTools && (
         <div 
-          className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}
+          className={`${mobileInfo.isMobile ? 'fixed bottom-0 left-0 right-0 px-2 pb-2' : 'absolute top-20 left-4'} z-20 ${isFullscreen ? 'fixed' : ''}`}
         >
           <MeasurementTools
             activeTool={modelViewer.activeTool}
@@ -353,8 +354,8 @@ const ModelViewer: React.FC = () => {
             canUndo={modelViewer.canUndo}
             onClose={toggleMeasurementTools}
             screenshots={savedScreenshots}
-            isMobile={isMobile}
-            scrollThreshold={isMobile ? 3 : 5}
+            isMobile={mobileInfo.isMobile}
+            scrollThreshold={mobileInfo.isMobile ? 3 : 5}
           />
         </div>
       )}

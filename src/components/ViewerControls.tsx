@@ -41,8 +41,8 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   toggleMeasurementTools,
   showUpload
 }) => {
-  const isMobile = useIsMobile();
-  const isPortrait = isMobile && window.innerHeight > window.innerWidth;
+  const mobileInfo = useIsMobile();
+  const isPortrait = mobileInfo.isMobile && mobileInfo.isPortrait;
 
   return (
     <div className="flex items-center gap-2">
