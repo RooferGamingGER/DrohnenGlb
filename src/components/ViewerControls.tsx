@@ -16,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ViewerControlsProps {
   onReset: () => void;
@@ -40,6 +41,9 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   toggleMeasurementTools,
   showUpload
 }) => {
+  const isMobile = useIsMobile();
+  const isPortrait = isMobile && window.innerHeight > window.innerWidth;
+
   return (
     <div className="flex items-center gap-2">
       <TooltipProvider delayDuration={300}>
@@ -62,24 +66,35 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 size="icon" 
                 onClick={toggleMeasurementTools}
                 className="h-8 w-8 bg-background/90"
+                disabled={isPortrait}
               >
                 <Ruler className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left" className="bg-background/90 border border-gray-300">
-              <p>{showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}</p>
+              <p>
+                {isPortrait 
+                  ? "Messwerkzeuge sind im Hochformat deaktiviert" 
+                  : showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}
+              </p>
             </TooltipContent>
           </Tooltip>
           
           {onScreenshot && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onScreenshot} className="h-8 w-8 bg-background/90">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={onScreenshot} 
+                  className="h-8 w-8 bg-background/90"
+                  disabled={isPortrait}
+                >
                   <Camera className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left" className="bg-background/90 border border-gray-300">
-                <p>Screenshot erstellen</p>
+                <p>{isPortrait ? "Screenshots nur im Querformat möglich" : "Screenshot erstellen"}</p>
               </TooltipContent>
             </Tooltip>
           )}
