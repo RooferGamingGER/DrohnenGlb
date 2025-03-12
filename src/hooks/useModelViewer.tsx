@@ -764,9 +764,26 @@ export const useModelViewer = ({ containerRef }: UseModelViewerProps) => {
 
   const updateMeasurement = (id: string, data: Partial<Measurement>) => {
     setMeasurements(prevMeasurements => 
-      prevMeasurements.map(m => 
-        m.id === id ? { ...m, ...data } : m
-      )
+      prevMeasurements.map(m => {
+        if (m.id === id) {
+          const updatedMeasurement = { ...m, ...data };
+          
+          if (data.visible !== undefined && measurementGroupRef.current) {
+            const measObjects = [
+              ...(m.pointObjects || []),
+              ...(m.lineObjects || []),
+              m.labelObject
+            ].filter(Boolean);
+            
+            measObjects.forEach(obj => {
+              if (obj) obj.visible = data.visible as boolean;
+            });
+          }
+          
+          return updatedMeasurement;
+        }
+        return m;
+      })
     );
   };
 

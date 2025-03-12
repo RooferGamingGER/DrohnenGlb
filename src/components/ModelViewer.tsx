@@ -314,23 +314,6 @@ const ModelViewer: React.FC = () => {
             </div>
           </div>
         )}
-        
-        {modelViewer.loadedModel && modelViewer.measurements.length > 0 && (
-          <div className="absolute top-4 left-4 z-10">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-background/70 backdrop-blur-sm"
-              onClick={toggleMeasurementsVisibility}
-            >
-              {measurementsVisible ? (
-                <><EyeOff size={16} className="mr-1" /> Messungen ausblenden</>
-              ) : (
-                <><Eye size={16} className="mr-1" /> Messungen einblenden</>
-              )}
-            </Button>
-          </div>
-        )}
       </div>
       
       {modelViewer.loadedModel && showMeasurementTools && (
@@ -345,6 +328,8 @@ const ModelViewer: React.FC = () => {
             onUndoLastPoint={modelViewer.undoLastPoint}
             onUpdateMeasurement={modelViewer.updateMeasurement}
             onToggleMeasurementVisibility={toggleSingleMeasurementVisibility}
+            onToggleAllMeasurementsVisibility={toggleMeasurementsVisibility}
+            allMeasurementsVisible={measurementsVisible}
             measurements={modelViewer.measurements}
             canUndo={modelViewer.canUndo}
             onClose={toggleMeasurementTools}
@@ -371,3 +356,4 @@ const ModelViewer: React.FC = () => {
 };
 
 export default ModelViewer;
+

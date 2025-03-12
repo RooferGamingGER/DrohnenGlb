@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { 
   Tooltip,
   TooltipContent,
@@ -21,6 +23,8 @@ interface MeasurementToolsProps {
   canUndo: boolean;
   onClose?: () => void;
   onToggleMeasurementVisibility?: (id: string) => void;
+  onToggleAllMeasurementsVisibility?: () => void;
+  allMeasurementsVisible?: boolean;
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
 }
@@ -36,6 +40,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   canUndo,
   onClose,
   onToggleMeasurementVisibility,
+  onToggleAllMeasurementsVisibility,
+  allMeasurementsVisible = true,
   screenshots,
   isMobile = false
 }) => {
@@ -203,20 +209,39 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               )}
               
               {measurements.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onClearMeasurements}
-                      className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
-                      aria-label="Alle Messungen löschen"
-                    >
-                      <Trash size={18} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side={isMobile ? "bottom" : "right"}>
-                    <p>Alle Messungen löschen</p>
-                  </TooltipContent>
-                </Tooltip>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={onClearMeasurements}
+                        className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label="Alle Messungen löschen"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isMobile ? "bottom" : "right"}>
+                      <p>Alle Messungen löschen</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  
+                  {onToggleAllMeasurementsVisibility && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={onToggleAllMeasurementsVisibility}
+                          className="p-2 rounded-md hover:bg-secondary transition-colors"
+                          aria-label={allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}
+                        >
+                          {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side={isMobile ? "bottom" : "right"}>
+                        <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
               )}
             </div>
             
@@ -238,7 +263,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {onClose && !isMobile && (
+              {onClose && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button

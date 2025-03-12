@@ -3,7 +3,6 @@ import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-// Import correctly with named import
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
 
@@ -12,31 +11,23 @@ export interface ScreenshotData {
   description: string;
 }
 
-// Erstellt einen Screenshot und gibt diesen als Data URL zurück
 export const captureScreenshot = (
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera
 ): string => {
-  // Render the current scene to capture the current state exactly
   renderer.render(scene, camera);
-  
-  // Capture the WebGL canvas content
   const dataUrl = renderer.domElement.toDataURL('image/png');
-  
   return dataUrl;
 };
 
-// Speichert einen Screenshot als PNG-Datei
 export const saveScreenshot = (dataUrl: string, filename: string = 'screenshot.png'): void => {
-  // File-saver Bibliothek verwenden um den Screenshot zu speichern
   const blob = dataURLToBlob(dataUrl);
   saveAs(blob, filename);
 };
 
-// Konvertiert eine Data URL in einen Blob
-const dataURLToBlob = (dataURL: string): Blob => {
-  const parts = dataURL.split(';base64,');
+const dataURLToBlob = (dataUrl: string): Blob => {
+  const parts = dataUrl.split(';base64,');
   const contentType = parts[0].split(':')[1];
   const raw = window.atob(parts[1]);
   const rawLength = raw.length;
@@ -49,12 +40,11 @@ const dataURLToBlob = (dataURL: string): Blob => {
   return new Blob([uInt8Array], { type: contentType });
 };
 
-// Helper function to optimize image data (reduce size while preserving quality)
 const optimizeImageData = async (
   dataUrl: string, 
   maxWidth: number = 800, 
-  quality: number = 0.4, 
-  targetDPI: number = 150
+  quality: number = 0.7, 
+  targetDPI: number = 200
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
@@ -62,13 +52,10 @@ const optimizeImageData = async (
       img.onload = () => {
         const canvas = document.createElement('canvas');
         
-        // Calculate the new dimensions while maintaining aspect ratio
         let width = img.width;
         let height = img.height;
         
-        // Calculate pixel dimensions for target DPI (150 DPI)
-        // Reduce DPI factor for smaller file size
-        const scaleFactor = targetDPI / 150; // Originally was 96, now using 150 as base
+        const scaleFactor = targetDPI / 150;
         
         if (width > maxWidth) {
           const ratio = maxWidth / width;
@@ -76,7 +63,6 @@ const optimizeImageData = async (
           height = height * ratio;
         }
         
-        // Apply scaled down DPI scaling for smaller file sizes
         const finalWidth = Math.round(width * scaleFactor);
         const finalHeight = Math.round(height * scaleFactor);
         
@@ -89,17 +75,12 @@ const optimizeImageData = async (
           return;
         }
         
-        // Set DPI properly for moderate quality (reduced for performance)
         ctx.scale(scaleFactor, scaleFactor);
-        
-        // Enable image smoothing for better quality
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'medium'; // Changed from 'high' to 'medium'
+        ctx.imageSmoothingQuality = 'high';
         
-        // Draw the image with new dimensions
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to data URL with reduced quality JPEG for smaller files
         const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(optimizedDataUrl);
       };
@@ -115,9 +96,7 @@ const optimizeImageData = async (
   });
 };
 
-// Exportiert Messungen als Excel-Datei
 export const exportMeasurementsToExcel = (measurements: Measurement[]): void => {
-  // Daten vorbereiten
   const data = measurements.map(m => ({
     'Beschreibung': m.description || '-',
     'Typ': m.type === 'length' ? 'Länge' : 'Höhe',
@@ -125,34 +104,25 @@ export const exportMeasurementsToExcel = (measurements: Measurement[]): void => 
     'Einheit': m.unit
   }));
 
-  // Arbeitsmappe erstellen
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(data);
 
-  // Anpassen der Spaltenbreiten
   const columnWidths = [
-    { wch: 30 }, // Beschreibung
-    { wch: 10 }, // Typ
-    { wch: 10 }, // Wert
-    { wch: 10 }  // Einheit
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 10 }
   ];
   ws['!cols'] = columnWidths;
 
-  // Worksheet zur Arbeitsmappe hinzufügen
   XLSX.utils.book_append_sheet(wb, ws, 'Messungen');
-
-  // Als Excel-Datei herunterladen
   XLSX.writeFile(wb, 'messungen.xlsx');
 };
 
-// Exportiert Messungen als Word-Dokument (docx) - als Alternative zum PDF
 export const exportMeasurementsToWord = (
   measurements: Measurement[],
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
 ): void => {
-  // Da wir keine direkte Word-Export-Bibliothek verwenden, erstellen wir ein HTML-Dokument
-  // und speichern es als HTML-Datei, die in Word geöffnet werden kann
-  
   let htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -218,36 +188,28 @@ export const exportMeasurementsToWord = (
     </html>
   `;
   
-  // Erstellen eines Blob mit dem HTML-Inhalt
   const blob = new Blob([htmlContent], { type: 'text/html' });
-  
-  // Download als .html-Datei
   saveAs(blob, 'drohnenvermessung.html');
 };
 
-// Exportiert Messungen als PDF mit Screenshots (Optimierte Version)
 export const exportMeasurementsToPDF = async (
   measurements: Measurement[], 
   screenshots: { id: string, imageDataUrl: string, description: string }[] = []
 ): Promise<void> => {
   try {
-    // Prüfen, ob Messungen vorhanden sind
     if (!measurements || measurements.length === 0) {
       throw new Error("Keine Messungen vorhanden");
     }
     
-    // Verwende den korrekten Import
     const doc = new JsPDFModule({
-      compress: true // Enable compression to reduce file size
+      compress: true
     });
     
-    // Konfiguration
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
-    // Füge Logo und Überschrift hinzu
     try {
       const logoSize = 15;
       const logoImg = new Image();
@@ -263,33 +225,27 @@ export const exportMeasurementsToPDF = async (
       );
     } catch (logoError) {
       console.warn("Logo konnte nicht geladen werden:", logoError);
-      // Fahre ohne Logo fort
     }
     
-    // Überschrift
-    doc.setFontSize(16); // Reduced from 20 to 16
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Drohnenvermessung', margin + 20, margin + 10);
     
-    // Datum
-    doc.setFontSize(9); // Reduced from 10 to 9
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     const date = new Date().toLocaleDateString('de-DE');
     doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
     
-    // Trennlinie
-    doc.setLineWidth(0.3); // Reduced from 0.5 to 0.3
+    doc.setLineWidth(0.3);
     doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
     
     let yPos = margin + 30;
     
-    // Messungen Überschrift
-    doc.setFontSize(14); // Reduced from 16 to 14
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Messungen', margin, yPos);
     yPos += 10;
     
-    // Use autoTable for better performance and smaller file size
     const tableData = measurements.map(m => [
       m.description || '-',
       m.type === 'length' ? 'Länge' : 'Höhe',
@@ -303,7 +259,7 @@ export const exportMeasurementsToPDF = async (
       margin: { left: margin, right: margin },
       theme: 'grid',
       styles: {
-        fontSize: 9,
+        fontSize: 10,
         cellPadding: 3
       },
       headStyles: {
@@ -316,70 +272,58 @@ export const exportMeasurementsToPDF = async (
       }
     });
     
-    // Get the Y position after the table
     yPos = (doc as any).lastAutoTable.finalY + 15;
     
-    // Screenshots hinzufügen, falls vorhanden
     if (screenshots && screenshots.length > 0) {
-      doc.setFontSize(14); // Reduced from 16 to 14
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('Screenshots', margin, yPos);
       yPos += 10;
       
-      // Process screenshots sequentially to avoid memory issues
       for (let i = 0; i < screenshots.length; i++) {
         const screenshot = screenshots[i];
         
-        // Optimize image before adding to PDF
         try {
-          // Use 150 DPI and quality of 0.3 for smaller file size (reduced from 0.4)
-          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 600, 0.3, 150);
+          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 800, 0.7, 200);
           
-          // Get dimensions of the optimized image to maintain aspect ratio
           const img = new Image();
           img.src = optimizedDataUrl;
           
-          // Wait for image to load to get dimensions
           await new Promise<void>((resolve) => {
             img.onload = () => {
-              // Check if we need a new page before adding the screenshot
-              // Reserve space for the title + actual image + padding
-              const titleHeight = 8; // Reduced from 10 to 8
+              const titleHeight = 8;
               const aspectRatio = img.width / img.height;
-              const imgWidth = contentWidth * 0.9; // 90% of content width to reduce file size
+              const imgWidth = contentWidth * 0.95;
               const imgHeight = imgWidth / aspectRatio;
-              const requiredSpace = titleHeight + imgHeight + 15; // Added some padding
+              const requiredSpace = titleHeight + imgHeight + 15;
             
-              // Add a new page if this screenshot won't fit
               if (yPos + requiredSpace > pageHeight) {
                 doc.addPage();
-                yPos = margin; // Reset to the top of the new page
+                yPos = margin;
               }
               
-              // Add screenshot title
-              doc.setFontSize(10); // Reduced from 12 to 10
+              doc.setFontSize(11);
               doc.setFont('helvetica', 'bold');
               doc.text(`Screenshot ${i + 1}${screenshot.description ? ': ' + screenshot.description : ''}`, margin, yPos);
               yPos += titleHeight;
               
-              // Add screenshot image with compression options
               try {
                 doc.addImage(
                   optimizedDataUrl,
                   'JPEG',
-                  margin + contentWidth * 0.05, // Center the image by adding 5% margin
+                  margin + contentWidth * 0.025,
                   yPos,
                   imgWidth,
                   imgHeight,
                   undefined,
-                  'FAST', // Use FAST compression
-                  0  // 0 rotation
+                  'MEDIUM',
+                  0
                 );
                 
-                yPos += imgHeight + 15; // Add space after the image
+                yPos += imgHeight + 15;
               } catch (addImageError) {
                 console.warn(`Screenshot ${i + 1} konnte nicht hinzugefügt werden:`, addImageError);
-                yPos += 5; // Add a bit of space even if the image fails
+                yPos += 5;
               }
               
               resolve();
@@ -397,7 +341,6 @@ export const exportMeasurementsToPDF = async (
       }
     }
     
-    // PDF speichern
     doc.save('drohnenvermessung.pdf');
   } catch (error) {
     console.error("Fehler beim Exportieren als PDF:", error);
