@@ -83,30 +83,34 @@ export const exportMeasurementsToPDF = async (
 
     // 🔹 Messdaten-Tabelle
     if (measurements.length > 0) {
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Messdaten', margin, yPos);
-      yPos += 10;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Messdaten', margin, yPos);
+  yPos += 10;
 
-      const tableData = measurements.map(m => [
-        m.description || '-',
-        m.type === 'length' ? 'Länge' : 'Höhe',
-        `${m.value.toFixed(2)} ${m.unit}`
-      ]);
+  const tableData = measurements.map(m => [
+    m.description || '-',
+    m.type === 'length' ? 'Länge' : 'Höhe',
+    `${m.value.toFixed(2)} ${m.unit}`
+  ]);
 
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Beschreibung', 'Typ', 'Messwert']],
-        body: tableData,
-        margin: { left: margin, right: margin },
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 15;
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Beschreibung', 'Typ', 'Messwert']],
+    body: tableData,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: { fillColor: [66, 66, 66], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    didDrawPage: (data) => {
+      addPageHeader();
+      addPageFooter();
     }
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 15;
+}
 
     // 🔹 Neue Seite für Aufnahmen
     if (screenshots.length > 0) {
