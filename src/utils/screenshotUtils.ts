@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Measurement } from './measurementUtils';
 import { saveAs } from 'file-saver';
@@ -43,8 +44,8 @@ const dataURLToBlob = (dataUrl: string): Blob => {
 const optimizeImageData = async (
   dataUrl: string, 
   maxWidth: number = 800, 
-  quality: number = 0.7, 
-  targetDPI: number = 200
+  quality: number = 0.8, 
+  targetDPI: number = 250
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
@@ -210,34 +211,71 @@ export const exportMeasurementsToPDF = async (
     const margin = 10;
     const contentWidth = pageWidth - (margin * 2);
     
-    try {
-      const logoSize = 15;
-      const logoImg = new Image();
-      logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
+    // Add header to all pages (via addPage event)
+    const addPageHeader = () => {
+      try {
+        const logoSize = 15;
+        const logoImg = new Image();
+        logoImg.src = '/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png';
+        
+        doc.addImage(
+          logoImg, 
+          'PNG', 
+          margin, 
+          margin, 
+          logoSize, 
+          logoSize
+        );
+      } catch (logoError) {
+        console.warn("Logo konnte nicht geladen werden:", logoError);
+      }
       
-      doc.addImage(
-        logoImg, 
-        'PNG', 
-        margin, 
-        margin, 
-        logoSize, 
-        logoSize
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Drohnenvermessung', margin + 20, margin + 10);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const date = new Date().toLocaleDateString('de-DE');
+      doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
+      
+      doc.setLineWidth(0.3);
+      doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
+    };
+    
+    // Add footer to all pages (via addPage event)
+    const addPageFooter = (pageNumber: number) => {
+      const totalPages = doc.getNumberOfPages();
+      
+      // Footer text
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(128, 128, 128);
+      
+      const footerText = 'Kostenloser Service von Drohnenvermessung by RooferGaming® - Weitere Informationen erhalten sie unter drohnenvermessung-roofergaming.de';
+      
+      // Page numbers
+      doc.text(
+        `Seite ${pageNumber} von ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
       );
-    } catch (logoError) {
-      console.warn("Logo konnte nicht geladen werden:", logoError);
-    }
+      
+      // Footer line
+      doc.setLineWidth(0.1);
+      doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+      
+      // Footer text (wrapped if needed)
+      const footerY = pageHeight - 20;
+      doc.text(footerText, pageWidth / 2, footerY, { 
+        align: 'center',
+        maxWidth: pageWidth - (margin * 4)
+      });
+    };
     
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Drohnenvermessung', margin + 20, margin + 10);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const date = new Date().toLocaleDateString('de-DE');
-    doc.text(`Datum: ${date}`, pageWidth - margin - 40, margin + 10);
-    
-    doc.setLineWidth(0.3);
-    doc.line(margin, margin + 20, pageWidth - margin, margin + 20);
+    // Manually add first page header
+    addPageHeader();
     
     let yPos = margin + 30;
     
@@ -284,7 +322,12 @@ export const exportMeasurementsToPDF = async (
         const screenshot = screenshots[i];
         
         try {
-          const optimizedDataUrl = await optimizeImageData(screenshot.imageDataUrl, 800, 0.7, 200);
+          const optimizedDataUrl = await optimizeImageData(
+            screenshot.imageDataUrl, 
+            800, 
+            0.8, 
+            250
+          );
           
           const img = new Image();
           img.src = optimizedDataUrl;
@@ -297,9 +340,11 @@ export const exportMeasurementsToPDF = async (
               const imgHeight = imgWidth / aspectRatio;
               const requiredSpace = titleHeight + imgHeight + 15;
             
-              if (yPos + requiredSpace > pageHeight) {
+              if (yPos + requiredSpace > pageHeight - 30) {
                 doc.addPage();
-                yPos = margin;
+                // Add header to the new page
+                addPageHeader();
+                yPos = margin + 30;
               }
               
               doc.setFontSize(11);
@@ -339,6 +384,13 @@ export const exportMeasurementsToPDF = async (
           yPos += 5;
         }
       }
+    }
+    
+    // Add page numbers and footers to all pages
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      addPageFooter(i);
     }
     
     doc.save('drohnenvermessung.pdf');

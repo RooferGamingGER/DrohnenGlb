@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff } from 'lucide-react';
 import { MeasurementType, Measurement } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Tooltip,
   TooltipContent,
@@ -287,62 +287,65 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
       {measurements.length > 0 && showMeasurementsList && (
         <div className="text-xs space-y-1 max-w-full">
           <h3 className="font-medium">Messungen</h3>
-          <ul className="space-y-2">
-            {measurements.map((m) => (
-              <li key={m.id} className="bg-background/40 p-2 rounded">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-2">
-                    {m.type === 'length' && <Ruler size={14} />}
-                    {m.type === 'height' && <ArrowUpDown size={14} />}
-                    <span>{m.value.toFixed(2)} {m.unit}</span>
-                  </span>
-                  <div className="flex items-center">
-                    {onToggleMeasurementVisibility && (
+          
+          <ScrollArea className={measurements.length > 5 ? "h-[200px] pr-2" : "max-h-full"}>
+            <ul className="space-y-2">
+              {measurements.map((m) => (
+                <li key={m.id} className="bg-background/40 p-2 rounded">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-2">
+                      {m.type === 'length' && <Ruler size={14} />}
+                      {m.type === 'height' && <ArrowUpDown size={14} />}
+                      <span>{m.value.toFixed(2)} {m.unit}</span>
+                    </span>
+                    <div className="flex items-center">
+                      {onToggleMeasurementVisibility && (
+                        <button 
+                          onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
+                          className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                          aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+                        >
+                          {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      )}
                       <button 
-                        onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
+                        onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
                         className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
-                        aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+                        aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
                       >
-                        {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                        {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
                       </button>
-                    )}
-                    <button 
-                      onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
-                      className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
-                      aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
-                    >
-                      {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
-                    </button>
-                    <button 
-                      onClick={(e) => handleDeleteMeasurement(m.id, e)}
-                      className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                      aria-label="Messung löschen"
-                    >
-                      <X size={14} />
-                    </button>
+                      <button 
+                        onClick={(e) => handleDeleteMeasurement(m.id, e)}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        aria-label="Messung löschen"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                
-                {editingId === m.id ? (
-                  <Input
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onClick={handleInputClick}
-                    onKeyDown={handleInputKeyDown}
-                    placeholder="Beschreibung hinzufügen"
-                    className="h-7 text-xs"
-                    autoFocus
-                  />
-                ) : (
-                  m.description && (
-                    <p className="text-muted-foreground text-xs break-words">
-                      {m.description}
-                    </p>
-                  )
-                )}
-              </li>
-            ))}
-          </ul>
+                  
+                  {editingId === m.id ? (
+                    <Input
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onClick={handleInputClick}
+                      onKeyDown={handleInputKeyDown}
+                      placeholder="Beschreibung hinzufügen"
+                      className="h-7 text-xs"
+                      autoFocus
+                    />
+                  ) : (
+                    m.description && (
+                      <p className="text-muted-foreground text-xs break-words">
+                        {m.description}
+                      </p>
+                    )
+                  )}
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
         </div>
       )}
     </div>
