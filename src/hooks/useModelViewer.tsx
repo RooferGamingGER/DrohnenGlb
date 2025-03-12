@@ -187,9 +187,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           event.preventDefault();
           event.stopPropagation();
           
-          // Check if point is already selected (being dragged earlier)
           if (isPointSelected(pointMesh)) {
-            // Deactivate the point
             togglePointSelection(pointMesh);
             
             if (controlsRef.current && controlsRef.current.enabled === false) {
@@ -207,12 +205,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
             setSelectedMeasurementId(null);
             setSelectedPointIndex(null);
           } else {
-            // Activate the point for dragging
             setIsDraggingPoint(true);
             draggedPointRef.current = pointMesh;
             document.body.style.cursor = 'grabbing';
             
-            // Select the point visually
             togglePointSelection(pointMesh);
             
             const nameParts = hoveredPointId.split('-');
@@ -249,7 +245,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     const touch = event.touches[0];
     const rect = containerRef.current.getBoundingClientRect();
     
-    // Store the initial touch position to detect movement
     touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     isTouchMoveRef.current = false;
     
@@ -274,13 +269,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         if (pointMesh.userData) {
           const lastTouchTime = lastTouchTimeRef.current || 0;
           
-          // If it's a double-tap (within 500ms)
           if (isDoubleClick(currentTime, lastTouchTime)) {
             event.preventDefault();
             
-            // Check if point is already selected (being dragged earlier)
             if (isPointSelected(pointMesh)) {
-              // Deactivate the point
               togglePointSelection(pointMesh);
               
               if (controlsRef.current && controlsRef.current.enabled === false) {
@@ -298,11 +290,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               setSelectedMeasurementId(null);
               setSelectedPointIndex(null);
             } else {
-              // Activate the point for dragging
               setIsDraggingPoint(true);
               draggedPointRef.current = pointMesh;
               
-              // Select the point visually
               togglePointSelection(pointMesh);
               
               const nameParts = pointId.split('-');
@@ -339,18 +329,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     const touch = event.touches[0];
     
-    // Check if the touch has moved significantly from the start position
     if (touchStartPositionRef.current) {
       const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
       const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
       
-      // If movement is more than 10px, consider it a drag operation
       if (deltaX > 10 || deltaY > 10) {
         isTouchMoveRef.current = true;
       }
     }
     
-    // Handle point dragging
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
       event.preventDefault();
       
@@ -382,7 +369,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (draggedPointRef.current?.userData) {
         draggedPointRef.current.userData.isBeingDragged = false;
-        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
       }
       
       draggedPointRef.current = null;
@@ -398,20 +384,16 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         duration: 3000,
       });
       
-      // Keep the measurement and point indices so we know which point was just updated
-      // but clear the dragging state
       setIsDraggingPoint(false);
     }
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
-    // If we were dragging a point, finalize it
     if (isDraggingPoint) {
       setIsDraggingPoint(false);
       
       if (draggedPointRef.current?.userData) {
         draggedPointRef.current.userData.isBeingDragged = false;
-        // Do NOT clear isSelected here, as we want the point to remain selected after dragging
       }
       
       draggedPointRef.current = null;
@@ -426,15 +408,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         duration: 3000,
       });
       
-      // Keep the measurement and point indices but clear the dragging state
       setIsDraggingPoint(false);
-    } 
-    // If it was a tap without much movement and we're in measurement mode, handle the tap
-    else if (!isTouchMoveRef.current && activeTool !== 'none') {
+    } else if (!isTouchMoveRef.current && activeTool !== 'none') {
       handleMeasurementTap(event);
     }
     
-    // Reset the touch tracking variables
     touchStartPositionRef.current = null;
     isTouchMoveRef.current = false;
   };
@@ -661,6 +639,23 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls.rotateSpeed = 0.7;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
+    
+    controls.rotateSpeed = 0.5;
+    controls.enableZoom = true;
+    controls.screenSpacePanning = true;
+    
+    const updateControlSpeed = () => {
+      if (controlsRef.current && modelRef.current) {
+        const box = new THREE.Box3().setFromObject(modelRef.current);
+        const center = box.getCenter(new THREE.Vector3());
+        const distance = camera.position.distanceTo(center);
+        
+        controlsRef.current.rotateSpeed = 0.5 * (distance / 5);
+        controlsRef.current.panSpeed = 0.6 * (distance / 5);
+      }
+    };
+    
+    controls.addEventListener('change', updateControlSpeed);
     controls.update();
     controlsRef.current = controls;
     
@@ -939,12 +934,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       return;
     }
     
-    // Determine if this is a deliberate tap or a cancelled drag
     if (isTouchMoveRef.current) {
       return;
     }
     
-    const touch = event.changedTouches[0]; // Use changedTouches for the touch that ended
+    const touch = event.changedTouches[0];
     const rect = containerRef.current.getBoundingClientRect();
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1044,9 +1038,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       containerRef.current.addEventListener('click', handleMeasurementClick);
       
       if (controlsRef.current) {
-        // In measurement mode, still allow rotation but with some limitation
         controlsRef.current.enableRotate = true;
-        controlsRef.current.rotateSpeed = 0.4; // Reduce rotate speed in measurement mode
+        controlsRef.current.rotateSpeed = 0.4;
       }
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
@@ -1054,7 +1047,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
-        controlsRef.current.rotateSpeed = 0.7; // Reset to normal rotate speed
+        controlsRef.current.rotateSpeed = 0.7;
       }
     }
     
@@ -1172,6 +1165,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
       
+      setTimeout(() => {
+        resetView();
+      }, 500);
+      
       if (onLoadComplete) {
         onLoadComplete();
       }
@@ -1246,6 +1243,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       controlsRef.current.target.copy(center);
       controlsRef.current.update();
+      
+      toast({
+        title: "Ansicht zurückgesetzt",
+        description: "Die Modellansicht wurde zurückgesetzt.",
+        duration: 3000,
+      });
     }
   };
 
@@ -1315,3 +1318,4 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress
   };
 };
+
