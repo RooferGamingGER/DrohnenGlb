@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -136,4 +137,40 @@ export const createDraggablePointMaterial = (isHovered: boolean = false): THREE.
     opacity: isHovered ? 0.8 : 1.0,
     transparent: true
   });
+};
+
+// Create draggable measurement point with increased size for better touch interaction
+export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
+  // Increased size for better touch/click targets
+  const pointGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+  const pointMaterial = createDraggablePointMaterial();
+  const point = new THREE.Mesh(pointGeometry, pointMaterial);
+  point.position.copy(position);
+  point.name = name;
+  
+  // Add custom userData to track interaction state
+  point.userData = {
+    isDraggable: true,
+    lastClickTime: 0, // To track double-clicks
+    isBeingDragged: false
+  };
+  
+  return point;
+};
+
+// Create measurement line with increased thickness
+export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0x00ff00): THREE.Line => {
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: color,
+    linewidth: 3, // Thicker line (note: this has limitations in WebGL)
+  });
+  
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+  return new THREE.Line(lineGeometry, lineMaterial);
+};
+
+// Helper to check if an interaction is a double-click/tap
+export const isDoubleClick = (currentTime: number, lastClickTime: number): boolean => {
+  const doubleClickThreshold = 300; // milliseconds
+  return (currentTime - lastClickTime) < doubleClickThreshold;
 };
