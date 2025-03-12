@@ -661,6 +661,22 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls.rotateSpeed = 0.7;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
+    
+    controls.enableZoom = true;
+    controls.screenSpacePanning = true;
+    
+    const updateControlSpeed = () => {
+      if (controlsRef.current && modelRef.current) {
+        const box = new THREE.Box3().setFromObject(modelRef.current);
+        const center = box.getCenter(new THREE.Vector3());
+        const distance = camera.position.distanceTo(center);
+        
+        controlsRef.current.rotateSpeed = 0.7 * (distance / 5);
+        controlsRef.current.panSpeed = 0.8 * (distance / 5);
+      }
+    };
+    
+    controls.addEventListener('change', updateControlSpeed);
     controls.update();
     controlsRef.current = controls;
     
@@ -1044,9 +1060,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       containerRef.current.addEventListener('click', handleMeasurementClick);
       
       if (controlsRef.current) {
-        // In measurement mode, still allow rotation but with some limitation
         controlsRef.current.enableRotate = true;
-        controlsRef.current.rotateSpeed = 0.4; // Reduce rotate speed in measurement mode
+        controlsRef.current.rotateSpeed = 0.4;
       }
     } else {
       containerRef.current.removeEventListener('click', handleMeasurementClick);
@@ -1054,7 +1069,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (controlsRef.current) {
         controlsRef.current.enableRotate = true;
-        controlsRef.current.rotateSpeed = 0.7; // Reset to normal rotate speed
+        controlsRef.current.rotateSpeed = 0.7;
       }
     }
     
