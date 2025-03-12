@@ -20,7 +20,8 @@ interface MeasurementToolsProps {
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
   measurements: Measurement[];
   canUndo: boolean;
-  onClose?: () => void; // Add the onClose prop as optional
+  onClose?: () => void;
+  screenshots?: { id: string, imageDataUrl: string, description: string }[];
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({

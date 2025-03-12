@@ -8,7 +8,7 @@ import {
   Ruler, 
   Camera, 
   FileSpreadsheet,
-  FilePdf,
+  FileText,
   Home,
   X
 } from 'lucide-react';
@@ -107,7 +107,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" onClick={onExportMeasurements} className="h-8 w-8 bg-background/90">
-                  <FilePdf className="h-4 w-4" />
+                  <FileText className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left" className="bg-background/90 border border-gray-300">
