@@ -44,6 +44,18 @@ const Login = () => {
     return "Anmeldung abgeschlossen";
   };
 
+  const isPasswordValid = (password: string) => {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@<span class="math-inline">\!%\*?&\]\)\[A\-Za\-z\\d@</span>!%*?&]{6,}$/;
+    return regex.test(password);
+  };
+
+  const getRegisterProgressStatus = (isLoading: boolean) => {
+    if (isLoading) {
+      return "Registrierung läuft...";
+    }
+    return "";
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -56,7 +68,7 @@ const Login = () => {
       return;
     }
 
-    if (registerPassword.length < 6) {
+    if (!isPasswordValid(registerPassword)) {
       toast({
         title: "Fehler",
         description: "Das Passwort muss mindestens 6 Zeichen lang sein. Ebenfalls sind Groß- und Kleinbuchstaben, 1 Sonderzeichen und 1 Zahl erforderlich",
@@ -98,17 +110,26 @@ const Login = () => {
     }
   };
 
+  const LoadingIndicator = ({ isLoading, text }) => (
+    isLoading ? (
+      <span className="flex items-center justify-center">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        {text}
+      </span>
+    ) : null
+  );
+
   return (
     <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
-        <div className="text-center"> {/* Container für Logo und Text */}
-          <img
-            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
-            alt="Drohnenvermessung by RooferGaming"
-            className="h-48 mb-2" // Abstand zum Text
-          />
-          <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span>
-        </div>
+      <div className="text-center">
+        <img
+          src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+          alt="Drohnenvermessung by RooferGaming"
+          className="h-48 mb-2"
+        />
+        <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span>
       </div>
+    </div>
 
       {/* Rechte Seite (Login-Formular) oder Volle Breite auf Mobilgeräten */}
       <div className="flex flex-col justify-center items-center md:w-1/2 w-full p-4">
