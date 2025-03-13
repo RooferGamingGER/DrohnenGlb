@@ -27,7 +27,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
     <div className="fixed inset-0 flex items-center justify-center">
       <div className="flex flex-col md:flex-row w-full max-w-2xl">
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center mt-16 md:mt-0"> {/* Hinzugefügter margin-top */}
+        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center mt-16 md:mt-0">
           <div
             className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
@@ -35,7 +35,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2">GLB-Datei hochladen</h3>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-              Wähle Sie Ihre GLB-Datei um mit dem Upload zu beginnen.
+              Wählen Sie eine GLB-Datei zum Hochladen aus.
             </p>
             <Button>
               <Upload className="mr-2 h-4 w-4" />
@@ -61,8 +61,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 <ArrowDown className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="font-medium">Export vom Server</h3>
-                <p className="text-sm text-gray-500">Exportiere die Datei "Textured Model (glTF)"</p>
+                <h3 className="font-medium">Exportieren vom Server</h3>
+                <p className="text-sm text-gray-500">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
               </div>
             </div>
 
@@ -71,8 +71,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 <ArrowUpRight className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="font-medium">GLB Datei hochladen</h3>
-                <p className="text-sm text-gray-500">Die gespeicherte Datei vom Server kann nun direkt hochgeladen</p>
+                <h3 className="font-medium">GLB-Datei hochladen</h3>
+                <p className="text-sm text-gray-500">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
               </div>
             </div>
 
@@ -82,12 +82,13 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               </div>
               <div>
                 <h3 className="font-medium">Testphase</h3>
-                <p className="text-sm text-gray-500">Aktuell befindet sich die Software in der Testphase</p>
-                <p className="text-sm text-gray-500"> Sollten Ihnen Fehler auffallen, senden Sie diese gerne an{' '}
-                <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline">
-                  info@drohnenvermessung-roofergaming.de
-                </a>
-              </p>
+                <p className="text-sm text-gray-500">Die Software befindet sich aktuell in der Testphase.</p>
+                <p className="text-sm text-gray-500">
+                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
+                  <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline">
+                    info@drohnenvermessung-roofergaming.de
+                  </a>
+                </p>
               </div>
             </div>
           </div>
