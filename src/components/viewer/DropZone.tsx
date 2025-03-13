@@ -24,65 +24,67 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="relative flex">
-      {/* DropZone-Fenster */}
-      <div className="w-1/2 p-4">
-        <div
-          className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">GLB-Datei hochladen</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-            Wähle Sie Ihre GLB-Datei um mit dem Upload zu beginnen.
-          </p>
-          <Button>
-            <Upload className="mr-2 h-4 w-4" />
-            Datei auswählen
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".glb"
-            className="hidden"
-            onChange={handleFileChange}
-          />
+    <div className="fixed inset-0 flex items-center justify-center"> {/* Zentrierungscontainer */}
+      <div className="flex w-full max-w-2xl"> {/* Container für die Fenster */}
+        {/* DropZone-Fenster */}
+        <div className="w-1/2 p-4">
+          <div
+            className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">GLB-Datei hochladen</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
+              Wähle Sie Ihre GLB-Datei um mit dem Upload zu beginnen.
+            </p>
+            <Button>
+              <Upload className="mr-2 h-4 w-4" />
+              Datei auswählen
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".glb"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* "How It Works"-Fenster */}
-      <div className="w-1/2 p-4">
-        <div className="bg-white rounded-lg p-6 shadow">
-          <h2 className="text-lg font-semibold mb-4">How It Works</h2>
+        {/* "How It Works"-Fenster */}
+        <div className="w-1/2 p-4">
+          <div className="bg-white rounded-lg p-6 shadow">
+            <h2 className="text-lg font-semibold mb-4">Erklärung</h2>
 
-          <div className="flex items-center mb-4">
-            <div className="bg-blue-100 rounded-full p-2 mr-4">
-              <ArrowDown className="h-6 w-6 text-blue-500" />
+            <div className="flex items-center mb-4">
+              <div className="bg-blue-100 rounded-full p-2 mr-4">
+                <ArrowDown className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="font-medium">Export vom Server</h3>
+                <p className="text-sm text-gray-500">Exportiere die Datei "Textured Model (glTF)</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium">Export vom Server</h3>
-              <p className="text-sm text-gray-500">Exportiere die Datei "Textured Model (glTF)</p>
-            </div>
-          </div>
 
-          <div className="flex items-center mb-4">
-            <div className="bg-blue-100 rounded-full p-2 mr-4">
-              <ArrowUpRight className="h-6 w-6 text-blue-500" />
+            <div className="flex items-center mb-4">
+              <div className="bg-blue-100 rounded-full p-2 mr-4">
+                <ArrowUpRight className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="font-medium">GLB Datei hochladen</h3>
+                <p className="text-sm text-gray-500">Die gespeicherte Datei vom Server kann nun direkt hochgeladen</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium">GLB Datei hochladen</h3>
-              <p className="text-sm text-gray-500">Die gespeicherte Datei vom Server kann nun direkt hochgeladen</p>
-            </div>
-          </div>
 
-          <div className="flex items-center">
-            <div className="bg-blue-100 rounded-full p-2 mr-4">
-              <Send className="h-6 w-6 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-medium">Testphase</h3>
-              <p className="text-sm text-gray-500">Aktuell befindet sich die Software in der Testphase, hier kann es nch zu Fehlern kommen</p>
-              <p className="text-sm text-gray-500">Sollten Ihnen Fehler auffallen, senden Sie dieser gerne an info@drohnenvermessung-roofergaming.de</p>
+            <div className="flex items-center">
+              <div className="bg-blue-100 rounded-full p-2 mr-4">
+                <Send className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="font-medium">Testphase</h3>
+                <p className="text-sm text-gray-500">Aktuell befindet sich die Software in der Testphase, hier kann es nch zu Fehlern kommen</p>
+                <p className="text-sm text-gray-500">Sollten Ihnen Fehler auffallen, senden Sie dieser gerne an info@drohnenvermessung-roofergaming.de</p>
+              </div>
             </div>
           </div>
         </div>
