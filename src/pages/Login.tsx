@@ -107,6 +107,8 @@ const Login = () => {
           alt="Drohnenvermessung by RooferGaming"
           className="h-48" // Größe des Logos anpassen
         />
+          <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span> {/* Zusätzlicher Text */}
+        </div>
       </div>
 
       {/* Rechte Seite (Login-Formular) oder Volle Breite auf Mobilgeräten */}
