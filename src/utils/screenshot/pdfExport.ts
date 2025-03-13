@@ -1,7 +1,7 @@
 
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
-import { Measurement } from '../measurementUtils';
+import { Measurement, isInclinationSignificant } from '../measurementUtils';
 import { Screenshot } from './types';
 import { optimizeImageData } from './captureUtils';
 
@@ -94,15 +94,30 @@ export const exportMeasurementsToPDF = async (
 
             const tableStartY = yPos;
 
-            const tableData = measurements.map(m => [
-                m.description || '-',
-                m.type === 'length' ? 'Länge' : 'Höhe',
-                `${m.value.toFixed(2)} ${m.unit}`
-            ]);
+            const tableData = measurements.map(m => {
+                const measurementRow = [
+                    m.description || '-',
+                    m.type === 'length' ? 'Länge' : 'Höhe',
+                    `${m.value.toFixed(2)} ${m.unit}`
+                ];
+                
+                // Füge Dachneigung hinzu, wenn es sich um eine Längenmessung handelt und die Neigung signifikant ist
+                if (m.type === 'length' && m.inclination !== undefined) {
+                    if (isInclinationSignificant(m.inclination)) {
+                        measurementRow.push(`${m.inclination.toFixed(1)}°`);
+                    } else {
+                        measurementRow.push('-');
+                    }
+                } else {
+                    measurementRow.push('-');
+                }
+                
+                return measurementRow;
+            });
 
             autoTable(doc, {
                 startY: tableStartY,
-                head: [['Beschreibung', 'Typ', 'Messwert']],
+                head: [['Beschreibung', 'Typ', 'Messwert', 'Dachneigung']],
                 body: tableData,
                 theme: 'grid',
                 styles: { fontSize: 10, cellPadding: 3 },
