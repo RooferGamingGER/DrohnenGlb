@@ -121,15 +121,17 @@ const Login = () => {
 
   return (
     <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
-      <div className="text-center">
+    <div className="text-center">
         <img
-          src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
-          alt="Drohnenvermessung by RooferGaming"
-          className="h-48 mb-2"
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+            alt="Drohnenvermessung by RooferGaming"
+            className="h-48 mb-2"
         />
-        <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span>
-      </div>
+        <span className="text-white text-lg font-semibold" style={{ color: '#003366' }}>
+            DrohnenGLB by RooferGaming®
+        </span>
     </div>
+</div>
 
       {/* Rechte Seite (Login-Formular) oder Volle Breite auf Mobilgeräten */}
       <div className="flex flex-col justify-center items-center md:w-1/2 w-full p-4">
