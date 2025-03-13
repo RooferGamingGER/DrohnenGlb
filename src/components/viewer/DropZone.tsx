@@ -82,8 +82,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               </div>
               <div>
                 <h3 className="font-medium">Testphase</h3>
-                <p className="text-sm text-gray-500">Aktuell befindet sich die Software in der Testphase, hier kann es noch zu Fehlern kommen</p>
-                <p>&nbsp;</p> {/* Leerzeile */}
+                <p className="text-sm text-gray-500">Aktuell befindet sich die Software in der Testphase</p>
                 <p className="text-sm text-gray-500"> Sollten Ihnen Fehler auffallen, senden Sie diese gerne an{' '}
                 <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline">
                   info@drohnenvermessung-roofergaming.de
