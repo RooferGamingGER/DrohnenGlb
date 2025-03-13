@@ -14,6 +14,7 @@ import {
   MeasurementPoint,
   calculateDistance,
   calculateHeight,
+  calculateInclination,
   createMeasurementId,
   createTextSprite,
   updateLabelScale,
@@ -22,7 +23,9 @@ import {
   createMeasurementLine,
   isDoubleClick,
   togglePointSelection,
-  isPointSelected
+  isPointSelected,
+  formatMeasurementWithInclination,
+  isInclinationSignificant
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -436,8 +439,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           }
           
           let newValue: number;
+          let inclination: number | undefined;
+          
           if (measurement.type === 'length') {
             newValue = calculateDistance(
+              updatedPoints[0].position,
+              updatedPoints[1].position
+            );
+            
+            inclination = calculateInclination(
               updatedPoints[0].position,
               updatedPoints[1].position
             );
@@ -473,7 +483,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
             
             measurement.labelObject.position.copy(labelPosition);
             
-            const labelText = `${newValue.toFixed(2)} ${measurement.unit}`;
+            const labelText = measurement.type === 'length' 
+              ? formatMeasurementWithInclination(newValue, inclination)
+              : `${newValue.toFixed(2)} ${measurement.unit}`;
             
             const newSprite = createTextSprite(
               labelText, 
@@ -525,6 +537,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               ...measurement,
               points: updatedPoints,
               value: newValue,
+              inclination: measurement.type === 'length' ? inclination : undefined,
               labelObject: newSprite
             };
           }
@@ -532,7 +545,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           return {
             ...measurement,
             points: updatedPoints,
-            value: newValue
+            value: newValue,
+            inclination: measurement.type === 'length' ? inclination : undefined
           };
         }
         return measurement;
@@ -826,14 +840,16 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (activeTool === 'length' || activeTool === 'height') {
         let value: number;
         let unit = 'm';
+        let inclination: number | undefined;
         
         if (activeTool === 'length') {
           value = calculateDistance(prevPoint, position);
+          inclination = calculateInclination(prevPoint, position);
           
           const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
           midPoint.y += 0.1;
           
-          const labelText = `${value.toFixed(2)} ${unit}`;
+          const labelText = formatMeasurementWithInclination(value, inclination);
           const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
           
           labelSprite.userData = {
@@ -890,9 +906,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     let value = 0;
     let unit = 'm';
+    let inclination: number | undefined;
     
     if (activeTool === 'length') {
       value = calculateDistance(points[0].position, points[1].position);
+      inclination = calculateInclination(points[0].position, points[1].position);
     } else if (activeTool === 'height') {
       value = calculateHeight(points[0].position, points[1].position);
     }
@@ -917,6 +935,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       points: points,
       value,
       unit,
+      inclination: activeTool === 'length' ? inclination : undefined,
       ...measurementObjects
     };
     
@@ -1318,4 +1337,3 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress
   };
 };
-
