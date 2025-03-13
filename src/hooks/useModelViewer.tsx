@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -215,6 +216,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       // KTX2 compression
       const ktx2Loader = new KTX2Loader();
       ktx2Loader.setTranscoderPath('/ktx2/');
+      // Fix for the argument count error - remove the third argument
       ktx2Loader.detectSupport(renderer as THREE.WebGLRenderer);
       loader.setKTX2Loader(ktx2Loader);
       
@@ -288,6 +290,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const onDocumentMouseDown = (event: MouseEvent) => {
     event.preventDefault();
     
+    // Fix for the type comparison error - change the condition to check if activeTool is not 'none'
     if (!renderer || !camera || !scene || activeTool === 'none') return;
     
     const rect = renderer.domElement.getBoundingClientRect();
