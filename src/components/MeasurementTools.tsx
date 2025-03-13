@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation } from 'lucide-react';
-import { MeasurementType, Measurement } from '@/utils/measurementUtils';
+import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -302,7 +302,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           <Ruler size={14} />
                           <span>
                             {m.value.toFixed(2)} {m.unit}
-                            {m.inclination !== undefined && (
+                            {m.inclination !== undefined && isInclinationSignificant(m.inclination) && (
                               <span className="ml-1 flex items-center">
                                 | <Navigation size={12} className="mx-1" /> {m.inclination.toFixed(1)}°
                               </span>

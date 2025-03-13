@@ -48,6 +48,11 @@ export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): numb
   return parseFloat(angleInDegrees.toFixed(1));
 };
 
+// Prüft, ob die Neigung signifikant genug ist, um angezeigt zu werden
+export const isInclinationSignificant = (inclination: number, threshold: number = 5.0): boolean => {
+  return inclination >= threshold;
+};
+
 // Format measurement value with appropriate unit
 export const formatMeasurement = (value: number, type: MeasurementType): string => {
   return `${value.toFixed(2)} m`;
@@ -58,7 +63,7 @@ export const formatMeasurementWithInclination = (
   value: number, 
   inclination: number | undefined
 ): string => {
-  if (inclination !== undefined) {
+  if (inclination !== undefined && isInclinationSignificant(inclination)) {
     return `${value.toFixed(2)} m | ${inclination.toFixed(1)}°`;
   }
   return `${value.toFixed(2)} m`;
