@@ -99,15 +99,14 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Linke Seite (Logo und blauer Hintergrund) */}
-      <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
-        <img
-          src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
-          alt="Drohnenvermessung by RooferGaming"
-          className="h-48" // Größe des Logos anpassen
-        />
-          <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span> {/* Zusätzlicher Text */}
+    <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
+        <div className="text-center"> {/* Container für Logo und Text */}
+          <img
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+            alt="Drohnenvermessung by RooferGaming"
+            className="h-48 mb-2" // Abstand zum Text
+          />
+          <span className="text-white text-lg font-semibold">DrohnenGLB by RooferGaming®</span>
         </div>
       </div>
 
