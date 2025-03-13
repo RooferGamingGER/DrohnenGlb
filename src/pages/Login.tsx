@@ -144,11 +144,11 @@ const Login = () => {
             />
           </div>
           <div className="text-center">
-            <h1 className="text-3xl font-bold">{isRegistering ? "Registrieren" : "Anmelden"}</h1>
+            <h1 className="text-3xl font-bold">{isRegistering ? "Registrieren" : "Einloggen"}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               {isRegistering
                 ? "Erstellen Sie ein neues Konto"
-                : "Melden Sie sich mit Ihrem Konto an"}
+                : "Geben Sie Ihre Zugangsdaten ein"}
             </p>
           </div>
 
@@ -197,7 +197,7 @@ const Login = () => {
                   htmlFor="rememberMe"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Anmeldedaten speichern
+                  Zugangsdaten merken
                 </label>
               </div>
 
@@ -230,7 +230,7 @@ const Login = () => {
                   className="text-sm text-primary"
                   onClick={() => setIsRegistering(true)}
                 >
-                  Noch kein Konto? Hier registrieren
+                  Neu hier? Jetzt registrieren
                 </Button>
               </div>
             </form>
