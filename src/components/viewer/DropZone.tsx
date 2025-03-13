@@ -24,10 +24,10 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center"> {/* Zentrierungscontainer */}
-      <div className="flex w-full max-w-2xl"> {/* Container für die Fenster */}
+    <div className="fixed inset-0 flex items-center justify-center">
+      <div className="flex flex-col md:flex-row w-full max-w-2xl"> {/* Anordnung ändern */}
         {/* DropZone-Fenster */}
-        <div className="w-1/2 p-4">
+        <div className="w-full md:w-1/2 p-4"> {/* Breite anpassen */}
           <div
             className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
@@ -52,7 +52,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-1/2 p-4">
+        <div className="w-full md:w-1/2 p-4"> {/* Breite anpassen */}
           <div className="bg-white rounded-lg p-6 shadow">
             <h2 className="text-lg font-semibold mb-4">Erklärung</h2>
 
@@ -62,7 +62,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               </div>
               <div>
                 <h3 className="font-medium">Export vom Server</h3>
-                <p className="text-sm text-gray-500">Exportiere die Datei "Textured Model (glTF)</p>
+                <p className="text-sm text-gray-500">Exportiere die Datei "Textured Model (glTF)"</p>
               </div>
             </div>
 
