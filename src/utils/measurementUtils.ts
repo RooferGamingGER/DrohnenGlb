@@ -14,6 +14,7 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
+  inclination?: number; // Neigungswinkel in Grad
   description?: string;
   isActive?: boolean;
   visible?: boolean;
@@ -32,8 +33,34 @@ export const calculateHeight = (p1: THREE.Vector3, p2: THREE.Vector3): number =>
   return Math.abs(p2.y - p1.y);
 };
 
+// Calculate inclination angle in degrees between two points
+export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
+  // Berechne horizontale Distanz (XZ-Ebene)
+  const horizontalDistance = new THREE.Vector2(p2.x - p1.x, p2.z - p1.z).length();
+  
+  // Berechne Höhendifferenz
+  const heightDifference = Math.abs(p2.y - p1.y);
+  
+  // Berechne Neigungswinkel in Grad
+  const angleInRadians = Math.atan2(heightDifference, horizontalDistance);
+  const angleInDegrees = THREE.MathUtils.radToDeg(angleInRadians);
+  
+  return parseFloat(angleInDegrees.toFixed(1));
+};
+
 // Format measurement value with appropriate unit
 export const formatMeasurement = (value: number, type: MeasurementType): string => {
+  return `${value.toFixed(2)} m`;
+};
+
+// Format measurement with inclination
+export const formatMeasurementWithInclination = (
+  value: number, 
+  inclination: number | undefined
+): string => {
+  if (inclination !== undefined) {
+    return `${value.toFixed(2)} m | ${inclination.toFixed(1)}°`;
+  }
   return `${value.toFixed(2)} m`;
 };
 
