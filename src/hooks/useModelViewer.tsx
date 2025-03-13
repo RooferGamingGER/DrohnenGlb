@@ -24,7 +24,8 @@ import {
   isDoubleClick,
   togglePointSelection,
   isPointSelected,
-  formatMeasurementWithInclination
+  formatMeasurementWithInclination,
+  isInclinationSignificant
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -483,7 +484,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
             measurement.labelObject.position.copy(labelPosition);
             
             const labelText = measurement.type === 'length' 
-              ? `${newValue.toFixed(2)} ${measurement.unit} | ${inclination?.toFixed(1)}°`
+              ? formatMeasurementWithInclination(newValue, inclination)
               : `${newValue.toFixed(2)} ${measurement.unit}`;
             
             const newSprite = createTextSprite(
@@ -848,7 +849,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
           midPoint.y += 0.1;
           
-          const labelText = `${value.toFixed(2)} ${unit} | ${inclination.toFixed(1)}°`;
+          const labelText = formatMeasurementWithInclination(value, inclination);
           const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
           
           labelSprite.userData = {
