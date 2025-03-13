@@ -24,21 +24,19 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center">
-      <div className="flex flex-col md:flex-row w-full max-w-2xl">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-100"> {/* Hintergrundfarbe */}
+      <div className="flex flex-col md:flex-row w-full max-w-3xl p-6 rounded-xl shadow-lg bg-white"> {/* Größere Breite, Abstand, abgerundete Ecken und Schatten */}
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center mt-16 md:mt-0">
+        <div className="w-full md:w-1/2 p-6 flex flex-col justify-center mt-16 md:mt-0"> {/* Größerer Abstand */}
           <div
-            className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-500 transition-colors cursor-pointer" // Hover-Effekt
             onClick={() => fileInputRef.current?.click()}
           >
-            <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">GLB-Datei hochladen</h3>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-              Wählen Sie eine GLB-Datei zum Hochladen aus.
-            </p>
-            <Button>
-              <Upload className="mr-2 h-4 w-4" />
+            <FileUp className="h-12 w-12 mx-auto mb-6 text-gray-500" />
+            <h3 className="text-2xl font-semibold mb-4 text-gray-800">GLB-Datei hochladen</h3>
+            <p className="text-lg text-gray-600 mb-8">Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
+            <Button className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"> {/* Button-Styling */}
+              <Upload className="mr-2 h-5 w-5" />
               Datei auswählen
             </Button>
             <input
@@ -52,38 +50,38 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center">
-          <div className="bg-white rounded-lg p-6 shadow">
-            <h2 className="text-lg font-semibold mb-4">Erklärung</h2>
+        <div className="w-full md:w-1/2 p-6 flex flex-col justify-center"> {/* Größerer Abstand */}
+          <div className="bg-white rounded-xl p-8 shadow-md"> {/* Abgerundete Ecken und Schatten */}
+            <h2 className="text-3xl font-bold mb-6 text-gray-800">Erklärung</h2>
 
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-4">
+            <div className="flex items-center mb-6">
+              <div className="bg-blue-100 rounded-full p-3 mr-4">
                 <ArrowDown className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="font-medium">Exportieren vom Server</h3>
-                <p className="text-sm text-gray-500">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-800">Exportieren vom Server</h3>
+                <p className="text-gray-600">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
               </div>
             </div>
 
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-4">
+            <div className="flex items-center mb-6">
+              <div className="bg-blue-100 rounded-full p-3 mr-4">
                 <ArrowUpRight className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="font-medium">GLB-Datei hochladen</h3>
-                <p className="text-sm text-gray-500">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-800">GLB-Datei hochladen</h3>
+                <p className="text-gray-600">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
               </div>
             </div>
 
             <div className="flex items-center">
-              <div className="bg-blue-100 rounded-full p-2 mr-4">
+              <div className="bg-blue-100 rounded-full p-3 mr-4">
                 <Send className="h-6 w-6 text-blue-500" />
               </div>
               <div>
-                <h3 className="font-medium">Testphase</h3>
-                <p className="text-sm text-gray-500">Die Software befindet sich aktuell in der Testphase.</p>
-                <p className="text-sm text-gray-500">
+                <h3 className="text-xl font-semibold mb-2 text-gray-800">Testphase</h3>
+                <p className="text-gray-600 mb-2">Die Software befindet sich aktuell in der Testphase.</p>
+                <p className="text-gray-600">
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
                   <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline">
                     info@drohnenvermessung-roofergaming.de
