@@ -25,9 +25,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
   return (
     <div className="fixed inset-0 flex items-center justify-center">
-      <div className="flex flex-col md:flex-row w-full max-w-2xl"> {/* Anordnung ändern */}
+      <div className="flex flex-col md:flex-row w-full max-w-2xl">
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-4"> {/* Breite anpassen */}
+        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center"> {/* Vertikale Zentrierung und Flex-Column */}
           <div
             className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
@@ -52,7 +52,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-full md:w-1/2 p-4"> {/* Breite anpassen */}
+        <div className="w-full md:w-1/2 p-4 flex flex-col justify-center"> {/* Vertikale Zentrierung und Flex-Column */}
           <div className="bg-white rounded-lg p-6 shadow">
             <h2 className="text-lg font-semibold mb-4">Erklärung</h2>
 
