@@ -45,9 +45,9 @@ const Login = () => {
   };
 
   const isPasswordValid = (password: string) => {
-  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
-  return regex.test(password);
-};
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+    return regex.test(password);
+  };
 
   const getRegisterProgressStatus = (isLoading: boolean) => {
     if (isLoading) {
@@ -120,7 +120,8 @@ const Login = () => {
   );
 
   return (
-   <div> {/* Umschließenden div hinzufügen */}
+    <div className="flex h-screen"> {/* Hinzugefügter Container für die Aufteilung */}
+
       <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
         <div className="text-center">
           <img
@@ -247,6 +248,7 @@ const Login = () => {
                   required
                   disabled={isRegisterLoading}
                   placeholder="E-Mail eingeben"
+                  className="w-full"
                 />
               </div>
 
