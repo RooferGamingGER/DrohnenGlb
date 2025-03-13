@@ -45,9 +45,9 @@ const Login = () => {
   };
 
   const isPasswordValid = (password: string) => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@<span class="math-inline">\!%\*?&\]\)\[A\-Za\-z\\d@</span>!%*?&]{6,}$/;
-    return regex.test(password);
-  };
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+  return regex.test(password);
+};
 
   const getRegisterProgressStatus = (isLoading: boolean) => {
     if (isLoading) {
