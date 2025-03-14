@@ -25,9 +25,10 @@ import ScreenshotDialog from '@/components/ScreenshotDialog';
 
 interface ModelViewerProps {
   forceHideHeader?: boolean;
+  initialFile?: File;
 }
 
-const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) => {
+const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isMobile, isPortrait } = useIsMobile();
@@ -43,6 +44,32 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
   
+  // Determine if header should be shown based on sidebar visibility and orientation
+  const shouldShowHeader = useCallback(() => {
+    if (forceHideHeader) return false;
+    
+    // In portrait mode (mobile), start with header visible
+    if (isPortrait) return !showMeasurementTools;
+    
+    // In landscape mode (desktop), start with sidebar, hide header
+    return !showMeasurementTools;
+  }, [forceHideHeader, isPortrait, showMeasurementTools]);
+  
+  const [showHeader, setShowHeader] = useState(shouldShowHeader());
+  
+  // Update header visibility whenever dependencies change
+  useEffect(() => {
+    setShowHeader(shouldShowHeader());
+  }, [shouldShowHeader, showMeasurementTools, isPortrait]);
+  
+  // Initialize showMeasurementTools based on device orientation
+  useEffect(() => {
+    // On first load, in landscape (desktop) start with sidebar visible
+    if (!isPortrait) {
+      setShowMeasurementTools(true);
+    }
+  }, [isPortrait]);
+  
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
   const modelViewer = useModelViewer({
@@ -55,6 +82,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   });
   
   const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+
+  // Load the initial file if provided
+  useEffect(() => {
+    if (initialFile) {
+      handleFileSelected(initialFile);
+    }
+  }, [initialFile]);
 
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.glb')) {
@@ -610,7 +644,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
         onTakeScreenshot={handleTakeScreenshot}
         onExportMeasurements={handleExportMeasurements}
         isMobile={isMobile}
-        forceHideHeader={forceHideHeader}
+        forceHideHeader={!showHeader}
       />
       
       <ViewerContainer
@@ -672,4 +706,3 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
 };
 
 export default ModelViewer;
-

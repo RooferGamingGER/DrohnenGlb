@@ -1,8 +1,8 @@
-
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
-import { twMerge } from 'tailwind-merge';
+import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DropZoneProps {
   onFileSelected: (file: File) => void;
@@ -12,6 +12,7 @@ interface DropZoneProps {
 
 const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isPortrait } = useIsMobile();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -26,141 +27,99 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="flex flex-col min-h-screen p-2">
-      {/* Hauptinhalt (DropZone und "Erklärung") */}
-      <div className="flex flex-col md:flex-row w-full max-w-4xl justify-center items-center mx-auto h-full min-h-[70vh]">
-        {/* DropZone-Fenster */}
-        <div className={twMerge(
-          "w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1",
-          "md:p-8 md:max-w-md", // Desktop Anpassungen
-          "p-4 max-w-xs"          // Mobile Anpassungen
-        )}>
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-500 transition-colors cursor-pointer w-full p-6"
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-          >
-            <FileUp className={twMerge(
-              "mx-auto mb-3 text-gray-500",
-              "md:h-8 md:w-8", // Desktop Anpassungen
-              "h-5 w-5"        // Mobile Anpassungen
-            )} />
-            <h3 className={twMerge(
-              "font-semibold mb-2 text-gray-800",
-              "md:text-lg", // Desktop Anpassungen
-              "text-sm"        // Mobile Anpassungen
-            )}>GLB-Datei hochladen</h3>
-            <p className={twMerge(
-              "text-gray-600 mb-4",
-              "md:text-sm", // Desktop Anpassungen
-              "text-xs mb-3"  // Mobile Anpassungen
-            )}>Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
-            <Button className={twMerge(
-              "bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors",
-              "md:px-6 md:py-2 md:text-sm", // Desktop Anpassungen
-              "px-3 py-1 text-xs"            // Mobile Anpassungen
-            )}>
-              <Upload className={twMerge(
-                "mr-2",
-                "md:h-4 md:w-4", // Desktop Anpassungen
-                "h-3 w-3"        // Mobile Anpassungen
-              )} />
-              Datei auswählen
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".glb"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen overflow-hidden`}>
+
+      {/* Upload Area - Now on the left or top side */}
+      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}> {/* Desktop: 50% Breite */}
+        <div className="flex-grow flex items-center justify-center">
+          <Card className={`w-full max-w-2xl mx-4 p-4 md:p-6 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'my-2' : ''}`}>
+            <div className="text-center mb-3 md:mb-4">
+              <h2 className="text-xl md:text-3xl font-bold text-foreground">Modell hochladen</h2>
+              <p className="text-md md:text-lg text-muted-foreground mt-1 md:mt-2">
+                Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
+              </p>
+            </div>
+
+            <div
+              className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+            >
+              <FileUp className="mb-3 md:mb-4 text-primary animate-float h-10 w-10" />
+              <h3 className="font-semibold mb-2 md:mb-3 text-lg md:text-2xl text-foreground">GLB-Datei hochladen</h3>
+              <p className="text-md md:text-lg text-muted-foreground mb-3 md:mb-4">
+                Ziehen Sie eine Datei hierher oder klicken
+              </p>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto">
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Datei auswählen
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".glb"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+          </Card>
         </div>
+      </div>
 
-        {/* "Erklärung"-Fenster */}
-        <div className={twMerge(
-          "w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1",
-          "md:max-w-md", // Desktop Anpassungen
-          "p-3 max-w-xs" // Mobile Anpassungen
-        )}>
-          <div className="bg-white rounded-lg w-full">
-            <h2 className={twMerge(
-              "font-bold mb-3 text-gray-800 p-2",
-              "md:text-xl", // Desktop Anpassungen
-              "text-md"        // Mobile Anpassungen
-            )}>Erklärung</h2>
+      {/* Information Panel - Now on the right or bottom side */}
+      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col justify-center bg-primary/10 overflow-hidden`}> {/* Desktop: 50% Breite */}
+        <div className="max-w-2xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
+            3D-Modell Viewer
+          </h1>
 
-            <div className="flex items-start mb-3 p-2">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <ArrowDown className={twMerge(
-                  "text-blue-500",
-                  "md:h-4 md:w-4", // Desktop Anpassungen
-                  "h-3 w-3"        // Mobile Anpassungen
-                )} />
+          <div className="space-y-2 md:space-y-3">
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
+                <ArrowDown className="text-primary h-4 w-4 md:h-5 md:w-5" />
               </div>
               <div>
-                <h3 className={twMerge(
-                  "font-semibold mb-1 text-gray-800",
-                  "md:text-md", // Desktop Anpassungen
-                  "text-xs"        // Mobile Anpassungen
-                )}>Exportieren vom Server</h3>
-                <p className={twMerge(
-                  "text-gray-600",
-                  "md:text-sm", // Desktop Anpassungen
-                  "text-xs"        // Mobile Anpassungen
-                )}>Exportieren Sie die Datei 'Textured Model (glTF)'</p>
+                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                  Exportieren vom Server
+                </h3>
+                <p className="text-md md:text-lg text-muted-foreground leading-tight">
+                  Exportieren Sie die Datei 'Textured Model (glTF)'
+                </p>
               </div>
             </div>
 
-            <div className="flex items-start mb-3 p-2">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <ArrowUpRight className={twMerge(
-                  "text-blue-500",
-                  "md:h-4 md:w-4", // Desktop Anpassungen
-                  "h-3 w-3"        // Mobile Anpassungen
-                )} />
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
+                <ArrowUpRight className="text-primary h-4 w-4 md:h-5 md:w-5" />
               </div>
               <div>
-                <h3 className={twMerge(
-                  "font-semibold mb-1 text-gray-800",
-                  "md:text-md", // Desktop Anpassungen
-                  "text-xs"        // Mobile Anpassungen
-                )}>GLB-Datei hochladen</h3>
-                <p className={twMerge(
-                  "text-gray-600",
-                  "md:text-sm", // Desktop Anpassungen
-                  "text-xs"        // Mobile Anpassungen
-                )}>Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
+                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                  GLB-Datei hochladen
+                </h3>
+                <p className="text-md md:text-lg text-muted-foreground leading-tight">
+                  Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-start p-2">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <Send className={twMerge(
-                  "text-blue-500",
-                  "md:h-4 md:w-4", // Desktop Anpassungen
-                  "h-3 w-3"        // Mobile Anpassungen
-                )} />
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
+                <Send className="text-primary h-4 w-4 md:h-5 md:w-5" />
               </div>
               <div>
-                <h3 className={twMerge(
-                  "font-semibold mb-1 text-gray-800",
-                  "md:text-md", // Desktop Anpassungen
-                  "text-xs"        // Mobile Anpassungen
-                )}>Testphase</h3>
-                <p className={twMerge(
-                  "text-gray-600 mb-1",
-                  "md:text-sm", // Desktop Anpassungen
-                  "text-xs mb-0"   // Mobile Anpassungen
-                )}>Die Software befindet sich aktuell in der Testphase.</p>
-                <p className={twMerge(
-                  "text-gray-600",
-                  "md:text-sm",    // Desktop Anpassungen
-                  "text-xs"
-                )}>
+                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                  Testphase
+                </h3>
+                <p className="text-md md:text-lg text-muted-foreground leading-tight mb-1 md:mb-2">
+                  Die Software befindet sich aktuell in der Testphase.
+                </p>
+                <p className="text-md md:text-lg text-muted-foreground leading-tight">
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
-                  <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline text-xs md:text-sm">
+                  <a
+                    href="mailto:info@drohnenvermessung-roofergaming.de"
+                    className="text-primary hover:text-primary/80 transition-colors underline"
+                  >
                     info@drohnenvermessung-roofergaming.de
                   </a>
                 </p>
@@ -169,6 +128,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
         </div>
       </div>
+
     </div>
   );
 };

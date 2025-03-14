@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 import { formatFileSize, validateFile } from '@/utils/modelUtils';
@@ -63,11 +64,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
 
   return (
     <div 
-      className={`relative p-2 rounded-lg border border-dashed transition-all duration-300 ${
+      className={`relative p-3 rounded-lg border-2 border-dashed transition-all duration-300 ${
         isDragging 
-          ? 'border-primary bg-primary/5' 
-          : 'border-border hover:border-primary/50 hover:bg-secondary/50'
-      } ${selectedFile ? 'bg-secondary/30' : ''}`}
+          ? 'border-primary bg-primary/10' 
+          : 'border-primary/30 hover:border-primary/70 hover:bg-white/5'
+      } ${selectedFile ? 'bg-primary/5' : ''} shadow-lg backdrop-blur-sm hover:shadow-primary/10`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -81,33 +82,33 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
         className="hidden"
       />
 
-      <div className="flex items-center gap-2 py-1">
-        <div className={`rounded-full p-2 ${isDragging ? 'bg-primary/10 text-primary' : 'bg-secondary'}`}>
+      <div className="flex items-center gap-3 py-2">
+        <div className={`rounded-full p-3 ${isDragging ? 'bg-primary/20 text-primary' : 'bg-primary/10'}`}>
           <UploadCloud 
-            className={`w-4 h-4 ${isDragging ? 'text-primary' : 'text-primary/50'} ${
+            className={`w-5 h-5 ${isDragging ? 'text-primary' : 'text-primary/80'} ${
               isLoading ? 'animate-pulse' : 'animate-float'
             }`} 
           />
         </div>
 
         {isLoading ? (
-          <div className="w-full space-y-1">
-            <div className="flex justify-between text-xs">
-              <span>{progress < 100 ? 'Upload...' : 'Verarbeitung...'}</span>
-              <span>{progress}%</span>
+          <div className="w-full space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">{progress < 100 ? 'Upload...' : 'Verarbeitung...'}</span>
+              <span className="text-primary font-medium">{progress}%</span>
             </div>
-            <Progress value={progress} className="h-1.5" />
+            <Progress value={progress} className="h-2" />
           </div>
         ) : (
           <div className="flex-1">
             {selectedFile ? (
               <div>
-                <p className="text-xs font-medium truncate max-w-[140px]">{selectedFile.name}</p>
+                <p className="text-sm font-medium truncate max-w-[180px]">{selectedFile.name}</p>
                 <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
               </div>
             ) : (
               <div>
-                <p className="text-xs font-medium">GLB-Datei hochladen</p>
+                <p className="text-sm font-medium">GLB-Datei hochladen</p>
                 <p className="text-xs text-muted-foreground hidden md:block">
                   Ziehen Sie eine Datei hierher oder klicken
                 </p>

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ModelViewer from "./components/ModelViewer";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="flex h-full flex-col bg-black">
+          <div className="flex h-full flex-col bg-gradient-to-b from-background to-background/90">
             <main className="flex-1 overflow-y-auto">
               <Routes>
                 {/* Main app with model viewer, protected by authentication */}
