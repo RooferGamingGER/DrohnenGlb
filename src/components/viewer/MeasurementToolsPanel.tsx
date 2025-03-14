@@ -3,7 +3,7 @@ import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer, Home, RefreshCcw, Camera } from "lucide-react";
+import { FileDown, Home, RefreshCcw, Camera } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,33 +57,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     .filter(m => m.type === 'area' && m.visible)
     .length;
 
-  const handlePrintReport = async () => {
-    if (measurements.length === 0 && screenshots.length === 0) {
-      toast({
-        title: "Keine Daten vorhanden",
-        description: "Es sind keine Messungen zum Drucken vorhanden.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Show print dialog directly after creating PDF
-      await exportMeasurementsToPDF(measurements, screenshots, true);
-      toast({
-        title: "Druckdialog geöffnet",
-        description: "Der Bericht wurde als PDF erstellt und kann jetzt gedruckt werden.",
-      });
-    } catch (error) {
-      console.error('Fehler beim Drucken:', error);
-      toast({
-        title: "Fehler beim Drucken",
-        description: "Der Bericht konnte nicht gedruckt werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDownloadReport = async () => {
     if (measurements.length === 0 && screenshots.length === 0) {
       toast({
@@ -111,35 +84,47 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
+  // Mobile view in portrait mode
   if (isMobile && isFullscreen) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 px-2 pb-16 z-20">
-        <MeasurementTools
-          activeTool={activeTool}
-          onToolChange={onToolChange}
-          onClearMeasurements={onClearMeasurements}
-          onDeleteMeasurement={onDeleteMeasurement}
-          onUndoLastPoint={onUndoLastPoint}
-          onUpdateMeasurement={onUpdateMeasurement}
-          onToggleMeasurementVisibility={onToggleMeasurementVisibility}
-          onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
-          onToggleEditMode={onToggleEditMode}
-          allMeasurementsVisible={allMeasurementsVisible}
-          measurements={measurements}
-          canUndo={canUndo}
-          onClose={onClose}
-          screenshots={screenshots}
-          isMobile={isMobile}
-          scrollThreshold={3}
-        />
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-bold">Zusammenfassung</span>
+            <div className="flex space-x-2">
+              <span>Gesamte Fläche: {totalArea.toFixed(2)} m²</span>
+              <span>Anzahl: {totalAreaCount}</span>
+            </div>
+          </div>
+          
+          <MeasurementTools
+            activeTool={activeTool}
+            onToolChange={onToolChange}
+            onClearMeasurements={onClearMeasurements}
+            onDeleteMeasurement={onDeleteMeasurement}
+            onUndoLastPoint={onUndoLastPoint}
+            onUpdateMeasurement={onUpdateMeasurement}
+            onToggleMeasurementVisibility={onToggleMeasurementVisibility}
+            onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
+            onToggleEditMode={onToggleEditMode}
+            allMeasurementsVisible={allMeasurementsVisible}
+            measurements={measurements}
+            canUndo={canUndo}
+            onClose={onClose}
+            screenshots={screenshots}
+            isMobile={isMobile}
+            scrollThreshold={3}
+          />
+        </div>
       </div>
     );
   }
 
+  // Desktop view
   return (
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
-        <SidebarHeader className="p-4 border-b border-zinc-200">
+        <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
           <h2 className="text-lg font-bold">Zusammenfassung</h2>
           <div className="space-y-2 mt-2">
             <div className="flex justify-between">
@@ -214,14 +199,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             >
               <FileDown className="mr-2 h-4 w-4" />
               Bericht speichern
-            </Button>
-            <Button 
-              className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900" 
-              variant="outline"
-              onClick={handlePrintReport}
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Bericht drucken
             </Button>
           </div>
         </SidebarFooter>

@@ -27,7 +27,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
   isMobile
 }) => {
   return (
-    <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? (isMobile ? 'fixed top-10 left-0 right-0' : 'fixed top-0 left-0 right-0') : ''}`}>
+    <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? (isMobile ? 'fixed top-0 left-0 right-0' : 'fixed top-0 left-0 right-0') : ''}`}>
       <div>
         {loadedModel && showMeasurementTools && isMobile && (
           <button
