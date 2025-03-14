@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'none';
+export type MeasurementType = 'length' | 'height' | 'area' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -21,6 +21,9 @@ export interface Measurement {
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
+  polygonObject?: THREE.Mesh; // Reference to the 3D polygon for area measurements
+  area?: number; // Flächeninhalt in Quadratmetern
+  isComplete?: boolean; // Flag to indicate if the area measurement is complete
 }
 
 // Calculate distance between two points in 3D space
@@ -48,9 +51,84 @@ export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): numb
   return parseFloat(angleInDegrees.toFixed(1));
 };
 
-// Prüft, ob die Neigung signifikant genug ist, um angezeigt zu werden
-export const isInclinationSignificant = (inclination: number, threshold: number = 5.0): boolean => {
-  return inclination >= threshold;
+// Calculate area of a polygon using the Shoelace formula (Gauss's Area formula)
+export const calculateArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  let area = 0;
+  
+  // Project points onto the best-fitting plane
+  // First, calculate the normal of the best-fitting plane
+  const centroid = new THREE.Vector3();
+  for (const point of points) {
+    centroid.add(point);
+  }
+  centroid.divideScalar(points.length);
+  
+  // Use SVD (simplified as we're just finding a normal direction)
+  // Create a covariance matrix
+  let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+  
+  for (const point of points) {
+    const dx = point.x - centroid.x;
+    const dy = point.y - centroid.y;
+    const dz = point.z - centroid.z;
+    
+    xx += dx * dx;
+    xy += dx * dy;
+    xz += dx * dz;
+    yy += dy * dy;
+    yz += dy * dz;
+    zz += dz * dz;
+  }
+  
+  // Find minimal eigenvector (simplified approach - this is approximated)
+  // For a proper solution we would use SVD or eigenvalue decomposition
+  // This is a simplified approach that works for most roofs
+  const normal = new THREE.Vector3(xy, xz, yz);
+  normal.normalize();
+  
+  // Create a local coordinate system on the plane
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(u)) > 0.9) {
+    u.set(0, 1, 0);
+  }
+  
+  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+  u.crossVectors(v, normal).normalize();
+  
+  // Project all points onto the plane and calculate 2D coordinates
+  const points2D: { x: number, y: number }[] = [];
+  
+  for (const point of points) {
+    const localPoint = point.clone().sub(centroid);
+    const x = localPoint.dot(u);
+    const y = localPoint.dot(v);
+    points2D.push({ x, y });
+  }
+  
+  // Calculate area using the Shoelace formula
+  for (let i = 0; i < points2D.length; i++) {
+    const j = (i + 1) % points2D.length;
+    area += points2D[i].x * points2D[j].y;
+    area -= points2D[j].x * points2D[i].y;
+  }
+  
+  return Math.abs(area) / 2;
+};
+
+// Function to check if a point is close to another point
+export const isPointCloseToFirst = (
+  firstPoint: THREE.Vector3, 
+  currentPoint: THREE.Vector3, 
+  threshold: number = 0.3
+): boolean => {
+  return firstPoint.distanceTo(currentPoint) < threshold;
+};
+
+// Format area measurement
+export const formatArea = (area: number): string => {
+  return `${area.toFixed(2)} m²`;
 };
 
 // Format measurement value with appropriate unit
@@ -382,6 +460,189 @@ export const findNearestEditablePoint = (
   return null;
 };
 
+// Create a semi-transparent polygon for area visualization
+export const createAreaPolygon = (
+  points: THREE.Vector3[], 
+  color: number = 0x00ff00, 
+  opacity: number = 0.4
+): THREE.Mesh => {
+  if (points.length < 3) {
+    console.error('Cannot create polygon with less than 3 points');
+    // Return empty mesh
+    return new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+  }
+  
+  // Create a shape from the points
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0].x, points[0].z); // Use x,z for horizontal roofs
+  
+  for (let i = 1; i < points.length; i++) {
+    shape.lineTo(points[i].x, points[i].z);
+  }
+  
+  shape.closePath();
+  
+  // Create geometry
+  const geometry = new THREE.ShapeGeometry(shape);
+  
+  // Adjust the Y coordinates of all vertices to follow the roof shape
+  const positions = geometry.attributes.position.array;
+  for (let i = 0; i < geometry.attributes.position.count; i++) {
+    const index = i * 3;
+    const x = positions[index];
+    const z = positions[index + 2];
+    
+    // Find the average Y of the closest points
+    let totalY = 0;
+    let totalWeight = 0;
+    
+    for (const point of points) {
+      const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(z - point.z, 2));
+      const weight = 1 / (distance + 0.001); // Avoid division by zero
+      totalY += point.y * weight;
+      totalWeight += weight;
+    }
+    
+    // Apply the weighted average Y
+    positions[index + 1] = totalY / totalWeight;
+  }
+  
+  // Update geometry
+  geometry.computeVertexNormals();
+  
+  // Create material
+  const material = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  
+  // Create mesh
+  const mesh = new THREE.Mesh(geometry, material);
+  
+  // Slightly move the polygon up to avoid z-fighting
+  mesh.position.y += 0.005;
+  
+  return mesh;
+};
+
+// Update the measurement lines, polygon and label for area measurements
+export const updateAreaMeasurementGeometry = (measurement: Measurement, scene: THREE.Group): void => {
+  if (!measurement.points || measurement.points.length < 3) return;
+  
+  // Get the positions of all points
+  const positions = measurement.points.map(p => p.position.clone());
+  
+  // Update or create lines
+  if (!measurement.lineObjects) {
+    measurement.lineObjects = [];
+  }
+  
+  // Make sure we have enough lines
+  while (measurement.lineObjects.length < positions.length) {
+    const line = createMeasurementLine([new THREE.Vector3(), new THREE.Vector3()], 0x00ff00);
+    measurement.lineObjects.push(line);
+    scene.add(line);
+  }
+  
+  // Remove excess lines
+  while (measurement.lineObjects.length > positions.length) {
+    const line = measurement.lineObjects.pop();
+    if (line) {
+      scene.remove(line);
+      line.geometry.dispose();
+      if (line.material instanceof THREE.Material) {
+        line.material.dispose();
+      }
+    }
+  }
+  
+  // Update line positions
+  for (let i = 0; i < positions.length; i++) {
+    const nextIndex = (i + 1) % positions.length;
+    const linePoints = [positions[i], positions[nextIndex]];
+    updateMeasurementLine(measurement.lineObjects[i], linePoints);
+  }
+  
+  // Calculate area
+  const area = calculateArea(positions);
+  measurement.area = area;
+  measurement.value = area; // Update value for consistency
+  
+  // Update or create polygon
+  if (measurement.polygonObject) {
+    // Remove old polygon
+    scene.remove(measurement.polygonObject);
+    measurement.polygonObject.geometry.dispose();
+    if (measurement.polygonObject.material instanceof THREE.Material) {
+      measurement.polygonObject.material.dispose();
+    }
+  }
+  
+  // Create new polygon
+  measurement.polygonObject = createAreaPolygon(positions, 0x00ff00, 0.4);
+  scene.add(measurement.polygonObject);
+  
+  // Update the label text with the new area
+  const labelText = formatArea(area);
+  
+  // Calculate the center of the polygon for label placement
+  const center = new THREE.Vector3();
+  for (const pos of positions) {
+    center.add(pos);
+  }
+  center.divideScalar(positions.length);
+  
+  // Add a small offset above the center for better visibility
+  center.y += 0.2;
+  
+  // Update or create the label
+  if (measurement.labelObject) {
+    if (measurement.labelObject.parent) {
+      const parent = measurement.labelObject.parent;
+      
+      // Create updated sprite
+      const updatedSprite = createTextSprite(labelText, center, 0x00ff00);
+      
+      // Preserve the userData and scale from the existing label
+      updatedSprite.userData = measurement.labelObject.userData;
+      updatedSprite.scale.copy(measurement.labelObject.scale);
+      
+      // Replace the old label with the new one
+      if (measurement.labelObject.material.map) {
+        measurement.labelObject.material.map.dispose();
+      }
+      measurement.labelObject.material.dispose();
+      parent.remove(measurement.labelObject);
+      parent.add(updatedSprite);
+      measurement.labelObject = updatedSprite;
+    }
+  } else {
+    measurement.labelObject = createTextSprite(labelText, center, 0x00ff00);
+    scene.add(measurement.labelObject);
+  }
+};
+
+// Check if the area measurement should be completed (last point close to first point)
+export const shouldCompleteAreaMeasurement = (
+  measurement: Measurement, 
+  threshold: number = 0.3
+): boolean => {
+  if (measurement.type !== 'area' || measurement.points.length < 3) {
+    return false;
+  }
+  
+  const firstPoint = measurement.points[0].position;
+  const lastPoint = measurement.points[measurement.points.length - 1].position;
+  
+  return isPointCloseToFirst(firstPoint, lastPoint, threshold);
+};
+
 // Update the measurement lines and label
 export const updateMeasurementGeometry = (measurement: Measurement): void => {
   if (!measurement.points || measurement.points.length < 2) return;
@@ -528,4 +789,4 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       measurement.labelObject.position.copy(offsetPosition);
     }
   }
-}
+};

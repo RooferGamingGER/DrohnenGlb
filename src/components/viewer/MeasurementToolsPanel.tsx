@@ -13,6 +13,7 @@ interface MeasurementToolsPanelProps {
   onToggleMeasurementVisibility: (id: string) => void;
   onToggleAllMeasurementsVisibility: () => void;
   onToggleEditMode: (id: string) => void;
+  onCompleteAreaMeasurement: (id: string) => void;
   allMeasurementsVisible: boolean;
   canUndo: boolean;
   onClose: () => void;
@@ -32,6 +33,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
   onToggleEditMode,
+  onCompleteAreaMeasurement,
   allMeasurementsVisible,
   canUndo,
   onClose,
@@ -53,6 +55,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         onToggleMeasurementVisibility={onToggleMeasurementVisibility}
         onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
         onToggleEditMode={onToggleEditMode}
+        onCompleteAreaMeasurement={onCompleteAreaMeasurement}
         allMeasurementsVisible={allMeasurementsVisible}
         measurements={measurements}
         canUndo={canUndo}

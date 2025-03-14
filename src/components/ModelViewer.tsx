@@ -13,7 +13,10 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
-  updateMeasurementGeometry
+  updateMeasurementGeometry,
+  shouldCompleteAreaMeasurement,
+  updateAreaMeasurementGeometry,
+  isPointCloseToFirst
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -100,7 +103,16 @@ const ModelViewer: React.FC = () => {
       });
     }
     modelViewer.setActiveTool(tool);
-  }, [modelViewer]);
+    
+    // Show tool-specific instructions for area measurements
+    if (tool === 'area') {
+      toast({
+        title: "Flächenmessung gestartet",
+        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Setzen Sie den letzten Punkt nahe dem ersten Punkt, um die Messung abzuschließen.",
+        duration: 5000,
+      });
+    }
+  }, [modelViewer, toast]);
 
   const handleNewProject = useCallback(() => {
     if (modelViewer.loadedModel) {
@@ -364,6 +376,38 @@ const ModelViewer: React.FC = () => {
       // Aktualisiere den Cursor basierend auf dem Ergebnis
       updateCursorForDraggablePoint(!!nearestPoint);
     }
+
+    // Check for area measurement completion
+    if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
+      const activeAreaMeasurement = modelViewer.measurements.find(
+        m => m.type === 'area' && m.isActive && !m.isComplete
+      );
+      
+      if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3) {
+        const firstPoint = activeAreaMeasurement.points[0].position;
+        
+        // Raycaster for depth determination
+        raycasterRef.current.setFromCamera(new THREE.Vector2(mouseX, mouseY), modelViewer.camera!);
+        
+        // Intersect with the model to determine depth
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel!, true);
+        
+        if (intersects.length > 0) {
+          // Check if the current mouse position is close to the first point
+          const isCloseToFirst = isPointCloseToFirst(
+            firstPoint,
+            intersects[0].point
+          );
+          
+          // Visual feedback when close to closing the polygon
+          if (isCloseToFirst) {
+            document.body.style.cursor = 'cell';
+          } else {
+            document.body.style.cursor = 'crosshair';
+          }
+        }
+      }
+    }
   }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
@@ -448,7 +492,24 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+
+    // Handle area measurement closure
+    if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
+      const activeAreaMeasurement = modelViewer.measurements.find(
+        m => m.type === 'area' && m.isActive && !m.isComplete
+      );
+      
+      if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3) {
+        // Check if we need to complete this area measurement
+        if (shouldCompleteAreaMeasurement(activeAreaMeasurement)) {
+          handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+      }
+    }
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, handleCompleteAreaMeasurement]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
     // Bei normalen Drag-Operationen (für Rückwärtskompatibilität)
@@ -607,6 +668,44 @@ const ModelViewer: React.FC = () => {
     // Der Folge-Modus wird beim nächsten TouchStart beendet
   }, []);
 
+  const handleCompleteAreaMeasurement = useCallback((id: string) => {
+    const measurement = modelViewer.measurements.find(m => m.id === id);
+    if (!measurement || measurement.type !== 'area') return;
+    
+    // Mark as complete to prevent adding more points
+    modelViewer.updateMeasurement(id, { isComplete: true });
+    
+    // If we have 3 or more points, finalize the measurement
+    if (measurement.points.length >= 3) {
+      // Remove the last point if it's too close to the first point
+      // to avoid duplicate points
+      const firstPoint = measurement.points[0].position;
+      const lastPoint = measurement.points[measurement.points.length - 1].position;
+      
+      if (isPointCloseToFirst(firstPoint, lastPoint)) {
+        // Create updated points - use the first point instead of the last
+        const updatedPoints = [...measurement.points];
+        updatedPoints.pop(); // Remove the last point
+        
+        modelViewer.updateMeasurement(id, { points: updatedPoints });
+      }
+      
+      // Finalize the measurement
+      if (modelViewer.measurementGroupRef?.current) {
+        updateAreaMeasurementGeometry(measurement, modelViewer.measurementGroupRef.current);
+      }
+      
+      toast({
+        title: "Flächenmessung abgeschlossen",
+        description: `Die Fläche beträgt ${measurement.area?.toFixed(2)} m².`,
+        duration: 5000,
+      });
+      
+      // Reset the tool
+      modelViewer.setActiveTool('none');
+    }
+  }, [modelViewer, toast]);
+
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
@@ -709,6 +808,7 @@ const ModelViewer: React.FC = () => {
           onToggleMeasurementVisibility={toggleSingleMeasurementVisibility}
           onToggleAllMeasurementsVisibility={toggleMeasurementsVisibility}
           onToggleEditMode={toggleEditMode}
+          onCompleteAreaMeasurement={handleCompleteAreaMeasurement}
           allMeasurementsVisible={measurementsVisible}
           canUndo={modelViewer.canUndo}
           onClose={toggleMeasurementTools}
