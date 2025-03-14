@@ -232,7 +232,7 @@ const ModelViewer: React.FC = () => {
 
     modelViewer.measurements.forEach(m => {
       if (m.id !== id && m.editMode) {
-        modelViewer.highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
+        highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
         modelViewer.updateMeasurement(m.id, { editMode: false });
       }
     });
@@ -244,7 +244,7 @@ const ModelViewer: React.FC = () => {
         modelViewer.setActiveTool('none');
       }
       
-      modelViewer.highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
+      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
       
       toast({
         title: "Bearbeitungsmodus aktiviert",
@@ -252,7 +252,7 @@ const ModelViewer: React.FC = () => {
         duration: 5000,
       });
     } else {
-      modelViewer.highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
+      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
       
       toast({
         title: "Bearbeitungsmodus deaktiviert",
