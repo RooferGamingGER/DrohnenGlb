@@ -27,16 +27,16 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
   return (
     <div className="flex flex-col min-h-screen p-2">
-      {/* Hauptinhalt (DropZone und "How It Works") */}
-      <div className="flex flex-col md:flex-row w-full max-w-4xl justify-center mx-auto">
+      {/* Hauptinhalt (DropZone und "Erklärung") */}
+      <div className="flex flex-col md:flex-row w-full max-w-4xl justify-center items-center mx-auto h-full min-h-[70vh]">
         {/* DropZone-Fenster */}
         <div className={twMerge(
-          "w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1",
+          "w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1",
           "md:p-8 md:max-w-md", // Desktop Anpassungen
           "p-4 max-w-xs"          // Mobile Anpassungen
         )}>
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-500 transition-colors cursor-pointer w-full"
+            className="border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-500 transition-colors cursor-pointer w-full p-6"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={onDragOver}
             onDrop={onDrop}
@@ -78,9 +78,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
         </div>
 
-        {/* "How It Works"-Fenster */}
+        {/* "Erklärung"-Fenster */}
         <div className={twMerge(
-          "w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1",
+          "w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1",
           "md:max-w-md", // Desktop Anpassungen
           "p-3 max-w-xs" // Mobile Anpassungen
         )}>
