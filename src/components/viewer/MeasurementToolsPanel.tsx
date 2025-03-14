@@ -94,8 +94,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           <div className="flex justify-between items-center sticky top-0 bg-white">
             <span className="font-bold">Zusammenfassung</span>
             <div className="flex space-x-2">
-              <span>Gesamte Fläche: {totalArea.toFixed(2)} m²</span>
-              <span>Anzahl: {totalAreaCount}</span>
+              <span className="measurement-label inline-block px-2 py-1 text-xs">Gesamte Fläche: {totalArea.toFixed(2)} m²</span>
+              <span className="text-xs">Anzahl: {totalAreaCount}</span>
             </div>
           </div>
           
@@ -169,9 +169,9 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
           <h2 className="text-lg font-bold">Zusammenfassung</h2>
           <div className="space-y-2 mt-2">
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span>Gesamte Fläche:</span>
-              <span>{totalArea.toFixed(2)} m²</span>
+              <span className="measurement-label inline-block px-2 py-0.5 text-sm">{totalArea.toFixed(2)} m²</span>
             </div>
             <div className="flex justify-between">
               <span>Anzahl der Flächen:</span>

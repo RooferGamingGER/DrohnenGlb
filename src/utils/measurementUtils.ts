@@ -132,30 +132,42 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   canvas.width = 512; 
   canvas.height = 128;
   
-  // Set a solid background with rounded corners
-  context.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  // Define gradients and colors
+  const bgGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+  bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.95)');
+  bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.95)');
+  
+  // Draw a rounded rectangle with gradient background
+  context.fillStyle = bgGradient;
   context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
-  // Add border for better visibility
-  context.strokeStyle = 'white';
-  context.lineWidth = 4;
+  // Add subtle border for better visibility
+  context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  context.lineWidth = 2;
   context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
   context.stroke();
+  
+  // Add a subtle inner glow
+  context.shadowColor = 'rgba(0, 148, 255, 0.3)';
+  context.shadowBlur = 8;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 0;
   
   // Use the Inter font which is used in the UI (from index.css)
   context.font = 'bold 48px Inter, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
-  // Add text shadow for better contrast
-  context.shadowColor = 'black';
-  context.shadowBlur = 4;
-  context.shadowOffsetX = 2;
-  context.shadowOffsetY = 2;
+  // Remove text shadow to make text cleaner
+  context.shadowColor = 'transparent';
   
-  // Draw text
-  context.fillStyle = 'white';
+  // Draw text with a light gradient fill for better legibility
+  const textGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  textGradient.addColorStop(0, '#ffffff');
+  textGradient.addColorStop(1, '#e0e0e0');
+  
+  context.fillStyle = textGradient;
   context.fillText(text, canvas.width / 2, canvas.height / 2);
   
   // Create sprite material with canvas texture
@@ -575,4 +587,3 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
 }
-

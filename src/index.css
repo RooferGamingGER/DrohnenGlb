@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -33,6 +34,10 @@
     --border: 220 15% 90%;
     --input: 220 15% 90%;
     --ring: 210 100% 50%;
+    
+    --measurement-label-bg: 215 35% 18%;
+    --measurement-label-text: 210 20% 98%;
+    --measurement-label-border: 210 30% 60%;
 
     --radius: 0.5rem;
   }
@@ -100,6 +105,18 @@
   /* Glass morphism */
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-zinc-200;
+  }
+  
+  /* Measurement label styling */
+  .measurement-label {
+    @apply rounded-md bg-gradient-to-r from-[hsl(215,35%,18%)] to-[hsl(220,30%,15%)] 
+           text-[hsl(210,20%,98%)] border border-[hsl(210,30%,60%)]/30 px-3 py-1.5 
+           shadow-md text-center font-medium;
+  }
+  
+  .measurement-tooltip {
+    @apply bg-[hsl(215,35%,18%)]/95 text-[hsl(210,20%,98%)] border border-[hsl(210,30%,60%)]/30
+           rounded-md shadow-lg backdrop-blur-sm;
   }
 
   /* Touch device optimizations */
