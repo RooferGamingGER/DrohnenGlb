@@ -52,7 +52,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         <div className="flex md:flex-row flex-wrap gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onReset} className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white">
+              <Button variant="ghost" size="icon" onClick={onReset} className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white">
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -67,7 +67,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 variant="ghost" 
                 size="icon" 
                 onClick={toggleMeasurementTools}
-                className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+                className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white"
               >
                 <Ruler className="h-4 w-4" />
               </Button>
@@ -84,7 +84,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   variant="ghost" 
                   size="icon" 
                   onClick={onScreenshot} 
-                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+                  className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white"
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
@@ -102,7 +102,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   variant="ghost" 
                   size="icon" 
                   onClick={onExportMeasurements} 
-                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+                  className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white"
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
@@ -119,7 +119,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 variant="ghost" 
                 size="icon" 
                 onClick={onFullscreen} 
-                className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+                className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white"
               >
                 {isFullscreen ? (
                   <Minimize className="h-4 w-4" />
@@ -140,7 +140,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   variant="ghost" 
                   size="icon" 
                   onClick={onNewProject} 
-                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white ml-2"
+                  className="h-8 w-8 bg-blue-600 rounded-full border border-blue-500 text-white ml-2"
                 >
                   <Home className="h-4 w-4" />
                 </Button>

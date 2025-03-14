@@ -89,12 +89,51 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
         <div className="flex flex-col space-y-2">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center sticky top-0 bg-white">
             <span className="font-bold">Zusammenfassung</span>
             <div className="flex space-x-2">
               <span>Gesamte Fläche: {totalArea.toFixed(2)} m²</span>
               <span>Anzahl: {totalAreaCount}</span>
             </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 mb-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onTakeScreenshot}
+              className="text-xs py-1 h-auto"
+            >
+              <Camera className="mr-1 h-3 w-3" />
+              Screenshot
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onNewProject}
+              className="text-xs py-1 h-auto"
+            >
+              <RefreshCcw className="mr-1 h-3 w-3" />
+              Neu laden
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/'}
+              className="text-xs py-1 h-auto"
+            >
+              <Home className="mr-1 h-3 w-3" />
+              Zurück
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDownloadReport}
+              className="text-xs py-1 h-auto ml-auto"
+            >
+              <FileDown className="mr-1 h-3 w-3" />
+              Speichern
+            </Button>
           </div>
           
           <MeasurementTools

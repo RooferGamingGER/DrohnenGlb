@@ -31,7 +31,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
       <div>
         {loadedModel && showMeasurementTools && isMobile && (
           <button
-            className="bg-background/70 backdrop-blur-sm flex items-center gap-1 px-3 py-2 rounded-md text-sm"
+            className="bg-blue-600 text-white backdrop-blur-sm flex items-center gap-1 px-3 py-2 rounded-md text-sm"
             onClick={toggleMeasurementTools}
           >
             <span className="sr-only">Messwerkzeuge schließen</span>
