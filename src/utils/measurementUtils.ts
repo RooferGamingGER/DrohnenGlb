@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -258,7 +257,7 @@ export const isPointSelected = (point: THREE.Mesh): boolean => {
   return point.userData?.isSelected === true;
 };
 
-// Highlight measurement points for edit mode - VERBESSERTE VERSION
+// Highlight measurement points for edit mode - WITHOUT ENLARGING THE POINTS
 export const highlightMeasurementPoints = (
   measurement: Measurement, 
   scene: THREE.Group, 
@@ -273,39 +272,23 @@ export const highlightMeasurementPoints = (
         point.userData.originalMaterial = point.material.clone();
       }
       
-      // Speichere originale Skalierung, falls noch nicht vorhanden
-      if (!point.userData.originalScale) {
-        point.userData.originalScale = point.scale.clone();
-      }
-      
       // Apply appropriate material and update editable state
       if (highlight) {
-        // Setze Editiermodus-Flag
+        // Set edit mode flag
         point.userData.isEditable = true;
         
-        // Wechsle Material zur auffälligen Editiermodusfarbe
+        // Switch to edit mode color without changing size
         point.material.dispose();
         point.material = createEditablePointMaterial(false);
         
-        // Vergrößere den Punkt deutlich für bessere Sichtbarkeit und Interaktion
-        const scaleUp = 1.75; // 175% der Originalgröße
-        point.scale.set(
-          point.userData.originalScale.x * scaleUp,
-          point.userData.originalScale.y * scaleUp,
-          point.userData.originalScale.z * scaleUp
-        );
-        
-        // Setze benutzerdefinierten Cursor-Stil
+        // Set user cursor style
         document.body.style.cursor = 'grab';
       } else {
-        // Deaktiviere Editiermodus
+        // Deactivate edit mode
         point.userData.isEditable = false;
         
-        // Setze normalen Cursor zurück
+        // Reset cursor
         document.body.style.cursor = 'auto';
-        
-        // Setze Originalgröße zurück
-        point.scale.copy(point.userData.originalScale);
         
         // Restore original material when exiting edit mode
         if (point.userData.originalMaterial) {
