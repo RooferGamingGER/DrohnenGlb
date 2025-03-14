@@ -704,9 +704,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         child.name.startsWith('point-temp-')
       );
       
-      if (pointMesh) {
-        (pointMesh.geometry as THREE.BufferGeometry).dispose();
-        ((pointMesh as THREE.Mesh).material as THREE.Material).dispose();
+      if (pointMesh && pointMesh instanceof THREE.Mesh) {
+        pointMesh.geometry.dispose();
+        pointMesh.material.dispose();
         measurementGroupRef.current.remove(pointMesh);
       }
       
