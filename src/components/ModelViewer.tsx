@@ -108,18 +108,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
     if (modelViewer.loadedModel) {
       modelViewer.resetView();
       modelViewer.clearMeasurements();
-      setShowMeasurementTools(false);
       setSavedScreenshots([]);
       
-      if (containerRef.current) {
-        while (containerRef.current.firstChild) {
-          containerRef.current.removeChild(containerRef.current.firstChild);
-        }
-      }
-      
-      modelViewer.initScene();
+      toast({
+        title: "Ansicht zurückgesetzt",
+        description: "Die Ansicht wurde zurückgesetzt und alle Messungen gelöscht.",
+        duration: 3000,
+      });
     }
-  }, [modelViewer]);
+  }, [modelViewer, toast]);
 
   const handleTakeScreenshot = useCallback(() => {
     const isPortrait = window.innerHeight > window.innerWidth;
@@ -675,3 +672,4 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
 };
 
 export default ModelViewer;
+

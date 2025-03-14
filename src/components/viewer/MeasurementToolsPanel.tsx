@@ -193,10 +193,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={onNewProject}
               className="w-full justify-start"
-              title="Starten Sie ein neues Projekt und laden Sie alle Messungen"
+              title="Laden Sie die aktuelle Ansicht neu"
             >
               <RefreshCcw className="mr-2 h-4 w-4" />
-              Projekt neu laden
+              Ansicht neu laden
             </Button>
             <Button 
               variant="outline" 
