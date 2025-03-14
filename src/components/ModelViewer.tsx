@@ -13,7 +13,8 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
-  updateMeasurementGeometry
+  updateMeasurementGeometry,
+  createAreaPolygon
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -539,6 +540,25 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   const handleTouchEnd = useCallback((event: TouchEvent) => {
   }, []);
 
+  const handleCompleteAreaMeasurement = useCallback(() => {
+    if (modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
+      modelViewer.createMeasurementFromPoints('area');
+      
+      toast({
+        title: "Flächenmessung abgeschlossen",
+        description: `Fläche wurde mit ${modelViewer.tempPoints.length} Punkten erzeugt.`,
+        duration: 3000,
+      });
+    } else {
+      toast({
+        title: "Zu wenig Punkte",
+        description: "Für eine Flächenmessung werden mindestens 3 Punkte benötigt.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  }, [modelViewer, toast]);
+
   useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
@@ -646,6 +666,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
           onToggleMeasurementVisibility={toggleSingleMeasurementVisibility}
           onToggleAllMeasurementsVisibility={toggleMeasurementsVisibility}
           onToggleEditMode={toggleEditMode}
+          onCompleteAreaMeasurement={handleCompleteAreaMeasurement}
           allMeasurementsVisible={measurementsVisible}
           canUndo={modelViewer.canUndo}
           screenshots={savedScreenshots}

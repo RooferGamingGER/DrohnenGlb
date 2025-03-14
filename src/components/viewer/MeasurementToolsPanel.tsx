@@ -19,6 +19,7 @@ interface MeasurementToolsPanelProps {
   onToggleMeasurementVisibility: (id: string) => void;
   onToggleAllMeasurementsVisibility: () => void;
   onToggleEditMode: (id: string) => void;
+  onCompleteAreaMeasurement: () => void; // New prop for completing area measurements
   allMeasurementsVisible: boolean;
   canUndo: boolean;
   screenshots: { id: string, imageDataUrl: string, description: string }[];
@@ -41,6 +42,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
   onToggleEditMode,
+  onCompleteAreaMeasurement, // New prop
   allMeasurementsVisible,
   canUndo,
   screenshots,
@@ -51,6 +53,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   tempPoints,
   onDeleteTempPoint
 }) => {
+  // Calculate total area from area measurements
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
@@ -148,6 +151,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             onToggleMeasurementVisibility={onToggleMeasurementVisibility}
             onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
             onToggleEditMode={onToggleEditMode}
+            onCompleteAreaMeasurement={onCompleteAreaMeasurement}
             allMeasurementsVisible={allMeasurementsVisible}
             measurements={measurements}
             canUndo={canUndo}
@@ -225,6 +229,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               onToggleMeasurementVisibility={onToggleMeasurementVisibility}
               onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
               onToggleEditMode={onToggleEditMode}
+              onCompleteAreaMeasurement={onCompleteAreaMeasurement}
               allMeasurementsVisible={allMeasurementsVisible}
               measurements={measurements}
               canUndo={canUndo}

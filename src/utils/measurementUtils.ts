@@ -74,6 +74,29 @@ export const createMeasurementId = (): string => {
   return Math.random().toString(36).substring(2, 10);
 };
 
+// Calculate area using the Gauss formula (Shoelace formula)
+export const calculateArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  // Project points onto the XZ plane (assuming Y is up)
+  const projectedPoints = points.map(p => new THREE.Vector2(p.x, p.z));
+  
+  let area = 0;
+  for (let i = 0; i < projectedPoints.length; i++) {
+    const j = (i + 1) % projectedPoints.length;
+    area += projectedPoints[i].x * projectedPoints[j].y;
+    area -= projectedPoints[j].x * projectedPoints[i].y;
+  }
+  
+  // Calculate the absolute value and divide by 2
+  return Math.abs(area) / 2;
+};
+
+// Format area measurement value
+export const formatAreaMeasurement = (value: number): string => {
+  return `${value.toFixed(2)} m²`;
+};
+
 // Create or remove a temporary point visual representation
 export const createTempPointVisual = (point: MeasurementPoint, index: number): THREE.Mesh => {
   const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
@@ -261,6 +284,22 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
   return point;
 };
 
+// Create area measurement with multiple points
+export const createAreaMeasurement = (points: MeasurementPoint[]): Measurement => {
+  const id = createMeasurementId();
+  const areaValue = calculateArea(points.map(p => p.position));
+  
+  return {
+    id,
+    type: 'area',
+    points,
+    value: areaValue,
+    unit: 'm²',
+    visible: true,
+    isActive: false
+  };
+};
+
 // Create measurement line with increased thickness
 export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0x00ff00): THREE.Line => {
   const lineMaterial = new THREE.LineBasicMaterial({ 
@@ -274,12 +313,46 @@ export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0
   return new THREE.Line(lineGeometry, lineMaterial);
 };
 
+// Create closed area polygon line
+export const createAreaPolygon = (points: THREE.Vector3[], color: number = 0x0066ff): THREE.Line => {
+  // Create a closed loop by adding the first point at the end
+  const polygonPoints = [...points];
+  if (points.length > 2) {
+    polygonPoints.push(points[0].clone());
+  }
+  
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: color,
+    linewidth: 2,
+    opacity: 0.8,
+    transparent: true,
+  });
+  
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(polygonPoints);
+  return new THREE.Line(lineGeometry, lineMaterial);
+};
+
 // Update a measurement line with new points
 export const updateMeasurementLine = (line: THREE.Line, points: THREE.Vector3[]): void => {
   if (line && line.geometry) {
     // Update the line geometry with new points
     line.geometry.dispose(); // Clean up old geometry
     line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  }
+};
+
+// Update area polygon with new points
+export const updateAreaPolygon = (line: THREE.Line, points: THREE.Vector3[]): void => {
+  if (line && line.geometry) {
+    // Create a closed loop by adding the first point at the end
+    const polygonPoints = [...points];
+    if (points.length > 2) {
+      polygonPoints.push(points[0].clone());
+    }
+    
+    // Update the line geometry with new points
+    line.geometry.dispose(); // Clean up old geometry
+    line.geometry = new THREE.BufferGeometry().setFromPoints(polygonPoints);
   }
 };
 
@@ -454,6 +527,11 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       ];
       updateMeasurementLine(measurement.lineObjects[0], linePoints);
     }
+    // For area measurements
+    else if (measurement.type === 'area' && measurement.lineObjects.length === 1) {
+      const polygonPoints = measurement.points.map(p => p.position.clone());
+      updateAreaPolygon(measurement.lineObjects[0], polygonPoints);
+    }
     // For more complex measurements with multiple lines
     else if (measurement.lineObjects.length === measurement.points.length - 1) {
       for (let i = 0; i < measurement.points.length - 1; i++) {
@@ -466,7 +544,7 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
   
-  // Recalculate measurement value and inclination
+  // Recalculate measurement value based on type
   if (measurement.points.length >= 2) {
     // Update the value based on the measurement type
     if (measurement.type === 'length') {
@@ -564,12 +642,54 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
         }
       }
     }
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // Calculate area for area measurements
+      measurement.value = calculateArea(measurement.points.map(p => p.position));
+      
+      // Update the label text with the new area value
+      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+        const labelText = formatAreaMeasurement(measurement.value);
+        
+        // Calculate the centroid of the polygon for label placement
+        const centroid = new THREE.Vector3();
+        measurement.points.forEach(p => {
+          centroid.add(p.position);
+        });
+        centroid.divideScalar(measurement.points.length);
+        
+        // Add a small offset above the area for better visibility
+        centroid.y += 0.1;
+        
+        // Update the sprite with the new text and position
+        const updatedSprite = createTextSprite(
+          labelText,
+          centroid,
+          0x0066ff
+        );
+        
+        // Preserve the userData and scale from the existing label
+        updatedSprite.userData = measurement.labelObject.userData;
+        updatedSprite.scale.copy(measurement.labelObject.scale);
+        
+        // Replace the old label with the new one
+        if (measurement.labelObject.parent) {
+          const parent = measurement.labelObject.parent;
+          if (measurement.labelObject.material.map) {
+            measurement.labelObject.material.map.dispose();
+          }
+          measurement.labelObject.material.dispose();
+          parent.remove(measurement.labelObject);
+          parent.add(updatedSprite);
+          measurement.labelObject = updatedSprite;
+        }
+      }
+    }
   }
   
-  // Update label position if it exists (use the existing label position update code)
+  // Update label position if it exists
   if (measurement.labelObject) {
     // For two-point measurements, place label in the middle
-    if (measurement.points.length === 2) {
+    if (measurement.type === 'length' && measurement.points.length === 2) {
       const midpoint = new THREE.Vector3().addVectors(
         measurement.points[0].position,
         measurement.points[1].position
@@ -578,6 +698,19 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       // Add a small offset above the line for better visibility
       midpoint.y += 0.1;
       measurement.labelObject.position.copy(midpoint);
+    }
+    // For area measurements, place in the centroid
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // Calculate the centroid of the polygon for label placement
+      const centroid = new THREE.Vector3();
+      measurement.points.forEach(p => {
+        centroid.add(p.position);
+      });
+      centroid.divideScalar(measurement.points.length);
+      
+      // Add a small offset above the area for better visibility
+      centroid.y += 0.1;
+      measurement.labelObject.position.copy(centroid);
     }
     // For multi-point measurements, place near the last point
     else if (measurement.points.length > 2) {
