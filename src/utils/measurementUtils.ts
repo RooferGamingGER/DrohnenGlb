@@ -527,9 +527,19 @@ export const createAreaPolygon = (
       newPositions[index + 1] = totalY / totalWeight;
     }
     
-    // Set the modified array back to the buffer
-    positions.copyArray(newPositions);
-    positions.needsUpdate = true;
+    // Set the modified array back to the buffer, with type checking for BufferAttribute
+    if (positions instanceof THREE.BufferAttribute) {
+      positions.copyArray(newPositions);
+      positions.needsUpdate = true;
+    } else if (positions instanceof THREE.InterleavedBufferAttribute) {
+      // For InterleavedBufferAttribute, we need to handle it differently
+      // by directly updating the underlying array
+      for (let i = 0; i < positions.count; i++) {
+        const index = i * 3;
+        positions.setY(i, newPositions[index + 1]);
+      }
+      positions.needsUpdate = true;
+    }
   }
   
   // Update geometry
