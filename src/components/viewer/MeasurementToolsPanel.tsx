@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -26,7 +27,6 @@ interface MeasurementToolsPanelProps {
   isFullscreen: boolean;
   onNewProject: () => void;
   onTakeScreenshot: () => void;
-  onClearSinglePoint?: () => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
@@ -47,8 +47,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   isMobile,
   isFullscreen,
   onNewProject,
-  onTakeScreenshot,
-  onClearSinglePoint
+  onTakeScreenshot
 }) => {
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
@@ -154,7 +153,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             screenshots={screenshots}
             isMobile={isMobile}
             scrollThreshold={3}
-            onClearSinglePoint={onClearSinglePoint}
           />
         </div>
       </div>
@@ -228,7 +226,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               screenshots={screenshots}
               isMobile={isMobile}
               scrollThreshold={5}
-              onClearSinglePoint={onClearSinglePoint}
             />
           </ScrollArea>
         </SidebarContent>
