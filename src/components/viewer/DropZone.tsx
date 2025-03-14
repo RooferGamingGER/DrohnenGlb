@@ -115,7 +115,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                   Die Software befindet sich aktuell in der Testphase.
                 </p>
                 <p className="text-md md:text-lg text-muted-foreground leading-tight">
-                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
+                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte mit Screenshot, Hinweise oder ähnlichen an{' '}
                   <a
                     href="mailto:info@drohnenvermessung-roofergaming.de"
                     className="text-primary hover:text-primary/80 transition-colors underline"
