@@ -33,13 +33,7 @@ const Index = () => {
 
   // If a file is already selected and loaded, show the model viewer
   if (selectedFile && !isLoading && uploadProgress >= 100) {
-    return (
-      <div className="h-screen w-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative">
-        <div className="block h-full">
-          <ModelViewer forceHideHeader={true} />
-        </div>
-      </div>
-    );
+    return <ModelViewer forceHideHeader={true} />;
   }
 
   return (
