@@ -128,6 +128,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleDeleteTempPoint = (index: number, event: React.MouseEvent) => {
+    console.log("Delete temp point triggered for index:", index);
     event.preventDefault();
     event.stopPropagation();
     if (onDeleteTempPoint) {

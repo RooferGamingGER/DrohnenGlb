@@ -59,6 +59,13 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     .filter(m => m.type === 'area' && m.visible)
     .length;
 
+  const handleDeleteTempPoint = (index: number) => {
+    console.log("Attempting to delete temp point at index:", index);
+    if (onDeleteTempPoint) {
+      onDeleteTempPoint(index);
+    }
+  };
+
   const handleDownloadReport = async () => {
     if (measurements.length === 0 && screenshots.length === 0) {
       toast({
@@ -155,7 +162,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             isMobile={isMobile}
             scrollThreshold={3}
             tempPoints={tempPoints}
-            onDeleteTempPoint={onDeleteTempPoint}
+            onDeleteTempPoint={handleDeleteTempPoint}
           />
         </div>
       </div>
@@ -229,7 +236,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               isMobile={isMobile}
               scrollThreshold={5}
               tempPoints={tempPoints}
-              onDeleteTempPoint={onDeleteTempPoint}
+              onDeleteTempPoint={handleDeleteTempPoint}
             />
           </ScrollArea>
         </SidebarContent>
