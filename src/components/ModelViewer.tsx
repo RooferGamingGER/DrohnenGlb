@@ -35,7 +35,8 @@ const ModelViewer: React.FC = () => {
   // State für den verbesserten Drag-Mechanismus
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
-  const [lastMousePosition, setLastMousePosition] = useState<{x: number, y: number} | null>(null);
+  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   
   // Referenz auf den eigenen Raycaster für die Punktmanipulation
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
@@ -281,7 +282,6 @@ const ModelViewer: React.FC = () => {
     modelViewer.updateMeasurement(id, { editMode: newEditMode });
   }, [modelViewer, toast]);
 
-  // Neuer Handler für Mouse-Move-Events zum Verschieben von Punkten
   const handleMouseMove = useCallback((event: MouseEvent) => {
     // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
     if (!modelViewer.loadedModel || !containerRef.current) return;
@@ -294,10 +294,11 @@ const ModelViewer: React.FC = () => {
     // Aktualisiere Mausposition
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
-    // Wenn wir gerade ziehen und einen Punkt haben
-    if (isDragging && draggedPoint) {
-      // Verändere Cursor während des Ziehens
-      updateCursorForDraggablePoint(true, true);
+    // Wenn wir gerade ziehen und einen draggingPoint haben
+    if (isDragging && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
+      event.preventDefault();
+      // Cursor-Feedback während des Ziehens
+      document.body.style.cursor = 'grabbing';
       
       // Raycaster für Tiefenbestimmung
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
@@ -306,26 +307,25 @@ const ModelViewer: React.FC = () => {
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
-        // Finde den zugehörigen Measurement
-        const measurementId = draggedPoint.name.split('_')[0];
-        const pointIndex = parseInt(draggedPoint.name.split('_')[1]);
+        // Neue Position für den Punkt
+        const newPosition = intersects[0].point.clone();
         
-        const measurement = modelViewer.measurements.find(m => m.id === measurementId);
+        // Aktualisiere die Position des Punktes in der 3D-Szene
+        draggedPoint.position.copy(newPosition);
+        
+        // Finde die entsprechende Messung und aktualisiere sie
+        const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
         
         if (measurement) {
-          // Aktualisiere die Position des Punktes
-          const newPosition = intersects[0].point.clone();
-          draggedPoint.position.copy(newPosition);
-          
-          // Aktualisiere das Measurement
+          // Aktualisiere die Messpunkte
           const updatedPoints = [...measurement.points];
-          updatedPoints[pointIndex] = {
+          updatedPoints[selectedPointIndex] = {
             position: newPosition.clone(),
             worldPosition: newPosition.clone()
           };
           
-          // Aktualisiere die Messung
-          modelViewer.updateMeasurement(measurementId, { points: updatedPoints });
+          // Aktualisiere die Messung im modelViewer
+          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
         }
       }
     } 
@@ -343,14 +343,12 @@ const ModelViewer: React.FC = () => {
       // Aktualisiere den Cursor basierend auf dem Ergebnis
       updateCursorForDraggablePoint(!!nearestPoint);
     }
-    
-    // Aktualisiere die letzte Mausposition
-    setLastMousePosition({ x: event.clientX, y: event.clientY });
-    
-  }, [isDragging, draggedPoint, modelViewer]);
+  }, [isDragging, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
 
-  // Neuer Handler für Mouse-Down-Events
   const handleMouseDown = useCallback((event: MouseEvent) => {
+    // Nur bei Linkklick reagieren
+    if (event.button !== 0) return;
+    
     // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
     if (!modelViewer.loadedModel || !containerRef.current) return;
     
@@ -373,38 +371,60 @@ const ModelViewer: React.FC = () => {
       
       if (nearestPoint) {
         // Punkt gefunden, starte Drag-Operation
-        setIsDragging(true);
-        setDraggedPoint(nearestPoint);
-        updateCursorForDraggablePoint(true, true);
+        event.preventDefault();
+        event.stopPropagation();
         
-        // Verhindere OrbitControls, wenn wir einen Punkt verschieben
-        if (modelViewer.camera) {
-          // Deaktiviere die OrbitControls temporär
-          // Wir nutzen hier keinen direkten Zugriff auf orbitControls
-          // sondern signalisieren dem modelViewer, dass Kamerarotation deaktiviert werden soll
+        // Extrahiere ID des Punkts und finde die Messung
+        const pointName = nearestPoint.name;
+        const nameParts = pointName.split('-');
+        
+        if (nameParts.length >= 3) {
+          const measurementId = nameParts[1];
+          const pointIndex = parseInt(nameParts[2], 10);
+          
+          setIsDragging(true);
+          setDraggedPoint(nearestPoint);
+          setSelectedMeasurementId(measurementId);
+          setSelectedPointIndex(pointIndex);
+          
+          // Visuelles Feedback - ändere Cursor
           document.body.style.cursor = 'grabbing';
+          
+          // Log für Debugging
+          console.log(`Started dragging point: ${pointName}, measurement: ${measurementId}, index: ${pointIndex}`);
         }
       }
     }
   }, [modelViewer]);
 
-  // Neuer Handler für Mouse-Up-Events
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
+  const handleMouseUp = useCallback((event: MouseEvent) => {
+    // Nur reagieren, wenn wir tatsächlich ziehen
+    if (isDragging && draggedPoint) {
       // Beende Drag-Operation
       setIsDragging(false);
-      setDraggedPoint(null);
-      updateCursorForDraggablePoint(false);
       
-      // Aktiviere OrbitControls wieder
-      if (modelViewer.camera) {
-        // Hier signalisieren wir, dass Kamerarotation wieder aktiviert werden soll
-        document.body.style.cursor = 'auto';
+      // Ermittle die finale Position des Punktes
+      if (selectedMeasurementId && selectedPointIndex !== null) {
+        // Log für Debugging
+        console.log(`Finished dragging point for measurement: ${selectedMeasurementId}, index: ${selectedPointIndex}`);
+        
+        toast({
+          title: "Position aktualisiert",
+          description: "Der Messpunkt wurde an die neue Position verschoben.",
+          duration: 3000,
+        });
       }
+      
+      // Setze den Cursor zurück
+      document.body.style.cursor = 'auto';
+      
+      // Bereinige alle Drag-bezogenen Zustände
+      setDraggedPoint(null);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
     }
-  }, [isDragging, modelViewer.camera]);
+  }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
 
-  // Event-Listener für Maus-Events
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
@@ -424,9 +444,8 @@ const ModelViewer: React.FC = () => {
         if (isDragging) {
           setIsDragging(false);
           setDraggedPoint(null);
-          updateCursorForDraggablePoint(false);
-          
-          // Aktiviere OrbitControls wieder
+          setSelectedMeasurementId(null);
+          setSelectedPointIndex(null);
           document.body.style.cursor = 'auto';
         }
         

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -323,13 +322,13 @@ export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isD
   }
 };
 
-// Neuer Helfer: Finde den nächsten Punkt innerhalb des Hit-Radius
+// Verbesserte Version: Finde den nächsten Punkt innerhalb des Hit-Radius
 export const findNearestEditablePoint = (
   raycaster: THREE.Raycaster,
   camera: THREE.Camera,
   mousePosition: THREE.Vector2,
   scene: THREE.Group,
-  hitRadius: number = 0.3
+  hitRadius: number = 0.4 // Erhöhter Radius für bessere Erkennung
 ): THREE.Mesh | null => {
   // Aktualisiere Raycaster mit aktueller Mausposition
   raycaster.setFromCamera(mousePosition, camera);
@@ -337,17 +336,16 @@ export const findNearestEditablePoint = (
   // Suche nach Schnittpunkten mit der Szene
   const intersects = raycaster.intersectObjects(scene.children, true);
   
-  // Wenn ein Punkt getroffen wurde
-  if (intersects.length > 0) {
-    // Finde das erste getroffene Objekt, das editierbar ist
-    for (const intersect of intersects) {
-      const object = intersect.object;
-      if (object instanceof THREE.Mesh && 
-          object.userData && 
-          object.userData.isDraggable && 
-          object.userData.isEditable) {
-        return object;
-      }
+  // Wenn ein Punkt direkt getroffen wurde
+  for (const intersect of intersects) {
+    const object = intersect.object;
+    if (object instanceof THREE.Mesh && 
+        object.userData && 
+        object.userData.isDraggable && 
+        object.userData.isEditable) {
+      // Direkter Treffer gefunden
+      console.log('Direct hit on editable point:', object.name);
+      return object;
     }
   }
   
@@ -376,6 +374,7 @@ export const findNearestEditablePoint = (
       // Wenn der Punkt innerhalb des Hit-Radius liegt, füge ihn zur Liste hinzu
       if (distance < hitRadius) {
         possiblePoints.push({point: object, distance});
+        console.log('Found nearby point:', object.name, 'with distance:', distance);
       }
     }
   });
@@ -383,6 +382,7 @@ export const findNearestEditablePoint = (
   // Sortiere die Punkte nach Distanz und gib den nächsten zurück
   if (possiblePoints.length > 0) {
     possiblePoints.sort((a, b) => a.distance - b.distance);
+    console.log('Selected nearest point:', possiblePoints[0].point.name);
     return possiblePoints[0].point;
   }
   
