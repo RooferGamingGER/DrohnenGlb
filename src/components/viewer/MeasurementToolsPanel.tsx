@@ -19,7 +19,6 @@ interface MeasurementToolsPanelProps {
   onToggleMeasurementVisibility: (id: string) => void;
   onToggleAllMeasurementsVisibility: () => void;
   onToggleEditMode: (id: string) => void;
-  onCompleteAreaMeasurement: () => void; // New prop for completing area measurements
   allMeasurementsVisible: boolean;
   canUndo: boolean;
   screenshots: { id: string, imageDataUrl: string, description: string }[];
@@ -42,7 +41,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
   onToggleEditMode,
-  onCompleteAreaMeasurement, // New prop
   allMeasurementsVisible,
   canUndo,
   screenshots,
@@ -53,7 +51,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   tempPoints,
   onDeleteTempPoint
 }) => {
-  // Calculate total area from area measurements
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
@@ -141,7 +138,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             </Button>
           </div>
           
-          {/* We need to omit the onCompleteAreaMeasurement prop here */}
           <MeasurementTools
             activeTool={activeTool}
             onToolChange={onToolChange}
@@ -161,18 +157,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             tempPoints={tempPoints}
             onDeleteTempPoint={onDeleteTempPoint}
           />
-          
-          {/* Add a separate button for completing area measurement */}
-          {activeTool === 'area' && tempPoints.length >= 3 && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onCompleteAreaMeasurement}
-              className="w-full text-xs py-1 h-auto bg-blue-600 hover:bg-blue-700 text-white mt-2"
-            >
-              Flächenmessung abschließen ({tempPoints.length} Punkte)
-            </Button>
-          )}
         </div>
       </div>
     );
@@ -231,7 +215,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           </div>
           
           <ScrollArea className="h-[calc(100vh-380px)]">
-            {/* We need to omit the onCompleteAreaMeasurement prop here too */}
             <MeasurementTools
               activeTool={activeTool}
               onToolChange={onToolChange}
@@ -251,18 +234,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               tempPoints={tempPoints}
               onDeleteTempPoint={onDeleteTempPoint}
             />
-            
-            {/* Add a separate button for completing area measurement */}
-            {activeTool === 'area' && tempPoints.length >= 3 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onCompleteAreaMeasurement}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4"
-              >
-                Flächenmessung abschließen ({tempPoints.length} Punkte)
-              </Button>
-            )}
           </ScrollArea>
         </SidebarContent>
         

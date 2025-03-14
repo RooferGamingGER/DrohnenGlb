@@ -38,9 +38,6 @@
     --measurement-label-bg: 215 35% 18%;
     --measurement-label-text: 210 20% 98%;
     --measurement-label-border: 210 30% 60%;
-    
-    --area-measurement-color: 210 100% 40%;
-    --area-measurement-text: 210 20% 98%;
 
     --radius: 0.5rem;
   }
@@ -121,13 +118,6 @@
     @apply bg-[hsl(215,35%,18%)]/95 text-[hsl(210,20%,98%)] border border-[hsl(210,30%,60%)]/30
            rounded-md shadow-lg backdrop-blur-sm;
   }
-  
-  /* Area measurement styling */
-  .area-measurement-label {
-    @apply rounded-md bg-gradient-to-r from-[hsl(210,100%,40%)] to-[hsl(210,80%,35%)] 
-           text-[hsl(210,20%,98%)] border border-[hsl(210,80%,60%)]/30 px-3 py-1.5 
-           shadow-md text-center font-medium;
-  }
 
   /* Touch device optimizations */
   @media (hover: none) {
@@ -163,15 +153,6 @@
 
   .slider::-webkit-slider-thumb {
     @apply appearance-none w-4 h-4 rounded-full bg-primary;
-  }
-  
-  .area-tool-button {
-    @apply bg-[hsl(210,100%,40%)] text-white hover:bg-[hsl(210,100%,30%)] 
-           transition-colors duration-200;
-  }
-  
-  .area-tool-button-active {
-    @apply bg-[hsl(210,100%,30%)] text-white shadow-inner;
   }
 }
 
