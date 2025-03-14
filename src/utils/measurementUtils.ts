@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -499,10 +498,19 @@ export const createAreaPolygon = (
   
   // Type guard for buffer access
   if (positions instanceof THREE.BufferAttribute || positions instanceof THREE.InterleavedBufferAttribute) {
+    // Create a new array with the modified Y values
+    const newPositions = new Float32Array(positions.array.length);
+    
+    // Copy the existing values
+    for (let i = 0; i < positions.array.length; i++) {
+      newPositions[i] = positions.array[i];
+    }
+    
+    // Modify the Y values in the new array
     for (let i = 0; i < positions.count; i++) {
       const index = i * 3;
-      const x = positions.array[index];
-      const z = positions.array[index + 2];
+      const x = newPositions[index];
+      const z = newPositions[index + 2];
       
       // Find the average Y of the closest points
       let totalY = 0;
@@ -515,9 +523,13 @@ export const createAreaPolygon = (
         totalWeight += weight;
       }
       
-      // Apply the weighted average Y
-      positions.array[index + 1] = totalY / totalWeight;
+      // Apply the weighted average Y to the new array
+      newPositions[index + 1] = totalY / totalWeight;
     }
+    
+    // Set the modified array back to the buffer
+    positions.copyArray(newPositions);
+    positions.needsUpdate = true;
   }
   
   // Update geometry
@@ -800,4 +812,3 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
 };
-
