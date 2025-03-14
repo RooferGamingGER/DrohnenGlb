@@ -11,7 +11,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ progress }) => {
     if (progress < 10) return "Ladevorgang wird initialisiert...";
     if (progress < 25) return "Verbindung wird hergestellt...";
     if (progress < 40) return "Datei wird hochgeladen...";
-    if (progress < 60) return "Modell wird verarbeitet...";
+    if (progress < 75) return "Modell wird verarbeitet...";
     if (progress < 85) return "Texturen werden geladen...";
     if (progress < 99) return "Vorschau wird vorbereitet...";
     return "Ladevorgang abgeschlossen";
