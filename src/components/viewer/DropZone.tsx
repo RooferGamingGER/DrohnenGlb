@@ -26,15 +26,15 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full">
+    <div className="flex flex-col md:flex-row w-full h-full overflow-hidden">
       {/* Left Side - Information in Blue */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center h-full bg-primary/10">
-        <div className="max-w-md mx-auto p-3 md:p-4 space-y-2 md:space-y-3">
+      <div className="w-full md:w-1/2 flex flex-col justify-center h-full bg-primary/10 overflow-hidden">
+        <div className="max-w-md mx-auto p-2 md:p-3 space-y-1.5 md:space-y-2">
           <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer
           </h1>
           
-          <div className="space-y-2 md:space-y-3">
+          <div className="space-y-1.5 md:space-y-2">
             <div className="flex items-start">
               <div className="bg-primary/20 rounded-full p-1.5 mr-2 flex-shrink-0">
                 <ArrowDown className="text-primary h-3 w-3 md:h-4 md:w-4" />
@@ -90,9 +90,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       </div>
       
       {/* Right Side - Upload Area */}
-      <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-muted/30 h-full">
-        <Card className="w-full max-w-md mx-4 p-4 bg-white/10 backdrop-blur-sm border border-muted shadow-xl">
-          <div className="text-center mb-3">
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-muted/30 h-full overflow-hidden">
+        <Card className="w-full max-w-md mx-4 p-3 bg-white/10 backdrop-blur-sm border border-muted shadow-xl">
+          <div className="text-center mb-2">
             <h2 className="text-lg font-bold text-foreground">Modell hochladen</h2>
             <p className="text-muted-foreground mt-0.5 text-xs md:text-sm">
               Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
@@ -100,7 +100,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
           
           <div
-            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-3 md:p-4 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-3 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={onDragOver}
             onDrop={onDrop}

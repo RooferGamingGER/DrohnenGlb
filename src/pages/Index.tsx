@@ -1,6 +1,5 @@
 
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState, useEffect } from 'react';
 import ModelViewer from '@/components/ModelViewer';
 
 const Index = () => {
@@ -8,7 +7,11 @@ const Index = () => {
   
   // Render the ModelViewer component with forceHideHeader set to false
   // This will allow the component to determine header visibility based on its internal logic
-  return <ModelViewer forceHideHeader={false} />;
+  return (
+    <div className="h-full w-full overflow-hidden">
+      <ModelViewer forceHideHeader={false} />
+    </div>
+  );
 };
 
 export default Index;
