@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Triangle } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
@@ -392,7 +391,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         </button>
                       )}
                       
-                      {m.type === 'area' && m.points && m.points.length >= 3 && !m.completed && onCompleteAreaMeasurement && (
+                      {m.type === 'area' && m.points && m.points.length >= 3 && !m.isComplete && onCompleteAreaMeasurement && (
                         <button 
                           onClick={(e) => handleCompleteAreaMeasurement(m.id, e)}
                           className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
@@ -444,7 +443,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     </div>
                   )}
                   
-                  {m.type === 'area' && !m.completed && (
+                  {m.type === 'area' && !m.isComplete && (
                     <div className="mt-1 text-xs text-primary">
                       {m.points && m.points.length < 3 
                         ? `Klicken Sie auf mindestens ${3 - (m.points?.length || 0)} weitere Punkte` 
