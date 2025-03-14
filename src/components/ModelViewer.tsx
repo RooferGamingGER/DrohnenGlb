@@ -135,7 +135,7 @@ const ModelViewer: React.FC = () => {
     if (tool === 'area') {
       toast({
         title: "Flächenmessung gestartet",
-        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Setzen Sie den letzten Punkt nahe dem ersten Punkt, um die Messung abzuschließen.",
+        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Bewegen Sie die Maus über den ersten Punkt, um die Messung abzuschließen.",
         duration: 5000,
       });
     }
@@ -397,7 +397,7 @@ const ModelViewer: React.FC = () => {
           const isCloseToFirst = isPointCloseToFirst(
             firstPoint,
             intersects[0].point,
-            0.8
+            1.2
           );
           
           if (isCloseToFirst) {
@@ -407,7 +407,19 @@ const ModelViewer: React.FC = () => {
             if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
                 firstPointObject.material instanceof THREE.MeshBasicMaterial) {
               firstPointObject.material.color.set(0xffff00);
-              firstPointObject.scale.set(1.5, 1.5, 1.5);
+              firstPointObject.scale.set(2.0, 2.0, 2.0);
+            }
+            
+            if (firstPoint.distanceTo(intersects[0].point) < 0.5) {
+              setTimeout(() => {
+                const stillActive = modelViewer.measurements.find(
+                  m => m.id === activeAreaMeasurement.id && !m.isComplete
+                );
+                if (stillActive) {
+                  console.log('Auto-completing area measurement due to proximity');
+                  handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+                }
+              }, 500);
             }
           } else {
             document.body.style.cursor = 'crosshair';
@@ -422,7 +434,7 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
+  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging, handleCompleteAreaMeasurement]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (event.button !== 0) return;
@@ -505,7 +517,7 @@ const ModelViewer: React.FC = () => {
           const clickedPosition = intersects[0].point;
           const distanceToFirst = firstPoint.distanceTo(clickedPosition);
           
-          if (distanceToFirst < 0.8) {
+          if (distanceToFirst < 1.2) {
             console.log('First point clicked - completing area measurement');
             handleCompleteAreaMeasurement(activeAreaMeasurement.id);
             event.preventDefault();
@@ -514,7 +526,7 @@ const ModelViewer: React.FC = () => {
           }
         }
         
-        if (shouldCompleteAreaMeasurement(activeAreaMeasurement, 0.8)) {
+        if (shouldCompleteAreaMeasurement(activeAreaMeasurement, 1.2)) {
           handleCompleteAreaMeasurement(activeAreaMeasurement.id);
           event.preventDefault();
           event.stopPropagation();
