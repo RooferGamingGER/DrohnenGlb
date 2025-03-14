@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Home } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,6 @@ interface MeasurementToolsProps {
   onToggleAllMeasurementsVisibility?: () => void;
   allMeasurementsVisible?: boolean;
   onToggleEditMode?: (id: string) => void;
-  onCompleteAreaMeasurement?: (id: string) => void;
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;
@@ -47,7 +46,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onToggleAllMeasurementsVisibility,
   allMeasurementsVisible = true,
   onToggleEditMode,
-  onCompleteAreaMeasurement,
   screenshots,
   isMobile = false,
   scrollThreshold = 3
@@ -101,14 +99,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
     if (onToggleEditMode) {
       onToggleEditMode(id);
-    }
-  };
-
-  const handleCompleteAreaMeasurement = (id: string, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (onCompleteAreaMeasurement) {
-      onCompleteAreaMeasurement(id);
     }
   };
 
@@ -211,26 +201,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Höhe messen</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onToolChange('area')}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      activeTool === 'area' 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-secondary"
-                    )}
-                    aria-label="Dachfläche messen"
-                  >
-                    <Home size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>Dachfläche messen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -336,8 +306,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               {measurements.map((m) => (
                 <li key={m.id} className={cn(
                   "bg-background/40 p-2 rounded",
-                  m.editMode && "border border-primary/70",
-                  m.type === 'area' && !m.isComplete && m.points && m.points.length >= 3 && "border-2 border-yellow-500" 
+                  m.editMode && "border border-primary/70"
                 )}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-2">
@@ -358,12 +327,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         <>
                           <ArrowUpDown size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}</span>
-                        </>
-                      )}
-                      {m.type === 'area' && (
-                        <>
-                          <Home size={14} />
-                          <span>{m.value.toFixed(2)} {m.unit}²</span>
                         </>
                       )}
                     </span>
@@ -390,16 +353,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
                         >
                           {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
-                        </button>
-                      )}
-                      
-                      {m.type === 'area' && m.points && m.points.length >= 3 && !m.isComplete && onCompleteAreaMeasurement && (
-                        <button 
-                          onClick={(e) => handleCompleteAreaMeasurement(m.id, e)}
-                          className="text-white bg-yellow-500 hover:bg-yellow-600 p-1 rounded mr-1 font-bold"
-                          aria-label="Flächenmessung abschließen"
-                        >
-                          <Check size={14} />
                         </button>
                       )}
                       
@@ -443,34 +396,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <div className="mt-1 text-xs text-primary">
                       Klicken Sie einen Punkt an, um ihn zu verschieben
                     </div>
-                  )}
-                  
-                  {m.type === 'area' && !m.isComplete && (
-                    <div className="mt-1 text-xs">
-                      {m.points && m.points.length < 3 
-                        ? `Klicken Sie auf mindestens ${3 - (m.points?.length || 0)} weitere Punkte` 
-                        : (
-                          <div className="text-yellow-600 font-bold">
-                            Klicken Sie auf den <span className="text-red-500">ersten Punkt (rot)</span> oder den <span className="text-yellow-500">gelben Haken</span> oben, um die Fläche abzuschließen
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  
-                  {m.type === 'area' && !m.isComplete && m.points && m.points.length >= 3 && (
-                    <Button 
-                      variant="default"
-                      className="w-full mt-2 h-8 bg-yellow-500 hover:bg-yellow-600 text-white"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (onCompleteAreaMeasurement) {
-                          onCompleteAreaMeasurement(m.id);
-                        }
-                      }}
-                    >
-                      <Check size={14} className="mr-2" /> Fläche abschließen
-                    </Button>
                   )}
                 </li>
               ))}

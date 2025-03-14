@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'area' | 'none';
+export type MeasurementType = 'length' | 'height' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -21,15 +21,7 @@ export interface Measurement {
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
-  polygonObject?: THREE.Mesh; // Reference to the 3D polygon for area measurements
-  area?: number; // Flächeninhalt in Quadratmetern
-  isComplete?: boolean; // Flag to indicate if the area measurement is complete
 }
-
-// Function to check if inclination is significant (i.e., worth displaying)
-export const isInclinationSignificant = (inclination: number): boolean => {
-  return inclination > 2.0; // More than 2 degrees is considered significant
-};
 
 // Calculate distance between two points in 3D space
 export const calculateDistance = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
@@ -56,85 +48,9 @@ export const calculateInclination = (p1: THREE.Vector3, p2: THREE.Vector3): numb
   return parseFloat(angleInDegrees.toFixed(1));
 };
 
-// Calculate area of a polygon using the Shoelace formula (Gauss's Area formula)
-export const calculateArea = (points: THREE.Vector3[]): number => {
-  if (points.length < 3) return 0;
-  
-  let area = 0;
-  
-  // Project points onto the best-fitting plane
-  // First, calculate the normal of the best-fitting plane
-  const centroid = new THREE.Vector3();
-  for (const point of points) {
-    centroid.add(point);
-  }
-  centroid.divideScalar(points.length);
-  
-  // Use SVD (simplified as we're just finding a normal direction)
-  // Create a covariance matrix
-  let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
-  
-  for (const point of points) {
-    const dx = point.x - centroid.x;
-    const dy = point.y - centroid.y;
-    const dz = point.z - centroid.z;
-    
-    xx += dx * dx;
-    xy += dx * dy;
-    xz += dx * dz;
-    yy += dy * dy;
-    yz += dy * dz;
-    zz += dz * dz;
-  }
-  
-  // Find minimal eigenvector (simplified approach - this is approximated)
-  // For a proper solution we would use SVD or eigenvalue decomposition
-  // This is a simplified approach that works for most roofs
-  const normal = new THREE.Vector3(xy, xz, yz);
-  normal.normalize();
-  
-  // Create a local coordinate system on the plane
-  const u = new THREE.Vector3(1, 0, 0);
-  if (Math.abs(normal.dot(u)) > 0.9) {
-    u.set(0, 1, 0);
-  }
-  
-  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
-  u.crossVectors(v, normal).normalize();
-  
-  // Project all points onto the plane and calculate 2D coordinates
-  const points2D: { x: number, y: number }[] = [];
-  
-  for (const point of points) {
-    const localPoint = point.clone().sub(centroid);
-    const x = localPoint.dot(u);
-    const y = localPoint.dot(v);
-    points2D.push({ x, y });
-  }
-  
-  // Calculate area using the Shoelace formula
-  for (let i = 0; i < points2D.length; i++) {
-    const j = (i + 1) % points2D.length;
-    area += points2D[i].x * points2D[j].y;
-    area -= points2D[j].x * points2D[i].y;
-  }
-  
-  return Math.abs(area) / 2;
-};
-
-// Function to check if a point is close to another point
-// Significantly increased and improved for better detection
-export const isPointCloseToFirst = (
-  firstPoint: THREE.Vector3, 
-  currentPoint: THREE.Vector3, 
-  threshold: number = 3.0 // Drastically increased from 1.5 to 3.0 for much better detection
-): boolean => {
-  return firstPoint.distanceTo(currentPoint) < threshold;
-};
-
-// Format area measurement
-export const formatArea = (area: number): string => {
-  return `${area.toFixed(2)} m²`;
+// Prüft, ob die Neigung signifikant genug ist, um angezeigt zu werden
+export const isInclinationSignificant = (inclination: number, threshold: number = 5.0): boolean => {
+  return inclination >= threshold;
 };
 
 // Format measurement value with appropriate unit
@@ -246,17 +162,17 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   );
 };
 
-// Enhanced visual representation in edit mode
+// Deutlich verbesserte visuelle Darstellung im Editiermodus
 export const createEditablePointMaterial = (isSelected: boolean = false): THREE.MeshBasicMaterial => {
-  // More noticeable, intense color for edit mode
+  // Auffälligere, intensive Farbe für Editiermodus
   return new THREE.MeshBasicMaterial({ 
-    color: isSelected ? 0x00ff00 : 0xff00ff, // Magenta for editable points
+    color: isSelected ? 0x00ff00 : 0xff00ff, // Magenta für bearbeitbare Punkte
     opacity: 0.9,
     transparent: true
   });
 };
 
-// Standard point material when not in edit mode
+// Standard-Punktmaterial, wenn nicht im Editiermodus
 export const createDraggablePointMaterial = (isHovered: boolean = false, isSelected: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
     color: isSelected ? 0x00ff00 : (isHovered ? 0xffff00 : 0xff0000),
@@ -265,24 +181,11 @@ export const createDraggablePointMaterial = (isHovered: boolean = false, isSelec
   });
 };
 
-// Create a specialized material for the first point in area measurements 
-// to make it more prominent and noticeable
-export const createFirstPointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({ 
-    color: isHovered ? 0xffff00 : 0xff0000, // Very bright yellow when hovered, red otherwise
-    opacity: 1.0,
-    transparent: true
-  });
-};
-
 // Create draggable measurement point with increased size for better touch interaction
-export const createDraggablePoint = (position: THREE.Vector3, name: string, isFirstPoint: boolean = false): THREE.Mesh => {
-  // Normal size for non-editable points
+export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
+  // Normale Größe für nicht-editierbare Punkte
   const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
-  
-  // Choose the appropriate material based on whether this is the first point in an area measurement
-  const pointMaterial = isFirstPoint ? createFirstPointMaterial() : createDraggablePointMaterial();
-  
+  const pointMaterial = createDraggablePointMaterial();
   const point = new THREE.Mesh(pointGeometry, pointMaterial);
   point.position.copy(position);
   point.name = name;
@@ -294,7 +197,6 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string, isFi
     isBeingDragged: false,
     isSelected: false,
     isEditable: false,
-    isFirstPoint: isFirstPoint,
     originalScale: new THREE.Vector3(1, 1, 1)
   };
   
@@ -399,12 +301,12 @@ export const highlightMeasurementPoints = (
   });
 };
 
-// Enlarged hit-test radius for better detection
+// Vergrößerter Hittest-Radius für bessere Erkennung
 export const getPointHitTestRadius = (): number => {
-  return 0.4; // Significantly larger area than the visual size of the point
+  return 0.3; // Deutlich größerer Bereich als die visuelle Größe des Punktes
 };
 
-// New helper: Show "can drag" cursor when over editable point
+// Neuer Helfer: Zeige "Kann ziehen"-Cursor, wenn über editierbarem Punkt
 export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isDragging: boolean = false): void => {
   if (isOverDraggablePoint) {
     document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
@@ -413,13 +315,13 @@ export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isD
   }
 };
 
-// Improved version: Find the nearest point within the hit radius
+// Verbesserte Version: Finde den nächsten Punkt innerhalb des Hit-Radius
 export const findNearestEditablePoint = (
   raycaster: THREE.Raycaster,
   camera: THREE.Camera,
   mousePosition: THREE.Vector2,
   scene: THREE.Group,
-  hitRadius: number = 0.5 // Increased radius for better detection
+  hitRadius: number = 0.4 // Erhöhter Radius für bessere Erkennung
 ): THREE.Mesh | null => {
   // Aktualisiere Raycaster mit aktueller Mausposition
   raycaster.setFromCamera(mousePosition, camera);
@@ -478,270 +380,6 @@ export const findNearestEditablePoint = (
   }
   
   return null;
-};
-
-// Create a semi-transparent polygon for area visualization
-export const createAreaPolygon = (
-  points: THREE.Vector3[], 
-  color: number = 0x00ff00, 
-  opacity: number = 0.4
-): THREE.Mesh => {
-  if (points.length < 3) {
-    console.error('Cannot create polygon with less than 3 points');
-    // Return empty mesh
-    return new THREE.Mesh(
-      new THREE.BufferGeometry(),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-  }
-  
-  // Create a shape from the points
-  const shape = new THREE.Shape();
-  shape.moveTo(points[0].x, points[0].z); // Use x,z for horizontal roofs
-  
-  for (let i = 1; i < points.length; i++) {
-    shape.lineTo(points[i].x, points[i].z);
-  }
-  
-  shape.closePath();
-  
-  // Create geometry
-  const geometry = new THREE.ShapeGeometry(shape);
-  
-  // Adjust the Y coordinates of all vertices to follow the roof shape
-  const positions = geometry.attributes.position;
-  
-  // Type guard for buffer access
-  if (positions instanceof THREE.BufferAttribute || positions instanceof THREE.InterleavedBufferAttribute) {
-    // Create a new array with the modified Y values
-    const newPositions = new Float32Array(positions.array.length);
-    
-    // Copy the existing values
-    for (let i = 0; i < positions.array.length; i++) {
-      newPositions[i] = positions.array[i];
-    }
-    
-    // Modify the Y values in the new array
-    for (let i = 0; i < positions.count; i++) {
-      const index = i * 3;
-      const x = newPositions[index];
-      const z = newPositions[index + 2];
-      
-      // Find the average Y of the closest points
-      let totalY = 0;
-      let totalWeight = 0;
-      
-      for (const point of points) {
-        const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(z - point.z, 2));
-        const weight = 1 / (distance + 0.001); // Avoid division by zero
-        totalY += point.y * weight;
-        totalWeight += weight;
-      }
-      
-      // Apply the weighted average Y to the new array
-      newPositions[index + 1] = totalY / totalWeight;
-    }
-    
-    // Set the modified array back to the buffer with type checking
-    if (positions instanceof THREE.BufferAttribute) {
-      positions.copyArray(newPositions);
-      positions.needsUpdate = true;
-    } else if (positions instanceof THREE.InterleavedBufferAttribute) {
-      // For InterleavedBufferAttribute, we need to handle it differently
-      // by directly updating the underlying array
-      for (let i = 0; i < positions.count; i++) {
-        const index = i * 3;
-        positions.setY(i, newPositions[index + 1]);
-      }
-      positions.needsUpdate = true;
-    }
-  }
-  
-  // Update geometry
-  geometry.computeVertexNormals();
-  
-  // Create material
-  const material = new THREE.MeshBasicMaterial({
-    color: color,
-    transparent: true,
-    opacity: opacity,
-    side: THREE.DoubleSide,
-    depthWrite: false
-  });
-  
-  // Create mesh
-  const mesh = new THREE.Mesh(geometry, material);
-  
-  // Slightly move the polygon up to avoid z-fighting
-  mesh.position.y += 0.005;
-  
-  return mesh;
-};
-
-// Highlight the first point in an area measurement to make it more obvious
-// that users should click it to complete the polygon
-export const highlightFirstPointInAreaMeasurement = (
-  measurement: Measurement,
-  isNearFirstPoint: boolean
-): void => {
-  if (!measurement.pointObjects || measurement.pointObjects.length === 0) {
-    return;
-  }
-  
-  // Get the first point
-  const firstPoint = measurement.pointObjects[0];
-  
-  if (firstPoint instanceof THREE.Mesh && 
-      firstPoint.material instanceof THREE.MeshBasicMaterial) {
-    
-    // Update color based on hover state
-    firstPoint.material.color.set(isNearFirstPoint ? 0xffff00 : 0xff0000);
-    
-    // Scale up the first point to make it more noticeable
-    // Use a larger scale when the mouse is near it
-    const scale = isNearFirstPoint ? 3.0 : 1.5;
-    firstPoint.scale.set(scale, scale, scale);
-    
-    // Add pulsing animation if near first point
-    if (isNearFirstPoint) {
-      // Store the original scale if not already stored
-      if (!firstPoint.userData.originalScale) {
-        firstPoint.userData.originalScale = new THREE.Vector3(1, 1, 1);
-      }
-      
-      // Animate the point by scaling it up and down slightly
-      const time = Date.now() * 0.003;
-      const pulseFactor = 0.2 * Math.sin(time) + 1.0;
-      firstPoint.scale.set(
-        scale * pulseFactor,
-        scale * pulseFactor,
-        scale * pulseFactor
-      );
-    }
-  }
-};
-
-// Update the measurement lines, polygon and label for area measurements
-export const updateAreaMeasurementGeometry = (measurement: Measurement, scene: THREE.Group): void => {
-  if (!measurement.points || measurement.points.length < 3) return;
-  
-  // Get the positions of all points
-  const positions = measurement.points.map(p => p.position.clone());
-  
-  // Update or create lines
-  if (!measurement.lineObjects) {
-    measurement.lineObjects = [];
-  }
-  
-  // Make sure we have enough lines
-  while (measurement.lineObjects.length < positions.length) {
-    const line = createMeasurementLine([new THREE.Vector3(), new THREE.Vector3()], 0x00ff00);
-    measurement.lineObjects.push(line);
-    scene.add(line);
-  }
-  
-  // Remove excess lines
-  while (measurement.lineObjects.length > positions.length) {
-    const line = measurement.lineObjects.pop();
-    if (line) {
-      scene.remove(line);
-      line.geometry.dispose();
-      if (line.material instanceof THREE.Material) {
-        line.material.dispose();
-      }
-    }
-  }
-  
-  // Update line positions
-  for (let i = 0; i < positions.length; i++) {
-    const nextIndex = (i + 1) % positions.length;
-    const linePoints = [positions[i], positions[nextIndex]];
-    updateMeasurementLine(measurement.lineObjects[i], linePoints);
-  }
-  
-  // Calculate area
-  const area = calculateArea(positions);
-  measurement.area = area;
-  measurement.value = area; // Update value for consistency
-  
-  // Update or create polygon
-  if (measurement.polygonObject) {
-    // Remove old polygon
-    scene.remove(measurement.polygonObject);
-    measurement.polygonObject.geometry.dispose();
-    if (measurement.polygonObject.material instanceof THREE.Material) {
-      measurement.polygonObject.material.dispose();
-    }
-  }
-  
-  // Create new polygon
-  measurement.polygonObject = createAreaPolygon(positions, 0x00ff00, 0.4);
-  scene.add(measurement.polygonObject);
-  
-  // Update the label text with the new area
-  const labelText = formatArea(area);
-  
-  // Calculate the center of the polygon for label placement
-  const center = new THREE.Vector3();
-  for (const pos of positions) {
-    center.add(pos);
-  }
-  center.divideScalar(positions.length);
-  
-  // Add a small offset above the center for better visibility
-  center.y += 0.2;
-  
-  // Update or create the label
-  if (measurement.labelObject) {
-    if (measurement.labelObject.parent) {
-      const parent = measurement.labelObject.parent;
-      
-      // Create updated sprite
-      const updatedSprite = createTextSprite(labelText, center, 0x00ff00);
-      
-      // Preserve the userData and scale from the existing label
-      updatedSprite.userData = measurement.labelObject.userData;
-      updatedSprite.scale.copy(measurement.labelObject.scale);
-      
-      // Replace the old label with the new one
-      if (measurement.labelObject.material.map) {
-        measurement.labelObject.material.map.dispose();
-      }
-      measurement.labelObject.material.dispose();
-      parent.remove(measurement.labelObject);
-      parent.add(updatedSprite);
-      measurement.labelObject = updatedSprite;
-    }
-  } else {
-    measurement.labelObject = createTextSprite(labelText, center, 0x00ff00);
-    scene.add(measurement.labelObject);
-  }
-};
-
-// Check if the area measurement should be completed (last point close to first point)
-export const shouldCompleteAreaMeasurement = (
-  measurement: Measurement, 
-  threshold: number = 3.0 // Drastically increased from 1.5 to 3.0 for much better first point detection
-): boolean => {
-  if (measurement.type !== 'area' || measurement.points.length < 3) {
-    return false;
-  }
-  
-  const firstPoint = measurement.points[0].position;
-  const lastPoint = measurement.points[measurement.points.length - 1].position;
-  
-  return isPointCloseToFirst(firstPoint, lastPoint, threshold);
-};
-
-// Find all points that are close to a given position
-export const findPointsNearPosition = (
-  position: THREE.Vector3,
-  points: THREE.Mesh[],
-  threshold: number = 3.0
-): THREE.Mesh[] => {
-  return points.filter(point => 
-    point.position.distanceTo(position) < threshold
-  );
 };
 
 // Update the measurement lines and label
@@ -890,23 +528,4 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       measurement.labelObject.position.copy(offsetPosition);
     }
   }
-};
-
-// Create a visual indicator/helper for completing area measurements
-export const createAreaCompletionHelper = (position: THREE.Vector3): THREE.Mesh => {
-  // Create a ring to visually indicate where to click to complete the area
-  const ringGeometry = new THREE.RingGeometry(0.15, 0.25, 32);
-  const ringMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0xffff00, 
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.8
-  });
-  
-  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-  ring.position.copy(position);
-  ring.lookAt(position.clone().add(new THREE.Vector3(0, 1, 0)));
-  ring.userData = { isAreaCompletionHelper: true };
-  
-  return ring;
-};
+}
