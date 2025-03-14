@@ -26,17 +26,17 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex flex-col min-h-screen p-4">
       {/* Hauptinhalt (DropZone und "How It Works") */}
-      <div className="flex flex-col md:flex-row w-full max-w-2xl items-start justify-center">
+      <div className="flex flex-col md:flex-row w-full max-w-xl items-start justify-center">
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1">
+        <div className="w-full md:w-1/2 p-4 flex flex-col items-center flex-shrink-1">
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-md"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-sm"
             onClick={() => fileInputRef.current?.click()}
           >
-            <FileUp className="h-8 w-8 mx-auto mb-4 text-gray-500" />
-            <h3 className="text-xl font-semibold mb-3 text-gray-800">GLB-Datei hochladen</h3>
-            <p className="text-sm text-gray-600 mb-6">Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
-            <Button className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors">
+            <FileUp className="h-6 w-6 mx-auto mb-3 text-gray-500" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">GLB-Datei hochladen</h3>
+            <p className="text-sm text-gray-600 mb-4">Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
+            <Button className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-sm">
               <Upload className="mr-2 h-4 w-4" />
               Datei auswählen
             </Button>
@@ -51,36 +51,36 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Erklärung</h2>
+        <div className="w-full md:w-1/2 p-4 flex flex-col items-center flex-shrink-1">
+          <div className="bg-white rounded-lg p-4 max-w-sm w-full">
+            <h2 className="text-xl font-bold mb-3 text-gray-800">Erklärung</h2>
 
-            <div className="flex items-start mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3">
-                <ArrowDown className="h-5 w-5 text-blue-500" />
+            <div className="flex items-start mb-3">
+              <div className="bg-blue-100 rounded-full p-2 mr-2">
+                <ArrowDown className="h-4 w-4 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-1 text-gray-800">Exportieren vom Server</h3>
+                <h3 className="text-md font-semibold mb-1 text-gray-800">Exportieren vom Server</h3>
                 <p className="text-sm text-gray-600">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
               </div>
             </div>
 
-            <div className="flex items-start mb-4">
-              <div className="bg-blue-100 rounded-full p-2 mr-3">
-                <ArrowUpRight className="h-5 w-5 text-blue-500" />
+            <div className="flex items-start mb-3">
+              <div className="bg-blue-100 rounded-full p-2 mr-2">
+                <ArrowUpRight className="h-4 w-4 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-1 text-gray-800">GLB-Datei hochladen</h3>
+                <h3 className="text-md font-semibold mb-1 text-gray-800">GLB-Datei hochladen</h3>
                 <p className="text-sm text-gray-600">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
               </div>
             </div>
 
             <div className="flex items-start">
-              <div className="bg-blue-100 rounded-full p-2 mr-3">
-                <Send className="h-5 w-5 text-blue-500" />
+              <div className="bg-blue-100 rounded-full p-2 mr-2">
+                <Send className="h-4 w-4 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-1 text-gray-800">Testphase</h3>
+                <h3 className="text-md font-semibold mb-1 text-gray-800">Testphase</h3>
                 <p className="text-sm text-gray-600 mb-1">Die Software befindet sich aktuell in der Testphase.</p>
                 <p className="text-sm text-gray-600">
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
