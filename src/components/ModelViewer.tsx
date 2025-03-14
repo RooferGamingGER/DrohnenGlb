@@ -120,14 +120,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         const files = event.dataTransfer.files;
         if (!files || files.length === 0) return;
 
-        handleFileSelected(files[0]);
+        handleFileSelected(files[0]);c
     }, [handleFileSelected]);
 
     const handleResetView = useCallback(() => {
-        modelViewer.resetView();
+        modelViewer.resetView();c
     }, [modelViewer]);
 
-    onst handleToolChange = useCallback((tool: any) => {
+    const handleToolChange = useCallback((tool: any) => {
         if (tool !== 'none') {
             modelViewer.measurements.forEach(measurement => {
                 if (measurement.editMode) {
