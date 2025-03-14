@@ -29,7 +29,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
   const containerWidthRef = useRef<number>(0);
   const containerHeightRef = useRef<number>(0);
 
-  // Funktion zum Löschen eines temporären Punkts
   const deleteTempPoint = useCallback((index: number) => {
     console.log(`Löschen des temporären Punkts mit Index ${index}`);
     
@@ -39,35 +38,32 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
         return prev;
       }
       
-      // Visuellen Punkt aus der Szene entfernen
       if (tempPointsRef.current && tempPointsRef.current[index]) {
         console.log("Entferne visuellen Punkt aus der Szene");
         const pointToRemove = tempPointsRef.current[index];
         
         if (pointToRemove && measurementGroupRef.current) {
-          // Entferne den Punkt aus der Szene
           measurementGroupRef.current.remove(pointToRemove);
           
-          // Ressourcen freigeben
           if (pointToRemove instanceof THREE.Mesh) {
             if (pointToRemove.geometry) {
               pointToRemove.geometry.dispose();
             }
             if (pointToRemove.material && pointToRemove.material instanceof THREE.Material) {
               pointToRemove.material.dispose();
+            } else if (Array.isArray(pointToRemove.material)) {
+              pointToRemove.material.forEach(material => material.dispose());
             }
           }
         }
         
-        // Update der Referenz-Array
-        tempPointsRef.current = tempPointsRef.current.filter((_, i) => i !== index);
+        const newPoints = [...prev];
+        newPoints.splice(index, 1);
+        console.log("Neue Anzahl temporärer Punkte:", newPoints.length);
+        return newPoints;
       }
       
-      // Logisch den Punkt aus dem State entfernen
-      const newPoints = [...prev];
-      newPoints.splice(index, 1);
-      console.log("Neue Anzahl temporärer Punkte:", newPoints.length);
-      return newPoints;
+      return prev;
     });
   }, [measurementGroupRef]);
 
@@ -79,38 +75,31 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     containerWidthRef.current = width;
     containerHeightRef.current = height;
 
-    // Scene
     const newScene = new THREE.Scene();
     newScene.background = new THREE.Color(0xFAFAFA);
     setScene(newScene);
 
-    // Camera
     const newCamera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     newCamera.position.set(0, 2, 5);
     setCamera(newCamera);
 
-    // Renderer
     const newRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     newRenderer.setSize(width, height);
     newRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     containerRef.current.appendChild(newRenderer.domElement);
     setRenderer(newRenderer);
 
-    // Ambient Light
     const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
     newScene.add(ambientLight);
 
-    // Directional Light
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(1, 1, 1);
     newScene.add(directionalLight);
 
-    // Measurement Group
     const newMeasurementGroup = new THREE.Group();
     newScene.add(newMeasurementGroup);
     measurementGroupRef.current = newMeasurementGroup;
 
-    // Initial Grid Helper
     const gridHelper = new THREE.GridHelper(10, 10);
     newScene.add(gridHelper);
 
@@ -139,7 +128,21 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (newScene) newScene.dispose();
+      if (newScene) {
+        while(newScene.children.length > 0) { 
+          const child = newScene.children[0];
+          newScene.remove(child);
+          
+          if (child instanceof THREE.Mesh) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material instanceof THREE.Material) {
+              child.material.dispose();
+            } else if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose());
+            }
+          }
+        }
+      }
       if (newCamera) {
         newCamera.remove();
       }
@@ -156,7 +159,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     if (scene && camera && renderer) {
       renderer.render(scene, camera);
 
-      // Update label scales for all measurements
       measurements.forEach(measurement => {
         if (measurement.labelObject) {
           updateLabelScale(measurement.labelObject, camera);
@@ -194,7 +196,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
                 setRenderer(newRenderer);
               }
 
-              // Remove existing model
               if (loadedModel) {
                 scene!.remove(loadedModel);
                 setLoadedModel(null);
@@ -203,12 +204,10 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
               const model = gltf.scene;
               scene!.add(model);
 
-              // Bounding Box
               const box = new THREE.Box3().setFromObject(model);
               const size = box.getSize(new THREE.Vector3()).length();
               const center = box.getCenter(new THREE.Vector3());
 
-              // Update Camera
               camera!.position.copy(center);
               camera!.position.x += size / 2.0;
               camera!.position.y += size / 5.0;
@@ -220,7 +219,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
               undoHistoryRef.current = [];
               setCanUndo(false);
               
-              // Clear existing measurement group and create a new one
               if (measurementGroupRef.current) {
                 scene!.remove(measurementGroupRef.current);
               }
@@ -293,7 +291,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     setMeasurements(lastState || []);
     setCanUndo(undoHistoryRef.current.length > 0);
 
-    // Update visibility of measurements based on the restored state
     if (measurementGroupRef.current) {
       measurementGroupRef.current.children.forEach(child => {
         if (child.userData && child.userData.measurementId) {
@@ -310,7 +307,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     setCanUndo(false);
 
     if (measurementGroupRef.current) {
-      // Dispose of all children in the measurement group
       measurementGroupRef.current.children.forEach(child => {
         if (child instanceof THREE.Line) {
           child.geometry.dispose();
@@ -332,7 +328,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
         }
       });
 
-      // Remove all children from the measurement group
       while (measurementGroupRef.current.children.length > 0) {
         measurementGroupRef.current.remove(measurementGroupRef.current.children[0]);
       }
@@ -350,7 +345,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
         if (child.userData && child.userData.measurementId === id) {
           measurementGroupRef.current!.remove(child);
 
-          // Dispose of the geometry and material if they exist
           if (child instanceof THREE.Line) {
             child.geometry.dispose();
             if (child.material instanceof THREE.Material) {
@@ -409,7 +403,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     if (activeTool !== 'none' && intersects.length > 0) {
       const intersectPoint = intersects[0].point.clone();
       
-      // Füge den temporären Punkt sowohl zum State als auch visuell zur Szene hinzu
       const newPoint = {
         position: intersectPoint.clone(),
         worldPosition: intersectPoint.clone()
@@ -418,7 +411,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
       setTempPoints(prev => {
         const newPoints = [...(prev || []), newPoint];
         
-        // Visuellen Punkt erstellen und zur Szene hinzufügen
         if (measurementGroupRef.current) {
           const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
           const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
@@ -428,7 +420,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
           
           measurementGroupRef.current.add(point);
           
-          // Speichern der Referenz auf den visuellen Punkt
           tempPointsRef.current = [...(tempPointsRef.current || []), point];
         }
         
@@ -515,7 +506,6 @@ const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerHookProps) 
     };
   }, [renderer, handleSceneClick]);
 
-  // Stelle sicher, dass tempPointsRef initialisiert wird
   useEffect(() => {
     tempPointsRef.current = [];
   }, []);

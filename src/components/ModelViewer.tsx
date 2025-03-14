@@ -1,6 +1,7 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { useModelViewer } from '@/hooks/useModelViewer';
+import useModelViewer from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -684,4 +685,3 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
 };
 
 export default ModelViewer;
-
