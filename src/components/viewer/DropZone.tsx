@@ -1,8 +1,8 @@
 
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
-import { twMerge } from 'tailwind-merge';
+import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 interface DropZoneProps {
   onFileSelected: (file: File) => void;
@@ -26,23 +26,92 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="flex flex-col min-h-screen p-2 bg-gradient-to-b from-background to-background/80">
-      <div className="flex flex-col md:flex-row w-full max-w-4xl justify-center items-center mx-auto h-full min-h-[70vh] gap-8">
-        {/* DropZone window */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1 md:p-8 md:max-w-md p-4 max-w-xs fade-in">
+    <div className="flex flex-col md:flex-row w-full h-full items-center justify-center">
+      {/* Left Side - Information */}
+      <div className="w-full md:w-1/2 p-6 md:p-12 flex flex-col justify-center h-full">
+        <div className="max-w-md mx-auto space-y-6">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-8">
+            3D-Modell Viewer
+          </h1>
+          
+          <div className="space-y-6">
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-3 mr-4 flex-shrink-0">
+                <ArrowDown className="text-primary h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1 text-foreground">
+                  Exportieren vom Server
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  Exportieren Sie die Datei 'Textured Model (glTF)'
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-3 mr-4 flex-shrink-0">
+                <ArrowUpRight className="text-primary h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1 text-foreground">
+                  GLB-Datei hochladen
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="bg-primary/20 rounded-full p-3 mr-4 flex-shrink-0">
+                <Send className="text-primary h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1 text-foreground">
+                  Testphase
+                </h3>
+                <p className="text-muted-foreground text-sm mb-2">
+                  Die Software befindet sich aktuell in der Testphase.
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
+                  <a 
+                    href="mailto:info@drohnenvermessung-roofergaming.de" 
+                    className="text-primary hover:text-primary/80 transition-colors underline"
+                  >
+                    info@drohnenvermessung-roofergaming.de
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Right Side - Upload Area */}
+      <div className="w-full md:w-1/2 p-6 md:p-12 flex flex-col items-center justify-center bg-muted/30 h-full">
+        <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur-sm border border-muted shadow-xl">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-foreground">Modell hochladen</h2>
+            <p className="text-muted-foreground mt-2">
+              Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
+            </p>
+          </div>
+          
           <div
-            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-8 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300"
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-8 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={onDragOver}
             onDrop={onDrop}
           >
-            <FileUp className="mx-auto mb-4 text-primary animate-float md:h-12 md:w-12 h-8 w-8" />
-            <h3 className="font-semibold mb-3 text-foreground md:text-xl text-lg">GLB-Datei hochladen</h3>
-            <p className="text-muted-foreground mb-6 md:text-sm text-xs max-w-xs mx-auto">
-              Ziehen Sie eine Datei hierher oder klicken Sie, um eine Datei auszuwählen.
+            <FileUp className="mb-4 text-primary animate-float h-12 w-12" />
+            <h3 className="font-semibold mb-3 text-foreground text-xl">GLB-Datei hochladen</h3>
+            <p className="text-muted-foreground mb-6 text-sm">
+              Ziehen Sie eine Datei hierher oder klicken
             </p>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-all duration-200 px-6 py-2 shadow-lg">
-              <Upload className="mr-2 md:h-4 md:w-4 h-3 w-3" />
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <UploadCloud className="mr-2 h-4 w-4" />
               Datei auswählen
             </Button>
             <input
@@ -53,67 +122,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               onChange={handleFileChange}
             />
           </div>
-        </div>
-
-        {/* Explanation window */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center justify-center flex-shrink-1 md:max-w-md p-3 max-w-xs slide-in">
-          <div className="glass rounded-lg w-full p-6 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
-            <h2 className="font-bold mb-5 text-foreground p-2 md:text-2xl text-xl border-b border-primary/20 pb-2">
-              Erklärung
-            </h2>
-
-            <div className="flex items-start mb-4 p-2 hover:bg-white/5 rounded-lg transition-all">
-              <div className="bg-primary/20 rounded-full p-3 mr-4">
-                <ArrowDown className="text-primary md:h-5 md:w-5 h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1 text-foreground md:text-lg text-base">
-                  Exportieren vom Server
-                </h3>
-                <p className="text-muted-foreground md:text-sm text-xs">
-                  Exportieren Sie die Datei 'Textured Model (glTF)'
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start mb-4 p-2 hover:bg-white/5 rounded-lg transition-all">
-              <div className="bg-primary/20 rounded-full p-3 mr-4">
-                <ArrowUpRight className="text-primary md:h-5 md:w-5 h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1 text-foreground md:text-lg text-base">
-                  GLB-Datei hochladen
-                </h3>
-                <p className="text-muted-foreground md:text-sm text-xs">
-                  Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start p-2 hover:bg-white/5 rounded-lg transition-all">
-              <div className="bg-primary/20 rounded-full p-3 mr-4">
-                <Send className="text-primary md:h-5 md:w-5 h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1 text-foreground md:text-lg text-base">
-                  Testphase
-                </h3>
-                <p className="text-muted-foreground mb-1 md:text-sm text-xs mb-2">
-                  Die Software befindet sich aktuell in der Testphase.
-                </p>
-                <p className="text-muted-foreground md:text-sm text-xs">
-                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
-                  <a 
-                    href="mailto:info@drohnenvermessung-roofergaming.de" 
-                    className="text-primary hover:text-primary/80 transition-colors underline text-xs md:text-sm"
-                  >
-                    info@drohnenvermessung-roofergaming.de
-                  </a>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
