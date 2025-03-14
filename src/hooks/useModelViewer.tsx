@@ -692,6 +692,36 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  const deleteTempPoint = (index: number) => {
+    if (temporaryPoints.length > index && measurementGroupRef.current) {
+      const newPoints = [...temporaryPoints];
+      const removedPoint = newPoints.splice(index, 1)[0];
+      setTemporaryPoints(newPoints);
+      
+      const pointMesh = measurementGroupRef.current.children.find(
+        child => child instanceof THREE.Mesh && 
+        child.position.equals(removedPoint.position) &&
+        child.name.startsWith('point-temp-')
+      );
+      
+      if (pointMesh) {
+        (pointMesh.geometry as THREE.BufferGeometry).dispose();
+        ((pointMesh as THREE.Mesh).material as THREE.Material).dispose();
+        measurementGroupRef.current.remove(pointMesh);
+      }
+      
+      if (currentMeasurementRef.current && currentMeasurementRef.current.lines.length > 0) {
+        const lastLine = currentMeasurementRef.current.lines[currentMeasurementRef.current.lines.length - 1];
+        if (lastLine && measurementGroupRef.current) {
+          lastLine.geometry.dispose();
+          (lastLine.material as THREE.Material).dispose();
+          measurementGroupRef.current.remove(lastLine);
+          currentMeasurementRef.current.lines.pop();
+        }
+      }
+    }
+  };
+
   const setProgress = (value: number) => {
     setState(prev => ({ ...prev, progress: value }));
   };
@@ -1414,6 +1444,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current,
-    setProgress
+    setProgress,
+    tempPoints: temporaryPoints,
+    deleteTempPoint
   };
 };
