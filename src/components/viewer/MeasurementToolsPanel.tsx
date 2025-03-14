@@ -3,7 +3,7 @@ import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileDown, Home, RefreshCcw, Camera, X } from "lucide-react";
+import { FileDown, Home, RefreshCcw, Camera } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,11 +60,9 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     .length;
 
   const handleDeleteTempPoint = (index: number) => {
-    console.log("MeasurementToolsPanel - Attempting to delete temp point at index:", index);
+    console.log("Attempting to delete temp point at index:", index);
     if (onDeleteTempPoint) {
       onDeleteTempPoint(index);
-    } else {
-      console.error("onDeleteTempPoint function is not available");
     }
   };
 
@@ -95,33 +93,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Render temporary points section
-  const renderTempPoints = () => {
-    if (!tempPoints || tempPoints.length === 0) return null;
-    
-    return (
-      <div className="mt-4">
-        <h3 className="text-sm font-medium mb-2">Temporäre Messpunkte</h3>
-        <div className="space-y-2">
-          {tempPoints.map((point, index) => (
-            <div key={`temp-point-${index}`} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-              <span className="text-sm">Punkt {index + 1}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteTempPoint(index)}
-                className="h-6 w-6"
-                title="Temporären Messpunkt löschen"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // Mobile view in portrait mode
   if (isMobile && isFullscreen) {
     return (
@@ -141,7 +112,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={onTakeScreenshot}
               className="text-xs py-1 h-auto"
-              title="Erstellt einen Screenshot der aktuellen Ansicht"
             >
               <Camera className="mr-1 h-3 w-3" />
               Screenshot
@@ -151,7 +121,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={onNewProject}
               className="text-xs py-1 h-auto"
-              title="Lädt das Projekt neu und entfernt alle Messungen"
             >
               <RefreshCcw className="mr-1 h-3 w-3" />
               Neu laden
@@ -161,7 +130,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={() => window.location.href = '/'}
               className="text-xs py-1 h-auto"
-              title="Zurück zur Hauptseite navigieren"
             >
               <Home className="mr-1 h-3 w-3" />
               Zurück
@@ -171,14 +139,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={handleDownloadReport}
               className="text-xs py-1 h-auto ml-auto"
-              title="Speichert alle Messungen und Screenshots als PDF-Bericht"
             >
               <FileDown className="mr-1 h-3 w-3" />
               Speichern
             </Button>
           </div>
-          
-          {renderTempPoints()}
           
           <MeasurementTools
             activeTool={activeTool}
@@ -229,7 +194,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={onTakeScreenshot}
               className="w-full justify-start"
-              title="Erstellt einen Screenshot der aktuellen Ansicht, der im Bericht gespeichert werden kann"
             >
               <Camera className="mr-2 h-4 w-4" />
               Screenshot anfertigen
@@ -239,7 +203,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={onNewProject}
               className="w-full justify-start"
-              title="Lädt das Projekt neu und entfernt alle vorhandenen Messungen und temporären Punkte"
             >
               <RefreshCcw className="mr-2 h-4 w-4" />
               Projekt neu laden
@@ -249,14 +212,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               size="sm" 
               onClick={() => window.location.href = '/'}
               className="w-full justify-start"
-              title="Zurück zur Hauptseite navigieren ohne die Änderungen zu speichern"
             >
               <Home className="mr-2 h-4 w-4" />
               Zurück zur Hauptseite
             </Button>
           </div>
-          
-          {renderTempPoints()}
           
           <ScrollArea className="h-[calc(100vh-380px)]">
             <MeasurementTools
@@ -286,7 +246,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             <Button 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
               onClick={handleDownloadReport}
-              title="Speichert alle Messungen und Screenshots als PDF-Bericht auf deinem Gerät"
             >
               <FileDown className="mr-2 h-4 w-4" />
               Bericht speichern

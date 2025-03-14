@@ -164,8 +164,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Move size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "right"} className="max-w-[260px]">
-                <p>Navigieren und umherschauen im 3D-Modell</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Navigieren</p>
               </TooltipContent>
             </Tooltip>
             
@@ -184,8 +184,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Ruler size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "right"} className="max-w-[260px]">
-                <p>Länge messen: Zwei Punkte am Modell setzen, um eine Strecke zu messen</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Länge messen</p>
               </TooltipContent>
             </Tooltip>
             
@@ -204,8 +204,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <ArrowUpDown size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "right"} className="max-w-[260px]">
-                <p>Höhe messen: Zwei Punkte am Modell setzen, um einen Höhenunterschied zu messen</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
 
@@ -220,8 +220,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Undo size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "right"} className="max-w-[260px]">
-                  <p>Letzten gesetzten Messpunkt rückgängig machen</p>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Letzten Punkt rückgängig machen</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -239,8 +239,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Trash size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "right"} className="max-w-[260px]">
-                  <p>Alle Messungen und temporäre Punkte vollständig löschen</p>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Alle Messungen löschen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -255,8 +255,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[260px]">
-                    <p>{allMeasurementsVisible ? "Alle Messungen und Punkte ausblenden" : "Alle Messungen und Punkte einblenden"}</p>
+                  <TooltipContent side="bottom">
+                    <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -272,8 +272,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       <List size={18} />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[260px]">
-                    <p>{showMeasurementsList ? "Liste der Messungen ausblenden" : "Liste der Messungen einblenden"}</p>
+                  <TooltipContent side="bottom">
+                    <p>{showMeasurementsList ? "Messungen ausblenden" : "Messungen einblenden"}</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -301,8 +301,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       <button 
                         onClick={(e) => handleDeleteTempPoint(index, e)}
                         className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                        aria-label="Temporären Punkt löschen"
-                        title="Temporären Punkt löschen"
+                        aria-label="Punkt löschen"
                       >
                         <X size={14} />
                       </button>
@@ -350,7 +349,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                               : "text-primary hover:bg-primary/10"
                           )}
                           aria-label={m.editMode ? "Bearbeitungsmodus beenden" : "Punkte verschieben"}
-                          title={m.editMode ? "Bearbeitungsmodus beenden" : "Punkte dieser Messung verschieben"}
                         >
                           <GripHorizontal size={14} />
                         </button>
@@ -361,7 +359,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
                           className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
                           aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
-                          title={m.visible === false ? "Diese Messung einblenden" : "Diese Messung ausblenden"}
                         >
                           {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
                         </button>
@@ -371,7 +368,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
                         className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
                         aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
-                        title={editingId === m.id ? "Beschreibung speichern" : "Beschreibung dieser Messung bearbeiten"}
                       >
                         {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
                       </button>
@@ -380,7 +376,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         onClick={(e) => handleDeleteMeasurement(m.id, e)}
                         className="text-destructive hover:bg-destructive/10 p-1 rounded"
                         aria-label="Messung löschen"
-                        title="Diese Messung vollständig löschen"
                       >
                         <X size={14} />
                       </button>
