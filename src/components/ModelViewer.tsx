@@ -715,6 +715,8 @@ const ModelViewer: React.FC = () => {
           screenshots={savedScreenshots}
           isMobile={isMobile}
           isFullscreen={isFullscreen}
+          onNewProject={handleNewProject}
+          onTakeScreenshot={handleTakeScreenshot}
         />
       )}
       
