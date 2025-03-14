@@ -653,17 +653,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             {modelViewer.loadedModel ? (
                 <>
                     <ViewerToolbar
-                        showHeader={showHeader}
                         isFullscreen={isFullscreen}
-                        toggleFullscreen={toggleFullscreen}
-                        resetView={handleResetView}
-                        toggleMeasurementTools={toggleMeasurementTools}
-                        measurementsVisible={measurementsVisible}
-                        toggleMeasurementsVisibility={toggleMeasurementsVisibility}
-                        takeScreenshot={handleTakeScreenshot}
-                        exportMeasurements={handleExportMeasurements}
-                        isPortrait={isPortrait}
+                        loadedModel={modelViewer.loadedModel}
                         showMeasurementTools={showMeasurementTools}
+                        onReset={handleResetView}
+                        onFullscreen={toggleFullscreen}
+                        toggleMeasurementTools={toggleMeasurementTools}
+                        onTakeScreenshot={handleTakeScreenshot}
+                        onExportMeasurements={handleExportMeasurements}
+                        isMobile={isMobile}
+                        forceHideHeader={forceHideHeader}
+                        showHeader={showHeader}
                         onNewProject={handleNewProject}
                     />
                     <ViewerContainer
@@ -726,3 +726,4 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 };
 
 export default ModelViewer;
+
