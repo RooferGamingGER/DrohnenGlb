@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 210 50% 98%;
+    --background: 0 0% 100%;
     --foreground: 220 20% 20%;
 
     --card: 0 0% 100%;
@@ -92,7 +92,7 @@
 
   /* Glass morphism */
   .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    @apply bg-white/80 backdrop-blur-md border border-zinc-200;
   }
 
   /* Touch device optimizations */

@@ -1,3 +1,4 @@
+
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Measurement, isInclinationSignificant, MeasurementType } from '../measurementUtils';
@@ -6,10 +7,14 @@ import { optimizeImageData } from './captureUtils';
 
 /**
  * Exports measurements and screenshots to PDF format (DIN A4)
+ * @param measurements The measurement data to include in the PDF
+ * @param screenshots The screenshots to include in the PDF
+ * @param openPrintDialog If true, opens the print dialog after generating the PDF
  */
 export const exportMeasurementsToPDF = async (
     measurements: Measurement[],
-    screenshots: Screenshot[]
+    screenshots: Screenshot[],
+    openPrintDialog: boolean = false
 ): Promise<void> => {
     try {
         if (!measurements.length && !screenshots.length) {
@@ -206,12 +211,22 @@ export const exportMeasurementsToPDF = async (
             addPageFooter();
         }
 
-        // Dokument als PDF speichern
-        doc.save('Bericht.pdf');
-        
-        // Optional: Öffne PDF im Browser zum Drucken
-        // const pdfData = doc.output('bloburl');
-        // window.open(pdfData, '_blank');
+        if (openPrintDialog) {
+            // Open PDF in new window and trigger print dialog
+            const pdfData = doc.output('bloburl');
+            const printWindow = window.open(pdfData, '_blank');
+            if (printWindow) {
+                printWindow.addEventListener('load', () => {
+                    printWindow.print();
+                });
+            } else {
+                console.warn("Popup-Fenster wurde blockiert, PDF wird heruntergeladen");
+                doc.save('Bericht.pdf');
+            }
+        } else {
+            // Just save the PDF
+            doc.save('Bericht.pdf');
+        }
     } catch (error) {
         console.error("Fehler beim Exportieren als PDF:", error);
         throw error;

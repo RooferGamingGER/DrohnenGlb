@@ -1,9 +1,9 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { FileDown, Printer } from "lucide-react";
-import { saveAs } from 'file-saver';
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 
@@ -63,9 +63,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
 
     try {
-      await exportMeasurementsToPDF(measurements, screenshots);
+      // Show print dialog directly after creating PDF
+      await exportMeasurementsToPDF(measurements, screenshots, true);
       toast({
-        title: "Druck vorbereitet",
+        title: "Druckdialog geöffnet",
         description: "Der Bericht wurde als PDF erstellt und kann jetzt gedruckt werden.",
       });
     } catch (error) {
@@ -89,7 +90,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
 
     try {
-      await exportMeasurementsToPDF(measurements, screenshots);
+      // Don't open print dialog, just save the file
+      await exportMeasurementsToPDF(measurements, screenshots, false);
       toast({
         title: "Bericht gespeichert",
         description: "Der Bericht wurde als PDF heruntergeladen.",
@@ -131,8 +133,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
 
   return (
     <SidebarProvider>
-      <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-zinc-900 text-white">
-        <SidebarHeader className="p-4 border-b border-zinc-800">
+      <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
+        <SidebarHeader className="p-4 border-b border-zinc-200">
           <h2 className="text-lg font-bold">Musterprojekt</h2>
         </SidebarHeader>
         
@@ -175,17 +177,17 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           </div>
         </SidebarContent>
         
-        <SidebarFooter className="p-4 border-t border-zinc-800 mt-auto">
+        <SidebarFooter className="p-4 border-t border-zinc-200 mt-auto">
           <div className="space-y-2">
             <Button 
-              className="w-full bg-emerald-600 hover:bg-emerald-700" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
               onClick={handleDownloadReport}
             >
               <FileDown className="mr-2 h-4 w-4" />
               Bericht speichern
             </Button>
             <Button 
-              className="w-full bg-zinc-700 hover:bg-zinc-600" 
+              className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900" 
               variant="outline"
               onClick={handlePrintReport}
             >
