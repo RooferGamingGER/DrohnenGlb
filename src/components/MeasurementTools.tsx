@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Triangle } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Home } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -225,7 +226,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     )}
                     aria-label="Dachfläche messen"
                   >
-                    <Triangle size={18} />
+                    <Home size={18} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
@@ -360,7 +361,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       )}
                       {m.type === 'area' && (
                         <>
-                          <Triangle size={14} />
+                          <Home size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}²</span>
                         </>
                       )}

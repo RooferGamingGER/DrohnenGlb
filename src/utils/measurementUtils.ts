@@ -527,7 +527,7 @@ export const createAreaPolygon = (
       newPositions[index + 1] = totalY / totalWeight;
     }
     
-    // Set the modified array back to the buffer, with type checking for BufferAttribute
+    // Set the modified array back to the buffer with type checking
     if (positions instanceof THREE.BufferAttribute) {
       positions.copyArray(newPositions);
       positions.needsUpdate = true;
@@ -672,7 +672,9 @@ export const shouldCompleteAreaMeasurement = (
   const firstPoint = measurement.points[0].position;
   const lastPoint = measurement.points[measurement.points.length - 1].position;
   
-  return isPointCloseToFirst(firstPoint, lastPoint, threshold);
+  // Überprüfe die Distanz zwischen erstem und letztem Punkt
+  const distance = firstPoint.distanceTo(lastPoint);
+  return distance < threshold;
 };
 
 // Update the measurement lines and label
