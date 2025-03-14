@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Triangle } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onToggleAllMeasurementsVisibility,
   allMeasurementsVisible = true,
   onToggleEditMode,
+  onCompleteAreaMeasurement,
   screenshots,
   isMobile = false,
   scrollThreshold = 3
@@ -100,6 +101,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
     if (onToggleEditMode) {
       onToggleEditMode(id);
+    }
+  };
+
+  const handleCompleteAreaMeasurement = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onCompleteAreaMeasurement) {
+      onCompleteAreaMeasurement(id);
     }
   };
 
@@ -202,6 +211,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Höhe messen</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onToolChange('area')}
+                    className={cn(
+                      "p-2 rounded-md transition-colors",
+                      activeTool === 'area' 
+                        ? "bg-primary text-primary-foreground" 
+                        : "hover:bg-secondary"
+                    )}
+                    aria-label="Dachfläche messen"
+                  >
+                    <Triangle size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Dachfläche messen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -330,6 +359,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           <span>{m.value.toFixed(2)} {m.unit}</span>
                         </>
                       )}
+                      {m.type === 'area' && (
+                        <>
+                          <Triangle size={14} />
+                          <span>{m.value.toFixed(2)} {m.unit}²</span>
+                        </>
+                      )}
                     </span>
                     <div className="flex items-center">
                       {onToggleEditMode && (
@@ -354,6 +389,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
                         >
                           {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      )}
+                      
+                      {m.type === 'area' && m.points && m.points.length >= 3 && !m.completed && onCompleteAreaMeasurement && (
+                        <button 
+                          onClick={(e) => handleCompleteAreaMeasurement(m.id, e)}
+                          className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                          aria-label="Flächenmessung abschließen"
+                        >
+                          <Check size={14} />
                         </button>
                       )}
                       
@@ -396,6 +441,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   {m.editMode && (
                     <div className="mt-1 text-xs text-primary">
                       Klicken Sie einen Punkt an, um ihn zu verschieben
+                    </div>
+                  )}
+                  
+                  {m.type === 'area' && !m.completed && (
+                    <div className="mt-1 text-xs text-primary">
+                      {m.points && m.points.length < 3 
+                        ? `Klicken Sie auf mindestens ${3 - (m.points?.length || 0)} weitere Punkte` 
+                        : 'Klicken Sie auf den ersten Punkt, um die Fläche zu schließen oder auf den Haken, um die Flächenmessung abzuschließen'}
                     </div>
                   )}
                 </li>
