@@ -6,7 +6,7 @@ interface LoadingOverlayProps {
 }
 
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ progress }) => {
-  // Detailed progress status function
+  // Detailed progress status function similar to Login.tsx
   const getProgressStatus = (progress: number) => {
     if (progress < 10) return "Ladevorgang wird initialisiert...";
     if (progress < 25) return "Verbindung wird hergestellt...";
