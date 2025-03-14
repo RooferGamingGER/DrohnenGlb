@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -45,7 +44,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   isMobile,
   isFullscreen
 }) => {
-  // Berechnung der Gesamt-Messwerte
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
@@ -65,7 +63,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
 
     try {
-      // Exportiere als PDF und öffne Druckdialog
       await exportMeasurementsToPDF(measurements, screenshots);
       toast({
         title: "Druck vorbereitet",
@@ -107,7 +104,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Wenn wir auf Mobilgeräten im Vollbildmodus sind, zeigen wir das Panel als Overlay an
   if (isMobile && isFullscreen) {
     return (
       <div className="fixed bottom-0 left-0 right-0 px-2 pb-2 z-20">
