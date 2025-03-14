@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -62,6 +61,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   useEffect(() => {
     setShowHeader(shouldShowHeader());
   }, [shouldShowHeader, showMeasurementTools, isPortrait]);
+  
+  // Initialize showMeasurementTools based on device orientation
+  useEffect(() => {
+    // On first load, in landscape (desktop) start with sidebar visible
+    if (!isPortrait) {
+      setShowMeasurementTools(true);
+    }
+  }, [isPortrait]);
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
