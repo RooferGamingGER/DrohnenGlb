@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ModelViewer from "./components/ModelViewer";
 
 const queryClient = new QueryClient();
 
