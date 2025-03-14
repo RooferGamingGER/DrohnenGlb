@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
@@ -30,6 +29,7 @@ interface MeasurementToolsProps {
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;
+  onClearSinglePoint?: () => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -48,7 +48,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onToggleEditMode,
   screenshots,
   isMobile = false,
-  scrollThreshold = 3
+  scrollThreshold = 3,
+  onClearSinglePoint
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -209,6 +210,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Letzten Punkt rückgängig machen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            {activeTool !== 'none' && onClearSinglePoint && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onClearSinglePoint}
+                    className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label="Einzelnen Punkt löschen"
+                  >
+                    <X size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Einzelnen Punkt löschen</p>
                 </TooltipContent>
               </Tooltip>
             )}
