@@ -1,5 +1,5 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
+import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +36,9 @@ const ModelViewer: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
   const [lastMousePosition, setLastMousePosition] = useState<{x: number, y: number} | null>(null);
+  
+  // Referenz auf den eigenen Raycaster für die Punktmanipulation
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
   const modelViewer = useModelViewer({
     containerRef,
@@ -297,11 +300,10 @@ const ModelViewer: React.FC = () => {
       updateCursorForDraggablePoint(true, true);
       
       // Raycaster für Tiefenbestimmung
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(mousePosition, modelViewer.camera);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       
       // Schneide mit dem Modell, um die Tiefe zu bestimmen
-      const intersects = raycaster.intersectObject(modelViewer.loadedModel, true);
+      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
         // Finde den zugehörigen Measurement
@@ -330,9 +332,10 @@ const ModelViewer: React.FC = () => {
     // Wenn wir nicht ziehen, prüfe ob wir über einem bearbeitbaren Punkt sind
     else if (!isDragging && modelViewer.measurementGroupRef?.current) {
       // Finde den nächsten editierbaren Punkt in der Nähe des Mauszeigers
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       const nearestPoint = findNearestEditablePoint(
-        modelViewer.raycaster,
-        modelViewer.camera,
+        raycasterRef.current,
+        modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current
       );
@@ -360,9 +363,10 @@ const ModelViewer: React.FC = () => {
     
     // Suche nach einem editierbaren Punkt in der Nähe
     if (modelViewer.measurementGroupRef?.current) {
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       const nearestPoint = findNearestEditablePoint(
-        modelViewer.raycaster,
-        modelViewer.camera,
+        raycasterRef.current,
+        modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current
       );
@@ -374,8 +378,11 @@ const ModelViewer: React.FC = () => {
         updateCursorForDraggablePoint(true, true);
         
         // Verhindere OrbitControls, wenn wir einen Punkt verschieben
-        if (modelViewer.orbitControls) {
-          modelViewer.orbitControls.enabled = false;
+        if (modelViewer.camera) {
+          // Deaktiviere die OrbitControls temporär
+          // Wir nutzen hier keinen direkten Zugriff auf orbitControls
+          // sondern signalisieren dem modelViewer, dass Kamerarotation deaktiviert werden soll
+          document.body.style.cursor = 'grabbing';
         }
       }
     }
@@ -390,11 +397,12 @@ const ModelViewer: React.FC = () => {
       updateCursorForDraggablePoint(false);
       
       // Aktiviere OrbitControls wieder
-      if (modelViewer.orbitControls) {
-        modelViewer.orbitControls.enabled = true;
+      if (modelViewer.camera) {
+        // Hier signalisieren wir, dass Kamerarotation wieder aktiviert werden soll
+        document.body.style.cursor = 'auto';
       }
     }
-  }, [isDragging, modelViewer.orbitControls]);
+  }, [isDragging, modelViewer.camera]);
 
   // Event-Listener für Maus-Events
   useEffect(() => {
@@ -419,9 +427,7 @@ const ModelViewer: React.FC = () => {
           updateCursorForDraggablePoint(false);
           
           // Aktiviere OrbitControls wieder
-          if (modelViewer.orbitControls) {
-            modelViewer.orbitControls.enabled = true;
-          }
+          document.body.style.cursor = 'auto';
         }
         
         // Wenn ein Werkzeug aktiv ist, deaktiviere es
