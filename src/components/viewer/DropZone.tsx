@@ -84,7 +84,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                   Exportieren vom Server
                 </h3>
                 <p className="text-md md:text-lg text-muted-foreground leading-tight">
-                  Exportieren Sie die Datei 'Textured Model (glTF)'
+                  Gehen Sie zu dem gewünschten Projekt, klicken dann auf  "Dateien herunterladen" und wählen nun das 'Textured Model (glTF)' aus
                 </p>
               </div>
             </div>
