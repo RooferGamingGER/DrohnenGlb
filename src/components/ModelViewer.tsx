@@ -45,6 +45,24 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
   
+  // Determine if header should be shown based on sidebar visibility and orientation
+  const shouldShowHeader = useCallback(() => {
+    if (forceHideHeader) return false;
+    
+    // In portrait mode (mobile), start with header visible
+    if (isPortrait) return !showMeasurementTools;
+    
+    // In landscape mode (desktop), start with sidebar, hide header
+    return !showMeasurementTools;
+  }, [forceHideHeader, isPortrait, showMeasurementTools]);
+  
+  const [showHeader, setShowHeader] = useState(shouldShowHeader());
+  
+  // Update header visibility whenever dependencies change
+  useEffect(() => {
+    setShowHeader(shouldShowHeader());
+  }, [shouldShowHeader, showMeasurementTools, isPortrait]);
+  
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
   const modelViewer = useModelViewer({
@@ -619,7 +637,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         onTakeScreenshot={handleTakeScreenshot}
         onExportMeasurements={handleExportMeasurements}
         isMobile={isMobile}
-        forceHideHeader={forceHideHeader}
+        forceHideHeader={!showHeader}
       />
       
       <ViewerContainer
