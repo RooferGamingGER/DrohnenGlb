@@ -1257,12 +1257,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setBackground(option);
     
     if (sceneRef.current && rendererRef.current) {
-      if (option.id === 'color') {
+      if (option.color !== null) {
         sceneRef.current.background = new THREE.Color(option.color);
         rendererRef.current.setClearColor(option.color, 1);
-      } else if (option.id === 'image') {
+      } else if (option.texture !== null) {
         try {
-          const texture = await loadTexture(option.src || '');
+          const texture = await loadTexture(option.texture);
           sceneRef.current.background = texture;
         } catch (error) {
           console.error("Error loading background texture:", error);
