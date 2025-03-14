@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Home } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -203,26 +204,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipContent>
               </Tooltip>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onToolChange('roof')}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      activeTool === 'roof' 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-secondary"
-                    )}
-                    aria-label="Dachfläche zeichnen"
-                  >
-                    <Home size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>Dachfläche zeichnen</p>
-                </TooltipContent>
-              </Tooltip>
-              
               {canUndo && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -346,12 +327,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         <>
                           <ArrowUpDown size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}</span>
-                        </>
-                      )}
-                      {m.type === 'roof' && (
-                        <>
-                          <Home size={14} />
-                          <span>{m.area?.toFixed(2) || "0.00"} m²</span>
                         </>
                       )}
                     </span>
