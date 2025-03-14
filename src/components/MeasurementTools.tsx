@@ -107,7 +107,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleInputClick = (event: React.MouseEvent) => {
-    event.preventDefault();
     event.stopPropagation();
   };
 
@@ -116,7 +115,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleContainerClick = (event: React.MouseEvent) => {
-    event.preventDefault();
     event.stopPropagation();
     if (activeTool !== 'none') {
       onToolChange('none');
@@ -134,8 +132,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         isMobile && "max-w-full w-full"
       )}
       onClick={handleContainerClick}
-      onMouseDown={handleContainerClick}
-      onMouseUp={handleContainerClick}
     >
       <div className="flex flex-col gap-2">
         <TooltipProvider delayDuration={300}>

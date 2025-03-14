@@ -1,4 +1,3 @@
-
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Measurement, isInclinationSignificant, MeasurementType } from '../measurementUtils';
@@ -102,7 +101,6 @@ export const exportMeasurementsToPDF = async (
                 const measurementRow = [
                     m.description || '-',
                     m.type === 'length' ? 'Länge' : 
-                    m.type === 'area' ? 'Fläche' : 
                     m.type === 'height' ? 'Höhe' : 'Andere',
                     `${m.value.toFixed(2)} ${m.unit}`
                 ];

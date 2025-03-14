@@ -50,12 +50,12 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   tempPoints,
   onDeleteTempPoint
 }) => {
-  const totalArea = measurements
-    .filter(m => m.type === 'area' && m.value && m.visible)
+  const totalLength = measurements
+    .filter(m => m.type === 'length' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
   
-  const totalAreaCount = measurements
-    .filter(m => m.type === 'area' && m.visible)
+  const totalLengthCount = measurements
+    .filter(m => m.type === 'length' && m.visible)
     .length;
 
   const handleDownloadReport = async () => {
@@ -84,15 +84,13 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  if (isMobile && isFullscreen) {
+  // Mobile portrait layout (bottom panel)
+  if (isMobile && window.innerHeight > window.innerWidth) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center sticky top-0 bg-white">
-            <span className="font-bold">Zusammenfassung</span>
             <div className="flex space-x-2">
-              <span className="measurement-label inline-block px-2 py-1 text-xs">Gesamte Fläche: {totalArea.toFixed(2)} m²</span>
-              <span className="text-xs">Anzahl: {totalAreaCount}</span>
             </div>
           </div>
           
@@ -159,21 +157,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     );
   }
 
+  // Desktop or landscape layout (side panel)
   return (
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
         <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
-          <h2 className="text-lg font-bold">Zusammenfassung</h2>
-          <div className="space-y-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span>Gesamte Fläche:</span>
-              <span className="measurement-label inline-block px-2 py-0.5 text-sm">{totalArea.toFixed(2)} m²</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Anzahl der Flächen:</span>
-              <span>{totalAreaCount}</span>
-            </div>
-          </div>
         </SidebarHeader>
         
         <SidebarContent className="p-4">
