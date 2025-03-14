@@ -127,14 +127,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setShowMeasurementsList(!showMeasurementsList);
   };
 
-  const handleDeleteTempPoint = (index: number, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (onDeleteTempPoint) {
-      onDeleteTempPoint(index);
-    }
-  };
-
   return (
     <div 
       className={cn(
@@ -260,7 +252,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {isMobile && (measurements.length > 0 || tempPoints.length > 0) && (
+              {isMobile && measurements.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -281,34 +273,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
         </TooltipProvider>
       </div>
       
-      {(measurements.length > 0 || tempPoints.length > 0) && showMeasurementsList && (
+      {measurements.length > 0 && showMeasurementsList && (
         <div className="text-xs space-y-1 max-w-full">
           <h3 className="font-medium">Messungen</h3>
           
-          <ScrollArea className={(measurements.length + tempPoints.length) > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
+          <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
-              {/* Display temporary measurement points */}
-              {tempPoints.length > 0 && (
-                <li className="bg-orange-100/80 p-2 rounded">
-                  <div className="mb-1 font-medium">Temporäre Punkte</div>
-                  {tempPoints.map((point, index) => (
-                    <div key={index} className="flex items-center justify-between pl-2 py-1">
-                      <div className="flex items-center gap-1">
-                        <MapPin size={14} />
-                        <span>Punkt {index + 1}</span>
-                      </div>
-                      <button 
-                        onClick={(e) => handleDeleteTempPoint(index, e)}
-                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                        aria-label="Punkt löschen"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </li>
-              )}
-              
               {/* Display completed measurements */}
               {measurements.map((m) => (
                 <li key={m.id} className={cn(

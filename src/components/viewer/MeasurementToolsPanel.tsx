@@ -86,33 +86,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Render temporary points list
-  const renderTempPoints = () => {
-    if (tempPoints.length === 0) return null;
-    
-    return (
-      <div className="mb-4">
-        <h3 className="font-semibold mb-2">Temporäre Messpunkte</h3>
-        <div className="space-y-2">
-          {tempPoints.map((point, index) => (
-            <div key={`temp-point-${index}`} className="flex items-center justify-between p-2 bg-gray-100 rounded">
-              <span className="text-sm">Messpunkt {index + 1}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDeleteTempPoint(index)}
-                title="Temporären Messpunkt löschen"
-                className="h-8 w-8 hover:bg-red-100"
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   // Mobile view in portrait mode
   if (isMobile && isFullscreen) {
     return (
@@ -164,8 +137,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               Speichern
             </Button>
           </div>
-          
-          {renderTempPoints()}
           
           <MeasurementTools
             activeTool={activeTool}
@@ -244,8 +215,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           </div>
           
           <ScrollArea className="h-[calc(100vh-380px)]">
-            {renderTempPoints()}
-            
             <MeasurementTools
               activeTool={activeTool}
               onToolChange={onToolChange}
