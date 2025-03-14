@@ -126,7 +126,7 @@ export const calculateArea = (points: THREE.Vector3[]): number => {
 export const isPointCloseToFirst = (
   firstPoint: THREE.Vector3, 
   currentPoint: THREE.Vector3, 
-  threshold: number = 0.5 // Increased from 0.3 to 0.5 for better detection
+  threshold: number = 0.8 // Increased from 0.5 to 0.8 for easier detection
 ): boolean => {
   return firstPoint.distanceTo(currentPoint) < threshold;
 };
@@ -663,7 +663,7 @@ export const updateAreaMeasurementGeometry = (measurement: Measurement, scene: T
 // Check if the area measurement should be completed (last point close to first point)
 export const shouldCompleteAreaMeasurement = (
   measurement: Measurement, 
-  threshold: number = 0.5 // Increased from 0.3 to 0.5 for better first point detection
+  threshold: number = 0.8 // Increased from 0.5 to 0.8 for easier first point detection
 ): boolean => {
   if (measurement.type !== 'area' || measurement.points.length < 3) {
     return false;

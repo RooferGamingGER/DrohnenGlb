@@ -397,7 +397,7 @@ const ModelViewer: React.FC = () => {
           const isCloseToFirst = isPointCloseToFirst(
             firstPoint,
             intersects[0].point,
-            0.5
+            0.8
           );
           
           if (isCloseToFirst) {
@@ -407,6 +407,7 @@ const ModelViewer: React.FC = () => {
             if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
                 firstPointObject.material instanceof THREE.MeshBasicMaterial) {
               firstPointObject.material.color.set(0xffff00);
+              firstPointObject.scale.set(1.5, 1.5, 1.5);
             }
           } else {
             document.body.style.cursor = 'crosshair';
@@ -415,6 +416,7 @@ const ModelViewer: React.FC = () => {
             if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
                 firstPointObject.material instanceof THREE.MeshBasicMaterial) {
               firstPointObject.material.color.set(0xff0000);
+              firstPointObject.scale.set(1, 1, 1);
             }
           }
         }
@@ -494,7 +496,25 @@ const ModelViewer: React.FC = () => {
       );
       
       if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3) {
-        if (shouldCompleteAreaMeasurement(activeAreaMeasurement, 0.5)) {
+        const firstPoint = activeAreaMeasurement.points[0].position;
+        
+        raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+        
+        if (intersects.length > 0) {
+          const clickedPosition = intersects[0].point;
+          const distanceToFirst = firstPoint.distanceTo(clickedPosition);
+          
+          if (distanceToFirst < 0.8) {
+            console.log('First point clicked - completing area measurement');
+            handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+        }
+        
+        if (shouldCompleteAreaMeasurement(activeAreaMeasurement, 0.8)) {
           handleCompleteAreaMeasurement(activeAreaMeasurement.id);
           event.preventDefault();
           event.stopPropagation();

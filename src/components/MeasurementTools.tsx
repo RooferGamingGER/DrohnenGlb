@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, Home } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
@@ -448,7 +447,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <div className="mt-1 text-xs text-primary">
                       {m.points && m.points.length < 3 
                         ? `Klicken Sie auf mindestens ${3 - (m.points?.length || 0)} weitere Punkte` 
-                        : 'Klicken Sie auf den ersten Punkt, um die Fläche zu schließen oder auf den Haken, um die Flächenmessung abzuschließen'}
+                        : 'Klicken Sie auf den ersten Punkt (rot), um die Fläche zu schließen oder auf den Haken, um die Flächenmessung abzuschließen'}
                     </div>
                   )}
                 </li>
