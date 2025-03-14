@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
@@ -251,7 +252,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={toggleMeasurementsList}
+                      onClick={handleToggleMeasurementsList}
                       className="p-2 rounded-md hover:bg-secondary transition-colors"
                       aria-label={showMeasurementsList ? "Messungen ausblenden" : "Messungen einblenden"}
                     >
