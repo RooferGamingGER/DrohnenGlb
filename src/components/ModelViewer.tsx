@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -16,7 +17,9 @@ import {
   updateMeasurementGeometry,
   shouldCompleteAreaMeasurement,
   updateAreaMeasurementGeometry,
-  isPointCloseToFirst
+  isPointCloseToFirst,
+  highlightFirstPointInAreaMeasurement,
+  createAreaCompletionHelper
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -41,6 +44,8 @@ const ModelViewer: React.FC = () => {
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
+  const [isNearFirstPoint, setIsNearFirstPoint] = useState(false);
+  const [areaCompletionHelper, setAreaCompletionHelper] = useState<THREE.Mesh | null>(null);
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
@@ -59,6 +64,7 @@ const ModelViewer: React.FC = () => {
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (!measurement || measurement.type !== 'area') return;
     
+    // Always mark the measurement as complete first
     modelViewer.updateMeasurement(id, { isComplete: true });
     
     if (measurement.points.length >= 3) {
@@ -67,7 +73,8 @@ const ModelViewer: React.FC = () => {
       const firstPoint = measurement.points[0].position;
       const lastPoint = measurement.points[measurement.points.length - 1].position;
       
-      if (isPointCloseToFirst(firstPoint, lastPoint)) {
+      // If the last point is close to the first point, remove it to avoid duplicates
+      if (isPointCloseToFirst(firstPoint, lastPoint, 3.0)) {
         console.log('Removing redundant last point as it\'s close to first point');
         const updatedPoints = [...measurement.points];
         updatedPoints.pop();
@@ -78,15 +85,26 @@ const ModelViewer: React.FC = () => {
         updateAreaMeasurementGeometry(measurement, modelViewer.measurementGroupRef.current);
       }
       
+      // Remove any area completion helper if it exists
+      if (areaCompletionHelper && modelViewer.measurementGroupRef?.current) {
+        modelViewer.measurementGroupRef.current.remove(areaCompletionHelper);
+        setAreaCompletionHelper(null);
+      }
+      
+      // Show success message with the calculated area
       toast({
         title: "Flächenmessung abgeschlossen",
         description: `Die Fläche beträgt ${measurement.area?.toFixed(2)} m².`,
         duration: 5000,
       });
       
+      // Reset to navigation mode
       modelViewer.setActiveTool('none');
+      
+      // Clear the first point highlight state
+      setIsNearFirstPoint(false);
     }
-  }, [modelViewer, toast]);
+  }, [modelViewer, toast, areaCompletionHelper]);
 
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.glb')) {
@@ -138,7 +156,7 @@ const ModelViewer: React.FC = () => {
     if (tool === 'area') {
       toast({
         title: "Flächenmessung gestartet",
-        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Bewegen Sie die Maus über den ersten Punkt und klicken Sie darauf, um die Messung abzuschließen.",
+        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Um die Fläche abzuschließen, klicken Sie auf den ersten Punkt (rot) oder auf den gelben Haken-Button in der Flächenübersicht.",
         duration: 5000,
       });
     }
@@ -384,6 +402,7 @@ const ModelViewer: React.FC = () => {
       updateCursorForDraggablePoint(!!nearestPoint);
     }
 
+    // Handle area measurement completion and first point highlighting
     if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
       const activeAreaMeasurement = modelViewer.measurements.find(
         m => m.type === 'area' && m.isActive && !m.isComplete
@@ -397,40 +416,67 @@ const ModelViewer: React.FC = () => {
         const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel!, true);
         
         if (intersects.length > 0) {
+          // Check if mouse is near the first point with a very generous threshold
           const isCloseToFirst = isPointCloseToFirst(
             firstPoint,
             intersects[0].point,
-            1.5
+            3.0
           );
           
+          // Update the state to track if we're near the first point
+          setIsNearFirstPoint(isCloseToFirst);
+          
           if (isCloseToFirst) {
-            document.body.style.cursor = 'cell';
+            // Set special cursor when near first point
+            document.body.style.cursor = 'pointer';
             
-            const firstPointObject = activeAreaMeasurement.pointObjects?.[0];
-            if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
-                firstPointObject.material instanceof THREE.MeshBasicMaterial) {
-              firstPointObject.material.color.set(0xffff00);
-              firstPointObject.scale.set(2.5, 2.5, 2.5);
+            // Highlight the first point
+            highlightFirstPointInAreaMeasurement(activeAreaMeasurement, true);
+            
+            // Create or update a visual helper for area completion
+            if (!areaCompletionHelper && modelViewer.measurementGroupRef?.current) {
+              const helper = createAreaCompletionHelper(firstPoint.clone().add(new THREE.Vector3(0, 0.1, 0)));
+              modelViewer.measurementGroupRef.current.add(helper);
+              setAreaCompletionHelper(helper);
             }
             
+            // Auto-complete the area if very close to the first point (within 0.4 units)
             if (firstPoint.distanceTo(intersects[0].point) < 0.4) {
               console.log('Auto-completing area measurement due to proximity');
               handleCompleteAreaMeasurement(activeAreaMeasurement.id);
             }
           } else {
+            // Reset cursor
             document.body.style.cursor = 'crosshair';
             
-            const firstPointObject = activeAreaMeasurement.pointObjects?.[0];
-            if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
-                firstPointObject.material instanceof THREE.MeshBasicMaterial) {
-              firstPointObject.material.color.set(0xff0000);
-              firstPointObject.scale.set(1, 1, 1);
+            // Remove highlight from first point
+            highlightFirstPointInAreaMeasurement(activeAreaMeasurement, false);
+            
+            // Remove any area completion helper if it exists
+            if (areaCompletionHelper && modelViewer.measurementGroupRef?.current) {
+              modelViewer.measurementGroupRef.current.remove(areaCompletionHelper);
+              setAreaCompletionHelper(null);
             }
           }
         }
       }
+    } else {
+      // Reset near first point state if not in area measurement mode
+      if (isNearFirstPoint) {
+        setIsNearFirstPoint(false);
+      }
+      
+      // Remove any area completion helper when not in area measurement mode
+      if (areaCompletionHelper && modelViewer.measurementGroupRef?.current) {
+        modelViewer.measurementGroupRef.current.remove(areaCompletionHelper);
+        setAreaCompletionHelper(null);
+      }
     }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging, handleCompleteAreaMeasurement]);
+  }, [
+    isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, 
+    selectedPointIndex, isDragging, handleCompleteAreaMeasurement, 
+    isNearFirstPoint, areaCompletionHelper
+  ]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (event.button !== 0) return;
@@ -443,6 +489,7 @@ const ModelViewer: React.FC = () => {
     
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
+    // PRIORITY 1: Check for area measurement completion first
     if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
       const activeAreaMeasurement = modelViewer.measurements.find(
         m => m.type === 'area' && m.isActive && !m.isComplete
@@ -457,10 +504,12 @@ const ModelViewer: React.FC = () => {
         if (intersects.length > 0) {
           const clickedPosition = intersects[0].point;
           
+          // Use a VERY generous threshold to detect clicks near the first point (3.0 units)
           const distanceToFirst = firstPoint.distanceTo(clickedPosition);
           
-          if (distanceToFirst < 2.0) {
-            console.log('First point clicked - completing area measurement');
+          // If we're anywhere near the first point, complete the area measurement
+          if (distanceToFirst < 3.0) {
+            console.log('First point clicked or area near it - completing area measurement');
             handleCompleteAreaMeasurement(activeAreaMeasurement.id);
             event.preventDefault();
             event.stopPropagation();
@@ -470,6 +519,7 @@ const ModelViewer: React.FC = () => {
       }
     }
     
+    // PRIORITY 2: Check for editable point dragging
     if (modelViewer.measurementGroupRef?.current) {
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       raycasterRef.current.params.Points = { threshold: 0.1 };
@@ -566,6 +616,7 @@ const ModelViewer: React.FC = () => {
     
     const touchPosition = new THREE.Vector2(touchX, touchY);
     
+    // PRIORITY 1: Check for area measurement completion first (with even more generous threshold for touch)
     if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
       const activeAreaMeasurement = modelViewer.measurements.find(
         m => m.type === 'area' && m.isActive && !m.isComplete
@@ -580,10 +631,11 @@ const ModelViewer: React.FC = () => {
         if (intersects.length > 0) {
           const clickedPosition = intersects[0].point;
           
+          // Use an even more generous threshold for touch interactions (3.5 units)
           const distanceToFirst = firstPoint.distanceTo(clickedPosition);
           
-          if (distanceToFirst < 2.0) {
-            console.log('First point touched - completing area measurement');
+          if (distanceToFirst < 3.5) {
+            console.log('First point touched or area near it - completing area measurement');
             handleCompleteAreaMeasurement(activeAreaMeasurement.id);
             event.preventDefault();
             return;
@@ -592,6 +644,7 @@ const ModelViewer: React.FC = () => {
       }
     }
     
+    // PRIORITY 2: Rest of touch handling logic
     if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
       raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
       raycasterRef.current.params.Points = { threshold: 0.2 };
@@ -747,13 +800,25 @@ const ModelViewer: React.FC = () => {
           modelViewer.setActiveTool('none');
         }
       }
+      
+      // Add a keyboard shortcut (Space) to complete area measurements
+      if (event.key === ' ' || event.code === 'Space') {
+        const activeAreaMeasurement = modelViewer.measurements.find(
+          m => m.type === 'area' && m.isActive && !m.isComplete && m.points.length >= 3
+        );
+        
+        if (activeAreaMeasurement) {
+          event.preventDefault();
+          handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+        }
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isDragging, isFollowingMouse, modelViewer, toast]);
+  }, [isDragging, isFollowingMouse, modelViewer, toast, handleCompleteAreaMeasurement]);
 
   return (
     <div className="relative h-full w-full flex flex-col">
@@ -813,6 +878,17 @@ const ModelViewer: React.FC = () => {
       {modelViewer.error && (
         <div className="absolute bottom-4 left-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md">
           <p>{modelViewer.error}</p>
+        </div>
+      )}
+      
+      {/* Display a floating information tooltip for area measurement */}
+      {modelViewer.activeTool === 'area' && modelViewer.loadedModel && (
+        <div className="absolute top-20 right-4 bg-black/60 text-white p-3 rounded-lg max-w-xs z-20">
+          <p className="text-sm">
+            <strong>Flächenmessung:</strong> Klicken Sie auf den ersten Punkt (rot) oder den 
+            gelben Haken-Button, um die Messung abzuschließen. Drücken Sie die Leertaste 
+            für einen schnellen Abschluss.
+          </p>
         </div>
       )}
       

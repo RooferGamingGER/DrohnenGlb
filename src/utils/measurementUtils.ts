@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -124,10 +123,11 @@ export const calculateArea = (points: THREE.Vector3[]): number => {
 };
 
 // Function to check if a point is close to another point
+// Significantly increased and improved for better detection
 export const isPointCloseToFirst = (
   firstPoint: THREE.Vector3, 
   currentPoint: THREE.Vector3, 
-  threshold: number = 1.5 // Further increased from 1.2 to 1.5 for even better detection
+  threshold: number = 3.0 // Drastically increased from 1.5 to 3.0 for much better detection
 ): boolean => {
   return firstPoint.distanceTo(currentPoint) < threshold;
 };
@@ -246,17 +246,17 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   );
 };
 
-// Deutlich verbesserte visuelle Darstellung im Editiermodus
+// Enhanced visual representation in edit mode
 export const createEditablePointMaterial = (isSelected: boolean = false): THREE.MeshBasicMaterial => {
-  // Auffälligere, intensive Farbe für Editiermodus
+  // More noticeable, intense color for edit mode
   return new THREE.MeshBasicMaterial({ 
-    color: isSelected ? 0x00ff00 : 0xff00ff, // Magenta für bearbeitbare Punkte
+    color: isSelected ? 0x00ff00 : 0xff00ff, // Magenta for editable points
     opacity: 0.9,
     transparent: true
   });
 };
 
-// Standard-Punktmaterial, wenn nicht im Editiermodus
+// Standard point material when not in edit mode
 export const createDraggablePointMaterial = (isHovered: boolean = false, isSelected: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
     color: isSelected ? 0x00ff00 : (isHovered ? 0xffff00 : 0xff0000),
@@ -265,11 +265,24 @@ export const createDraggablePointMaterial = (isHovered: boolean = false, isSelec
   });
 };
 
+// Create a specialized material for the first point in area measurements 
+// to make it more prominent and noticeable
+export const createFirstPointMaterial = (isHovered: boolean = false): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({ 
+    color: isHovered ? 0xffff00 : 0xff0000, // Very bright yellow when hovered, red otherwise
+    opacity: 1.0,
+    transparent: true
+  });
+};
+
 // Create draggable measurement point with increased size for better touch interaction
-export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
-  // Normale Größe für nicht-editierbare Punkte
+export const createDraggablePoint = (position: THREE.Vector3, name: string, isFirstPoint: boolean = false): THREE.Mesh => {
+  // Normal size for non-editable points
   const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
-  const pointMaterial = createDraggablePointMaterial();
+  
+  // Choose the appropriate material based on whether this is the first point in an area measurement
+  const pointMaterial = isFirstPoint ? createFirstPointMaterial() : createDraggablePointMaterial();
+  
   const point = new THREE.Mesh(pointGeometry, pointMaterial);
   point.position.copy(position);
   point.name = name;
@@ -281,6 +294,7 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
     isBeingDragged: false,
     isSelected: false,
     isEditable: false,
+    isFirstPoint: isFirstPoint,
     originalScale: new THREE.Vector3(1, 1, 1)
   };
   
@@ -385,12 +399,12 @@ export const highlightMeasurementPoints = (
   });
 };
 
-// Vergrößerter Hittest-Radius für bessere Erkennung
+// Enlarged hit-test radius for better detection
 export const getPointHitTestRadius = (): number => {
-  return 0.3; // Deutlich größerer Bereich als die visuelle Größe des Punktes
+  return 0.4; // Significantly larger area than the visual size of the point
 };
 
-// Neuer Helfer: Zeige "Kann ziehen"-Cursor, wenn über editierbarem Punkt
+// New helper: Show "can drag" cursor when over editable point
 export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isDragging: boolean = false): void => {
   if (isOverDraggablePoint) {
     document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
@@ -399,13 +413,13 @@ export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isD
   }
 };
 
-// Verbesserte Version: Finde den nächsten Punkt innerhalb des Hit-Radius
+// Improved version: Find the nearest point within the hit radius
 export const findNearestEditablePoint = (
   raycaster: THREE.Raycaster,
   camera: THREE.Camera,
   mousePosition: THREE.Vector2,
   scene: THREE.Group,
-  hitRadius: number = 0.4 // Erhöhter Radius für bessere Erkennung
+  hitRadius: number = 0.5 // Increased radius for better detection
 ): THREE.Mesh | null => {
   // Aktualisiere Raycaster mit aktueller Mausposition
   raycaster.setFromCamera(mousePosition, camera);
@@ -564,6 +578,49 @@ export const createAreaPolygon = (
   return mesh;
 };
 
+// Highlight the first point in an area measurement to make it more obvious
+// that users should click it to complete the polygon
+export const highlightFirstPointInAreaMeasurement = (
+  measurement: Measurement,
+  isNearFirstPoint: boolean
+): void => {
+  if (!measurement.pointObjects || measurement.pointObjects.length === 0) {
+    return;
+  }
+  
+  // Get the first point
+  const firstPoint = measurement.pointObjects[0];
+  
+  if (firstPoint instanceof THREE.Mesh && 
+      firstPoint.material instanceof THREE.MeshBasicMaterial) {
+    
+    // Update color based on hover state
+    firstPoint.material.color.set(isNearFirstPoint ? 0xffff00 : 0xff0000);
+    
+    // Scale up the first point to make it more noticeable
+    // Use a larger scale when the mouse is near it
+    const scale = isNearFirstPoint ? 3.0 : 1.5;
+    firstPoint.scale.set(scale, scale, scale);
+    
+    // Add pulsing animation if near first point
+    if (isNearFirstPoint) {
+      // Store the original scale if not already stored
+      if (!firstPoint.userData.originalScale) {
+        firstPoint.userData.originalScale = new THREE.Vector3(1, 1, 1);
+      }
+      
+      // Animate the point by scaling it up and down slightly
+      const time = Date.now() * 0.003;
+      const pulseFactor = 0.2 * Math.sin(time) + 1.0;
+      firstPoint.scale.set(
+        scale * pulseFactor,
+        scale * pulseFactor,
+        scale * pulseFactor
+      );
+    }
+  }
+};
+
 // Update the measurement lines, polygon and label for area measurements
 export const updateAreaMeasurementGeometry = (measurement: Measurement, scene: THREE.Group): void => {
   if (!measurement.points || measurement.points.length < 3) return;
@@ -664,7 +721,7 @@ export const updateAreaMeasurementGeometry = (measurement: Measurement, scene: T
 // Check if the area measurement should be completed (last point close to first point)
 export const shouldCompleteAreaMeasurement = (
   measurement: Measurement, 
-  threshold: number = 1.5 // Increased from 1.2 to 1.5 for much better first point detection
+  threshold: number = 3.0 // Drastically increased from 1.5 to 3.0 for much better first point detection
 ): boolean => {
   if (measurement.type !== 'area' || measurement.points.length < 3) {
     return false;
@@ -674,6 +731,17 @@ export const shouldCompleteAreaMeasurement = (
   const lastPoint = measurement.points[measurement.points.length - 1].position;
   
   return isPointCloseToFirst(firstPoint, lastPoint, threshold);
+};
+
+// Find all points that are close to a given position
+export const findPointsNearPosition = (
+  position: THREE.Vector3,
+  points: THREE.Mesh[],
+  threshold: number = 3.0
+): THREE.Mesh[] => {
+  return points.filter(point => 
+    point.position.distanceTo(position) < threshold
+  );
 };
 
 // Update the measurement lines and label
@@ -822,4 +890,23 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       measurement.labelObject.position.copy(offsetPosition);
     }
   }
+};
+
+// Create a visual indicator/helper for completing area measurements
+export const createAreaCompletionHelper = (position: THREE.Vector3): THREE.Mesh => {
+  // Create a ring to visually indicate where to click to complete the area
+  const ringGeometry = new THREE.RingGeometry(0.15, 0.25, 32);
+  const ringMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xffff00, 
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.8
+  });
+  
+  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+  ring.position.copy(position);
+  ring.lookAt(position.clone().add(new THREE.Vector3(0, 1, 0)));
+  ring.userData = { isAreaCompletionHelper: true };
+  
+  return ring;
 };
