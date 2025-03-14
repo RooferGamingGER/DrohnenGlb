@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
@@ -29,8 +30,8 @@ interface MeasurementToolsProps {
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;
-  tempPoints: MeasurementPoint[];
-  onDeleteTempPoint: (index: number) => void;
+  tempPoints?: MeasurementPoint[];
+  onDeleteTempPoint?: (index: number) => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -130,38 +131,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     console.log("Delete temp point triggered for index:", index);
     event.preventDefault();
     event.stopPropagation();
-    
     if (onDeleteTempPoint) {
-      console.log("Calling onDeleteTempPoint callback with index:", index);
       onDeleteTempPoint(index);
-    } else {
-      console.error("onDeleteTempPoint callback is not defined");
     }
-  };
-
-  const renderTempPoints = () => {
-    if (!tempPoints || tempPoints.length === 0) return null;
-    
-    return (
-      <div className="mt-4 mb-2">
-        <h3 className="font-semibold mb-2 text-sm">Temporäre Punkte</h3>
-        <ul className="space-y-1">
-          {tempPoints.map((point, index) => (
-            <li key={`temp-point-${index}`} className="flex items-center justify-between p-2 bg-gray-100 rounded text-sm">
-              <span>Punkt {index + 1}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-full"
-                onClick={(e) => handleDeleteTempPoint(index, e)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
   };
 
   return (
@@ -309,8 +281,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           )}
         </TooltipProvider>
       </div>
-      
-      {renderTempPoints()}
       
       {(measurements.length > 0 || tempPoints.length > 0) && showMeasurementsList && (
         <div className="text-xs space-y-1 max-w-full">
