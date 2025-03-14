@@ -97,7 +97,8 @@ export const exportMeasurementsToPDF = async (
             const tableData = measurements.map(m => {
                 const measurementRow = [
                     m.description || '-',
-                    m.type === 'length' ? 'Länge' : 'Höhe',
+                    m.type === 'length' ? 'Länge' : 
+                    m.type === 'area' ? 'Fläche' : 'Höhe',
                     `${m.value.toFixed(2)} ${m.unit}`
                 ];
                 
@@ -207,6 +208,10 @@ export const exportMeasurementsToPDF = async (
 
         // Dokument als PDF speichern
         doc.save('Bericht.pdf');
+        
+        // Optional: Öffne PDF im Browser zum Drucken
+        // const pdfData = doc.output('bloburl');
+        // window.open(pdfData, '_blank');
     } catch (error) {
         console.error("Fehler beim Exportieren als PDF:", error);
         throw error;

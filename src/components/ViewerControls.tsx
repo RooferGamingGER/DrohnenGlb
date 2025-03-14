@@ -8,7 +8,9 @@ import {
   Ruler, 
   Camera, 
   FileText,
-  Home
+  Home,
+  ArrowLeft,
+  RotateCcw
 } from 'lucide-react';
 import { 
   Tooltip,
@@ -50,11 +52,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         <div className="flex md:flex-row flex-wrap gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onReset} className="h-8 w-8 bg-background/90">
-                <RefreshCw className="h-4 w-4" />
+              <Button variant="ghost" size="icon" onClick={onReset} className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white">
+                <RotateCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+            <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
               <p>Ansicht zurücksetzen</p>
             </TooltipContent>
           </Tooltip>
@@ -62,15 +64,15 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="icon" 
                 onClick={toggleMeasurementTools}
-                className="h-8 w-8 bg-background/90"
+                className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
               >
                 <Ruler className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+            <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
               <p>{showMeasurementTools ? "Messwerkzeuge ausblenden" : "Messwerkzeuge anzeigen"}</p>
             </TooltipContent>
           </Tooltip>
@@ -79,15 +81,15 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="icon" 
                   onClick={onScreenshot} 
-                  className="h-8 w-8 bg-background/90"
+                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+              <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
                 <p>Screenshot erstellen</p>
               </TooltipContent>
             </Tooltip>
@@ -96,11 +98,16 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {onExportMeasurements && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onExportMeasurements} className="h-8 w-8 bg-background/90">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onExportMeasurements} 
+                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+                >
                   <FileText className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+              <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
                 <p>Daten exportieren</p>
               </TooltipContent>
             </Tooltip>
@@ -108,7 +115,12 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onFullscreen} className="h-8 w-8 bg-background/90">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onFullscreen} 
+                className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white"
+              >
                 {isFullscreen ? (
                   <Minimize className="h-4 w-4" />
                 ) : (
@@ -116,7 +128,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+            <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
               <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
             </TooltipContent>
           </Tooltip>
@@ -124,11 +136,16 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           {showUpload && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={onNewProject} className="h-8 w-8 bg-background/90 ml-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onNewProject} 
+                  className="h-8 w-8 bg-zinc-800 rounded-full border border-zinc-700 text-white ml-2"
+                >
                   <Home className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="bg-background/90 border border-gray-300">
+              <TooltipContent side="left" className="bg-zinc-800 border border-zinc-700">
                 <p>Neues Projekt</p>
               </TooltipContent>
             </Tooltip>
