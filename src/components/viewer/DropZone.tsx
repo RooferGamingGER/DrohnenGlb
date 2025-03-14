@@ -26,17 +26,17 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex flex-col min-h-screen p-2">
       {/* Hauptinhalt (DropZone und "How It Works") */}
-      <div className="flex flex-col md:flex-row w-full max-w-4xl items-start md:items-center justify-center mx-auto"> {/* max-w erhöht, Zentrierung hinzugefügt */}
+      <div className="flex flex-col md:flex-row w-full max-w-4xl items-start md:items-center justify-center mx-auto">
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1"> {/* Padding erhöht */}
+        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1">
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-md" {/* max-w erhöht, Padding erhöht */}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-md"
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="h-8 w-8 mx-auto mb-3 text-gray-500" />
             <h3 className="text-lg font-semibold mb-2 text-gray-800">GLB-Datei hochladen</h3>
             <p className="text-sm text-gray-600 mb-4">Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
-            <Button className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-sm"> {/* Button erhöht */}
+            <Button className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-sm">
               <Upload className="mr-2 h-4 w-4" />
               Datei auswählen
             </Button>
@@ -51,8 +51,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1"> {/* Padding erhöht */}
-          <div className="bg-white rounded-lg p-6 max-w-md w-full"> {/* max-w erhöht, Padding erhöht */}
+        <div className="w-full md:w-1/2 p-6 flex flex-col items-center flex-shrink-1">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h2 className="text-xl font-bold mb-3 text-gray-800">Erklärung</h2>
 
             <div className="flex items-start mb-3">
