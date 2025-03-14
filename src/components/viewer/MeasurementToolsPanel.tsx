@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -70,7 +69,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
 
     try {
-      // Don't open print dialog, just save the file
       await exportMeasurementsToPDF(measurements, screenshots, false);
       toast({
         title: "Bericht gespeichert",
@@ -86,7 +84,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Mobile view in portrait mode
   if (isMobile && isFullscreen) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
@@ -162,7 +159,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     );
   }
 
-  // Desktop view
   return (
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
