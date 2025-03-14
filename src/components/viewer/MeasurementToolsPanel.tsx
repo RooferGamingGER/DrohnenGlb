@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -27,6 +28,7 @@ interface MeasurementToolsPanelProps {
   onTakeScreenshot: () => void;
   tempPoints: MeasurementPoint[];
   onDeleteTempPoint: (index: number) => void;
+  onDeleteSinglePoint: (measurementId: string, pointIndex: number) => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
@@ -48,7 +50,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onNewProject,
   onTakeScreenshot,
   tempPoints,
-  onDeleteTempPoint
+  onDeleteTempPoint,
+  onDeleteSinglePoint
 }) => {
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
@@ -151,6 +154,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             scrollThreshold={3}
             tempPoints={tempPoints}
             onDeleteTempPoint={onDeleteTempPoint}
+            onDeleteSinglePoint={onDeleteSinglePoint}
           />
         </div>
       </div>
@@ -217,6 +221,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               scrollThreshold={5}
               tempPoints={tempPoints}
               onDeleteTempPoint={onDeleteTempPoint}
+              onDeleteSinglePoint={onDeleteSinglePoint}
             />
           </ScrollArea>
         </SidebarContent>

@@ -694,6 +694,175 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  const deleteSinglePoint = (measurementId: string, pointIndex: number) => {
+    const measurement = measurements.find(m => m.id === measurementId);
+    
+    if (!measurement || !measurementGroupRef.current) {
+      return;
+    }
+    
+    if (measurement.type === 'length' && measurement.points.length <= 2) {
+      deleteMeasurement(measurementId);
+      toast({
+        title: "Messung gelöscht",
+        description: "Die Messung wurde gelöscht, da sie mindestens zwei Punkte benötigt.",
+      });
+      return;
+    }
+    
+    if (measurement.type === 'height' && measurement.points.length <= 2) {
+      deleteMeasurement(measurementId);
+      toast({
+        title: "Messung gelöscht",
+        description: "Die Messung wurde gelöscht, da sie mindestens zwei Punkte benötigt.",
+      });
+      return;
+    }
+    
+    const pointToDelete = measurement.pointObjects?.[pointIndex];
+    if (pointToDelete && measurementGroupRef.current) {
+      pointToDelete.geometry.dispose();
+      (pointToDelete.material as THREE.Material).dispose();
+      measurementGroupRef.current.remove(pointToDelete);
+    }
+    
+    setMeasurements(prevMeasurements => 
+      prevMeasurements.map(m => {
+        if (m.id === measurementId) {
+          const updatedPoints = [...m.points];
+          updatedPoints.splice(pointIndex, 1);
+          
+          const updatedPointObjects = [...(m.pointObjects || [])];
+          updatedPointObjects.splice(pointIndex, 1);
+          
+          if (m.lineObjects && measurementGroupRef.current) {
+            m.lineObjects.forEach(line => {
+              line.geometry.dispose();
+              (line.material as THREE.Material).dispose();
+              measurementGroupRef.current?.remove(line);
+            });
+          }
+          
+          let newLineObjects: THREE.Line[] = [];
+          if (updatedPoints.length >= 2) {
+            if (m.type === 'length') {
+              for (let i = 0; i < updatedPoints.length - 1; i++) {
+                const line = createMeasurementLine(
+                  [updatedPoints[i].position, updatedPoints[i + 1].position],
+                  0x00ff00
+                );
+                measurementGroupRef.current?.add(line);
+                newLineObjects.push(line);
+              }
+            } else if (m.type === 'height') {
+              for (let i = 0; i < updatedPoints.length - 1; i++) {
+                const verticalPoint = new THREE.Vector3(
+                  updatedPoints[i].position.x,
+                  updatedPoints[i + 1].position.y,
+                  updatedPoints[i].position.z
+                );
+                
+                const line = createMeasurementLine(
+                  [updatedPoints[i].position, verticalPoint, updatedPoints[i + 1].position],
+                  0x0000ff
+                );
+                measurementGroupRef.current?.add(line);
+                newLineObjects.push(line);
+              }
+            }
+          }
+          
+          let newValue = 0;
+          let newInclination: number | undefined;
+          let newLabelObject: THREE.Sprite | null = null;
+          
+          if (updatedPoints.length >= 2) {
+            if (m.type === 'length') {
+              for (let i = 0; i < updatedPoints.length - 1; i++) {
+                newValue += calculateDistance(
+                  updatedPoints[i].position,
+                  updatedPoints[i + 1].position
+                );
+              }
+              
+              newInclination = calculateInclination(
+                updatedPoints[0].position,
+                updatedPoints[1].position
+              );
+              
+              const midPoint = new THREE.Vector3().addVectors(
+                updatedPoints[0].position,
+                updatedPoints[updatedPoints.length - 1].position
+              ).multiplyScalar(0.5);
+              midPoint.y += 0.1;
+              
+              const labelText = formatMeasurementWithInclination(newValue, newInclination);
+              newLabelObject = createTextSprite(labelText, midPoint, 0x00ff00);
+              
+              newLabelObject.userData = {
+                isLabel: true,
+                baseScale: { x: 0.8, y: 0.4, z: 1 }
+              };
+              
+              if (cameraRef.current) {
+                updateLabelScale(newLabelObject, cameraRef.current);
+              }
+              
+              measurementGroupRef.current?.add(newLabelObject);
+            } else if (m.type === 'height') {
+              newValue = calculateHeight(
+                updatedPoints[0].position,
+                updatedPoints[updatedPoints.length - 1].position
+              );
+              
+              const midHeight = (
+                updatedPoints[0].position.y + 
+                updatedPoints[updatedPoints.length - 1].position.y
+              ) / 2;
+              
+              const midPoint = new THREE.Vector3(
+                updatedPoints[0].position.x,
+                midHeight,
+                updatedPoints[0].position.z
+              );
+              midPoint.x += 0.1;
+              
+              const labelText = `${newValue.toFixed(2)} ${m.unit}`;
+              newLabelObject = createTextSprite(labelText, midPoint, 0x0000ff);
+              
+              newLabelObject.userData = {
+                isLabel: true,
+                baseScale: { x: 0.8, y: 0.4, z: 1 }
+              };
+              
+              if (cameraRef.current) {
+                updateLabelScale(newLabelObject, cameraRef.current);
+              }
+              
+              measurementGroupRef.current?.add(newLabelObject);
+            }
+          }
+          
+          return {
+            ...m,
+            points: updatedPoints,
+            pointObjects: updatedPointObjects,
+            lineObjects: newLineObjects,
+            labelObject: newLabelObject,
+            value: newValue,
+            inclination: m.type === 'length' ? newInclination : undefined
+          };
+        }
+        return m;
+      })
+    );
+    
+    toast({
+      title: "Punkt gelöscht",
+      description: "Der Messpunkt wurde erfolgreich gelöscht.",
+    });
+  };
+
   const deleteTempPoint = (index: number) => {
     if (temporaryPoints.length > index && measurementGroupRef.current) {
       const newPoints = [...temporaryPoints];
@@ -1429,16 +1598,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     clearMeasurements,
     undoLastPoint,
     deleteMeasurement,
-    updateMeasurement,
-    canUndo,
-    initScene,
-    toggleMeasurementsVisibility,
-    measurementGroupRef,
-    renderer: rendererRef.current,
-    scene: sceneRef.current,
-    camera: cameraRef.current,
-    setProgress,
-    tempPoints: temporaryPoints,
-    deleteTempPoint
-  };
-};
+    deleteSinglePoint,
+
+
