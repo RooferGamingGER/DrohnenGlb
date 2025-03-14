@@ -74,6 +74,52 @@ export const createMeasurementId = (): string => {
   return Math.random().toString(36).substring(2, 10);
 };
 
+// Create or remove a temporary point visual representation
+export const createTempPointVisual = (point: MeasurementPoint, index: number): THREE.Mesh => {
+  const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+  const pointMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xff0000,
+    opacity: 0.9,
+    transparent: true 
+  });
+  
+  const pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
+  pointMesh.position.copy(point.position);
+  pointMesh.name = `temp-point-${index}`;
+  
+  // Add userData to identify as temporary point
+  pointMesh.userData = {
+    isTemporaryPoint: true,
+    pointIndex: index
+  };
+  
+  return pointMesh;
+};
+
+// Remove temporary point visual from scene
+export const removeTempPointVisual = (scene: THREE.Group, index: number): void => {
+  const pointName = `temp-point-${index}`;
+  
+  scene.traverse((object) => {
+    if (object.name === pointName) {
+      if (object.parent) {
+        object.parent.remove(object);
+      }
+      
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.material && Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        } else if (object.material) {
+          object.material.dispose();
+        }
+      }
+    }
+  });
+};
+
 // Create a text sprite for measurement labels
 export const createTextSprite = (text: string, position: THREE.Vector3, color: number = 0xffffff): THREE.Sprite => {
   // Create canvas for texture
@@ -529,3 +575,4 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
 }
+
