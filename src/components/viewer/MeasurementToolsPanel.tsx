@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -28,7 +27,6 @@ interface MeasurementToolsPanelProps {
   onTakeScreenshot: () => void;
   tempPoints: MeasurementPoint[];
   onDeleteTempPoint: (index: number) => void;
-  onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
