@@ -1,4 +1,3 @@
-
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -28,14 +27,14 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
-      {/* Information Panel - Now on the left side */}
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen overflow-hidden`}>
+      {/* Information Panel - Now on the left or top side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col justify-center bg-primary/10 overflow-hidden`}>
         <div className="max-w-md mx-auto p-2 md:p-3 space-y-1.5 md:space-y-2">
           <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer
           </h1>
-          
+
           <div className="space-y-1.5 md:space-y-2">
             <div className="flex items-start">
               <div className="bg-primary/20 rounded-full p-1.5 mr-2 flex-shrink-0">
@@ -78,8 +77,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 </p>
                 <p className="text-muted-foreground text-xs leading-tight">
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
-                  <a 
-                    href="mailto:info@drohnenvermessung-roofergaming.de" 
+                  <a
+                    href="mailto:info@drohnenvermessung-roofergaming.de"
                     className="text-primary hover:text-primary/80 transition-colors underline"
                   >
                     info@drohnenvermessung-roofergaming.de
@@ -90,8 +89,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
         </div>
       </div>
-      
-      {/* Upload Area - Now on the right side */}
+
+      {/* Upload Area - Now on the right or bottom side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
         <Card className={`w-full max-w-md mx-4 p-3 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'my-2' : ''}`}>
           <div className="text-center mb-2">
@@ -100,7 +99,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
             </p>
           </div>
-          
+
           <div
             className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-3 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
             onClick={() => fileInputRef.current?.click()}
