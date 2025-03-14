@@ -62,10 +62,13 @@ const ModelViewer: React.FC = () => {
     modelViewer.updateMeasurement(id, { isComplete: true });
     
     if (measurement.points.length >= 3) {
+      console.log('Completing area measurement with', measurement.points.length, 'points');
+      
       const firstPoint = measurement.points[0].position;
       const lastPoint = measurement.points[measurement.points.length - 1].position;
       
       if (isPointCloseToFirst(firstPoint, lastPoint)) {
+        console.log('Removing redundant last point as it\'s close to first point');
         const updatedPoints = [...measurement.points];
         updatedPoints.pop();
         modelViewer.updateMeasurement(id, { points: updatedPoints });
@@ -135,7 +138,7 @@ const ModelViewer: React.FC = () => {
     if (tool === 'area') {
       toast({
         title: "Flächenmessung gestartet",
-        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Bewegen Sie die Maus über den ersten Punkt, um die Messung abzuschließen.",
+        description: "Klicken Sie auf das Modell, um Punkte zu setzen. Bewegen Sie die Maus über den ersten Punkt und klicken Sie darauf, um die Messung abzuschließen.",
         duration: 5000,
       });
     }
@@ -397,7 +400,7 @@ const ModelViewer: React.FC = () => {
           const isCloseToFirst = isPointCloseToFirst(
             firstPoint,
             intersects[0].point,
-            1.2
+            1.5
           );
           
           if (isCloseToFirst) {
@@ -407,19 +410,12 @@ const ModelViewer: React.FC = () => {
             if (firstPointObject && firstPointObject instanceof THREE.Mesh && 
                 firstPointObject.material instanceof THREE.MeshBasicMaterial) {
               firstPointObject.material.color.set(0xffff00);
-              firstPointObject.scale.set(2.0, 2.0, 2.0);
+              firstPointObject.scale.set(2.5, 2.5, 2.5);
             }
             
-            if (firstPoint.distanceTo(intersects[0].point) < 0.5) {
-              setTimeout(() => {
-                const stillActive = modelViewer.measurements.find(
-                  m => m.id === activeAreaMeasurement.id && !m.isComplete
-                );
-                if (stillActive) {
-                  console.log('Auto-completing area measurement due to proximity');
-                  handleCompleteAreaMeasurement(activeAreaMeasurement.id);
-                }
-              }, 500);
+            if (firstPoint.distanceTo(intersects[0].point) < 0.4) {
+              console.log('Auto-completing area measurement due to proximity');
+              handleCompleteAreaMeasurement(activeAreaMeasurement.id);
             }
           } else {
             document.body.style.cursor = 'crosshair';
@@ -446,6 +442,33 @@ const ModelViewer: React.FC = () => {
     const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
+    
+    if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
+      const activeAreaMeasurement = modelViewer.measurements.find(
+        m => m.type === 'area' && m.isActive && !m.isComplete
+      );
+      
+      if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3 && modelViewer.camera) {
+        const firstPoint = activeAreaMeasurement.points[0].position;
+        
+        raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+        
+        if (intersects.length > 0) {
+          const clickedPosition = intersects[0].point;
+          
+          const distanceToFirst = firstPoint.distanceTo(clickedPosition);
+          
+          if (distanceToFirst < 2.0) {
+            console.log('First point clicked - completing area measurement');
+            handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+        }
+      }
+    }
     
     if (modelViewer.measurementGroupRef?.current) {
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
@@ -501,39 +524,6 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-
-    if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
-      const activeAreaMeasurement = modelViewer.measurements.find(
-        m => m.type === 'area' && m.isActive && !m.isComplete
-      );
-      
-      if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3) {
-        const firstPoint = activeAreaMeasurement.points[0].position;
-        
-        raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
-        
-        if (intersects.length > 0) {
-          const clickedPosition = intersects[0].point;
-          const distanceToFirst = firstPoint.distanceTo(clickedPosition);
-          
-          if (distanceToFirst < 1.2) {
-            console.log('First point clicked - completing area measurement');
-            handleCompleteAreaMeasurement(activeAreaMeasurement.id);
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-          }
-        }
-        
-        if (shouldCompleteAreaMeasurement(activeAreaMeasurement, 1.2)) {
-          handleCompleteAreaMeasurement(activeAreaMeasurement.id);
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-      }
-    }
   }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, handleCompleteAreaMeasurement]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
@@ -564,7 +554,7 @@ const ModelViewer: React.FC = () => {
       setSelectedPointIndex(null);
       document.body.style.cursor = 'auto';
     }
-  }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
+  }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast, isFollowingMouse]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
     if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
@@ -575,6 +565,32 @@ const ModelViewer: React.FC = () => {
     const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
     const touchPosition = new THREE.Vector2(touchX, touchY);
+    
+    if (modelViewer.activeTool === 'area' && modelViewer.measurements.length > 0) {
+      const activeAreaMeasurement = modelViewer.measurements.find(
+        m => m.type === 'area' && m.isActive && !m.isComplete
+      );
+      
+      if (activeAreaMeasurement && activeAreaMeasurement.points.length >= 3 && modelViewer.camera) {
+        const firstPoint = activeAreaMeasurement.points[0].position;
+        
+        raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+        
+        if (intersects.length > 0) {
+          const clickedPosition = intersects[0].point;
+          
+          const distanceToFirst = firstPoint.distanceTo(clickedPosition);
+          
+          if (distanceToFirst < 2.0) {
+            console.log('First point touched - completing area measurement');
+            handleCompleteAreaMeasurement(activeAreaMeasurement.id);
+            event.preventDefault();
+            return;
+          }
+        }
+      }
+    }
     
     if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
       raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
@@ -627,7 +643,7 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, handleCompleteAreaMeasurement]);
 
   const handleTouchMove = useCallback((event: TouchEvent) => {
     if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
@@ -670,7 +686,19 @@ const ModelViewer: React.FC = () => {
   }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
 
   const handleTouchEnd = useCallback((event: TouchEvent) => {
-  }, []);
+    if (isFollowingMouse) {
+      setIsFollowingMouse(false);
+      setDraggedPoint(null);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
+      
+      toast({
+        title: "Position aktualisiert",
+        description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
+        duration: 3000,
+      });
+    }
+  }, [isFollowingMouse, toast]);
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
