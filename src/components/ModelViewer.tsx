@@ -654,7 +654,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 <>
                     <ViewerToolbar
                         isFullscreen={isFullscreen}
-                        loadedModel={modelViewer.loadedModel}
+                        loadedModel={!!modelViewer.loadedModel}
                         showMeasurementTools={showMeasurementTools}
                         onReset={handleResetView}
                         onFullscreen={toggleFullscreen}
