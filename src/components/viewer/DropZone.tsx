@@ -26,7 +26,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       {/* Hauptinhalt (DropZone und "How It Works") */}
-      <div className="flex flex-col md:flex-row w-full max-w-2xl items-center justify-center">
+      <div className="flex flex-col md:flex-row w-full max-w-2xl items-start justify-center">
         {/* DropZone-Fenster */}
         <div className="w-full md:w-1/2 p-6 flex flex-col items-center">
           <div
@@ -55,7 +55,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-4 text-gray-800">Erklärung</h2>
 
-            <div className="flex items-center mb-4">
+            <div className="flex items-start mb-4"> {/* items-start für top-align */}
               <div className="bg-blue-100 rounded-full p-2 mr-3">
                 <ArrowDown className="h-5 w-5 text-blue-500" />
               </div>
@@ -65,7 +65,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               </div>
             </div>
 
-            <div className="flex items-center mb-4">
+            <div className="flex items-start mb-4"> {/* items-start für top-align */}
               <div className="bg-blue-100 rounded-full p-2 mr-3">
                 <ArrowUpRight className="h-5 w-5 text-blue-500" />
               </div>
@@ -75,7 +75,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               </div>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-start"> {/* items-start für top-align */}
               <div className="bg-blue-100 rounded-full p-2 mr-3">
                 <Send className="h-5 w-5 text-blue-500" />
               </div>
