@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -25,9 +26,10 @@ import ScreenshotDialog from '@/components/ScreenshotDialog';
 
 interface ModelViewerProps {
   forceHideHeader?: boolean;
+  initialFile?: File;
 }
 
-const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) => {
+const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isMobile, isPortrait } = useIsMobile();
@@ -55,6 +57,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   });
   
   const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+
+  // Load the initial file if provided
+  useEffect(() => {
+    if (initialFile) {
+      handleFileSelected(initialFile);
+    }
+  }, [initialFile]);
 
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.glb')) {
@@ -672,4 +681,3 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
 };
 
 export default ModelViewer;
-

@@ -1,6 +1,6 @@
 
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
 import UploadArea from '@/components/UploadArea';
@@ -12,6 +12,7 @@ const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showModelViewer, setShowModelViewer] = useState(false);
   
   const handleFileSelected = (file: File) => {
     setSelectedFile(file);
@@ -24,6 +25,8 @@ const Index = () => {
         if (prev >= 100) {
           clearInterval(timer);
           setIsLoading(false);
+          // Important: Show the model viewer immediately after upload completes
+          setShowModelViewer(true);
           return 100;
         }
         return prev + 5;
@@ -31,8 +34,8 @@ const Index = () => {
     }, 300);
   };
 
-  // If a file is already selected and loaded, show the model viewer
-  if (selectedFile && !isLoading && uploadProgress >= 100) {
+  // If a file is selected and the upload is complete, or if showModelViewer is true, display the ModelViewer
+  if ((selectedFile && !isLoading && uploadProgress >= 100) || showModelViewer) {
     return <ModelViewer forceHideHeader={true} />;
   }
 
