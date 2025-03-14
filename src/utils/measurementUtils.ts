@@ -496,24 +496,28 @@ export const createAreaPolygon = (
   
   // Adjust the Y coordinates of all vertices to follow the roof shape
   const positions = geometry.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const index = i * 3;
-    const x = positions.getX(i);
-    const z = positions.getZ(i);
-    
-    // Find the average Y of the closest points
-    let totalY = 0;
-    let totalWeight = 0;
-    
-    for (const point of points) {
-      const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(z - point.z, 2));
-      const weight = 1 / (distance + 0.001); // Avoid division by zero
-      totalY += point.y * weight;
-      totalWeight += weight;
+  
+  // Type guard for buffer access
+  if (positions instanceof THREE.BufferAttribute || positions instanceof THREE.InterleavedBufferAttribute) {
+    for (let i = 0; i < positions.count; i++) {
+      const index = i * 3;
+      const x = positions.array[index];
+      const z = positions.array[index + 2];
+      
+      // Find the average Y of the closest points
+      let totalY = 0;
+      let totalWeight = 0;
+      
+      for (const point of points) {
+        const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(z - point.z, 2));
+        const weight = 1 / (distance + 0.001); // Avoid division by zero
+        totalY += point.y * weight;
+        totalWeight += weight;
+      }
+      
+      // Apply the weighted average Y
+      positions.array[index + 1] = totalY / totalWeight;
     }
-    
-    // Apply the weighted average Y
-    positions.setY(i, totalY / totalWeight);
   }
   
   // Update geometry
