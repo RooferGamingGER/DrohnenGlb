@@ -1,3 +1,4 @@
+
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -37,6 +38,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           <div
             className="border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-500 transition-colors cursor-pointer w-full"
             onClick={() => fileInputRef.current?.click()}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
           >
             <FileUp className={twMerge(
               "mx-auto mb-3 text-gray-500",
