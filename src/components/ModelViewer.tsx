@@ -4,16 +4,16 @@ import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  captureScreenshot, 
-  exportMeasurementsToPDF, 
-  exportMeasurementsToWord 
+import {
+    captureScreenshot,
+    exportMeasurementsToPDF,
+    exportMeasurementsToWord
 } from '@/utils/screenshotUtils';
-import { 
-  highlightMeasurementPoints, 
-  updateCursorForDraggablePoint,
-  findNearestEditablePoint,
-  updateMeasurementGeometry
+import {
+    highlightMeasurementPoints,
+    updateCursorForDraggablePoint,
+    findNearestEditablePoint,
+    updateMeasurementGeometry
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -24,181 +24,189 @@ import MeasurementToolsPanel from '@/components/viewer/MeasurementToolsPanel';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 
 interface ModelViewerProps {
-  forceHideHeader?: boolean;
-  initialFile?: File;
+    forceHideHeader?: boolean;
+    initialFile?: File;
 }
 
 const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const { isMobile, isPortrait } = useIsMobile();
-  const [showMeasurementTools, setShowMeasurementTools] = useState(false);
-  const [measurementsVisible, setMeasurementsVisible] = useState(true);
-  const [screenshotData, setScreenshotData] = useState<string | null>(null);
-  const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
-  const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
-  
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
-  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
-  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
-  const [isFollowingMouse, setIsFollowingMouse] = useState(false);
-  
-  // Determine if header should be shown based on sidebar visibility and orientation
-  const shouldShowHeader = useCallback(() => {
-    if (forceHideHeader) return false;
-    
-    // In portrait mode (mobile), start with header visible
-    if (isPortrait) return !showMeasurementTools;
-    
-    // In landscape mode (desktop), start with sidebar, hide header
-    return !showMeasurementTools;
-  }, [forceHideHeader, isPortrait, showMeasurementTools]);
-  
-  const [showHeader, setShowHeader] = useState(shouldShowHeader());
-  
-  // Update header visibility whenever dependencies change
-  useEffect(() => {
-    setShowHeader(shouldShowHeader());
-  }, [shouldShowHeader, showMeasurementTools, isPortrait]);
-  
-  // Initialize showMeasurementTools based on device orientation
-  useEffect(() => {
-    // On first load, in landscape (desktop) start with sidebar visible
-    if (!isPortrait) {
-      setShowMeasurementTools(true);
-    }
-  }, [isPortrait]);
-  
-  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
-  
-  const modelViewer = useModelViewer({
-    containerRef,
-    onLoadComplete: () => {
-      setTimeout(() => {
-        modelViewer.setProgress(100);
-      }, 500);
-    }
-  });
-  
-  const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const { toast } = useToast();
+    const { isMobile, isPortrait } = useIsMobile();
+    const [showMeasurementTools, setShowMeasurementTools] = useState(false);
+    const [measurementsVisible, setMeasurementsVisible] = useState(true);
+    const [screenshotData, setScreenshotData] = useState<string | null>(null);
+    const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
+    const [savedScreenshots, setSavedScreenshots] = useState<{ id: string, imageDataUrl: string, description: string }[]>([]);
 
-  // Load the initial file if provided
-  useEffect(() => {
-    if (initialFile) {
-      handleFileSelected(initialFile);
-    }
-  }, [initialFile]);
+    const [isDragging, setIsDragging] = useState(false);
+    const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
+    const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
+    const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+    const [isFollowingMouse, setIsFollowingMouse] = useState(false);
 
-  const handleFileSelected = useCallback(async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.glb')) {
-      toast({
-        title: "Ungültiges Dateiformat",
-        description: "Bitte laden Sie eine GLB-Datei hoch.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      await modelViewer.loadModel(file);
-      setShowMeasurementTools(true);
-    } catch (error) {
-      console.error('Error loading model:', error);
-    }
-  }, [modelViewer, toast]);
+    // Determine if header should be shown based on sidebar visibility and orientation
+    const shouldShowHeader = useCallback(() => {
+        if (forceHideHeader) return false;
 
-  const handleDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  }, []);
+        // In portrait mode (mobile), start with header visible
+        if (isPortrait) return !showMeasurementTools;
 
-  const handleDrop = useCallback(async (event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const files = event.dataTransfer.files;
-    if (!files || files.length === 0) return;
-    
-    handleFileSelected(files[0]);
-  }, [handleFileSelected]);
+        // In landscape mode (desktop), start with sidebar, hide header
+        return !showMeasurementTools;
+    }, [forceHideHeader, isPortrait, showMeasurementTools]);
 
-  const handleResetView = useCallback(() => {
-    modelViewer.resetView();
-  }, [modelViewer]);
+    const [showHeader, setShowHeader] = useState(shouldShowHeader());
 
-  const handleToolChange = useCallback((tool: any) => {
-    if (tool !== 'none') {
-      modelViewer.measurements.forEach(measurement => {
-        if (measurement.editMode) {
-          toggleEditMode(measurement.id);
+    // Update header visibility whenever dependencies change
+    useEffect(() => {
+        setShowHeader(shouldShowHeader());
+    }, [shouldShowHeader, showMeasurementTools, isPortrait]);
+
+    // Initialize showMeasurementTools based on device orientation
+    useEffect(() => {
+        // On first load, in landscape (desktop) start with sidebar visible
+        if (!isPortrait) {
+            setShowMeasurementTools(true);
         }
-      });
-    }
-    modelViewer.setActiveTool(tool);
-  }, [modelViewer]);
+    }, [isPortrait]);
 
-  const handleNewProject = useCallback(() => {
-    if (modelViewer.loadedModel) {
-      modelViewer.resetView();
-      modelViewer.clearMeasurements();
-      setSavedScreenshots([]);
-      
-      toast({
-        title: "Ansicht zurückgesetzt",
-        description: "Die Ansicht wurde zurückgesetzt und alle Messungen gelöscht.",
-        duration: 3000,
-      });
-    }
-  }, [modelViewer, toast]);
+    const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
 
-  const handleTakeScreenshot = useCallback(() => {
-    const isPortrait = window.innerHeight > window.innerWidth;
-    
-    if (isMobile && isPortrait) {
-      toast({
-        title: "Portrait-Modus erkannt",
-        description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
-        variant: "destructive",
-        duration: 5000,
-      });
-      return;
-    }
-    
-    if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
-      const dataUrl = captureScreenshot(
-        modelViewer.renderer,
-        modelViewer.scene,
-        modelViewer.camera,
-        isMobile
-      );
-      
-      if (dataUrl) {
-        setScreenshotData(dataUrl);
-        setShowScreenshotDialog(true);
-      }
-    } else {
-      toast({
-        title: "Fehler",
-        description: "Screenshot konnte nicht erstellt werden.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    }
-  }, [isMobile, modelViewer, toast]);
-
-  const handleSaveScreenshot = useCallback((imageDataUrl: string, description: string) => {
-    const newScreenshot = {
-      id: Date.now().toString(),
-      imageDataUrl,
-      description
-    };
-    setSavedScreenshots(prev => [...prev, newScreenshot]);
-    toast({
-      title: "Screenshot gespeichert",
-      description: "Der Screenshot wurde zur Messung hinzugefügt.",
+    const modelViewer = useModelViewer({
+        containerRef,
+        onLoadComplete: () => {
+            setTimeout(() => {
+                modelViewer.setProgress(100);
+            }, 500);
+        }
     });
-  }, [toast]);
+
+    const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+
+    // Load the initial file if provided
+    useEffect(() => {
+        if (initialFile) {
+            handleFileSelected(initialFile);
+        }
+    }, [initialFile]);
+
+    const handleFileSelected = useCallback(async (file: File) => {
+        if (!file.name.toLowerCase().endsWith('.glb')) {
+            toast({
+                title: "Ungültiges Dateiformat",
+                description: "Bitte laden Sie eine GLB-Datei hoch.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        try {
+            await modelViewer.loadModel(file);
+            setShowMeasurementTools(true);
+        } catch (error) {
+            console.error('Error loading model:', error);
+        }
+    }, [modelViewer, toast]);
+
+    const handleDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
+    const handleDrop = useCallback(async (event: React.DragEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const files = event.dataTransfer.files;
+        if (!files || files.length === 0) return;
+
+        handleFileSelected(files[0]);
+    }, [handleFileSelected]);
+
+    const handleResetView = useCallback(() => {
+        modelViewer.resetView();
+    }, [modelViewer]);
+
+    const handleToolChange = useCallback((tool: any) => {
+        if (tool !== 'none') {
+            modelViewer.measurements.forEach(measurement => {
+                if (measurement.editMode) {
+                    toggleEditMode(measurement.id);
+                }
+                if (measurement.points.length === 1) { // Prüfen, ob Messung unvollständig ist
+                    modelViewer.deleteMeasurement(measurement.id); // oder modelViewer.updateMeasurement(measurement.id, { visible: false });
+                    toast({
+                        title: "Unzulässiger Punkt entfernt",
+                        description: "Ein unvollständiger Messpunkt wurde entfernt.",
+                        duration: 3000,
+                    });
+                }
+            });
+        }
+        modelViewer.setActiveTool(tool);
+    }, [modelViewer, toast]);
+
+    const handleNewProject = useCallback(() => {
+        if (modelViewer.loadedModel) {
+            modelViewer.resetView();
+            modelViewer.clearMeasurements();
+            setSavedScreenshots([]);
+
+            toast({
+                title: "Ansicht zurückgesetzt",
+                description: "Die Ansicht wurde zurückgesetzt und alle Messungen gelöscht.",
+                duration: 3000,
+            });
+        }
+    }, [modelViewer, toast]);
+
+    const handleTakeScreenshot = useCallback(() => {
+        const isPortrait = window.innerHeight > window.innerWidth;
+
+        if (isMobile && isPortrait) {
+            toast({
+                title: "Portrait-Modus erkannt",
+                description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
+                variant: "destructive",
+                duration: 5000,
+            });
+            return;
+        }
+
+        if (modelViewer.renderer && modelViewer.scene && modelViewer.camera) {
+            const dataUrl = captureScreenshot(
+                modelViewer.renderer,
+                modelViewer.scene,
+                modelViewer.camera,
+                isMobile
+            );
+
+            if (dataUrl) {
+                setScreenshotData(dataUrl);
+                setShowScreenshotDialog(true);
+            }
+        } else {
+            toast({
+                title: "Fehler",
+                description: "Screenshot konnte nicht erstellt werden.",
+                variant: "destructive",
+                duration: 3000,
+            });
+        }
+    }, [isMobile, modelViewer, toast]);
+
+    const handleSaveScreenshot = useCallback((imageDataUrl: string, description: string) => {
+        const newScreenshot = {
+            id: Date.now().toString(),
+            imageDataUrl,
+            description
+        };
+        setSavedScreenshots(prev => [...prev, newScreenshot]);
+        toast({
+            title: "Screenshot gespeichert",
+            description: "Der Screenshot wurde zur Messung hinzugefügt.",
+        });
+    }, [toast]);
 
   const handleExportMeasurements = useCallback(async () => {
     if (modelViewer.measurements.length === 0 && savedScreenshots.length === 0) {
