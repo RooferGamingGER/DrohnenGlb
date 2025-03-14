@@ -154,6 +154,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerProp
 
             setLoadedModel(model);
             resetView();
+            setIsLoading(false);
             onLoadComplete?.();
           },
           (xhr) => {
@@ -182,7 +183,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerProp
 
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
-      setError(`Failed to read file: ${error.message || 'Unknown error'}`);
+      setError(`Failed to read file: Unknown error`);
       setIsLoading(false);
     };
 
@@ -306,7 +307,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerProp
 
     // Clear the temporary points array
     setTempPoints([]);
-
   }, [measurementGroupRef]);
 
   // Update the placePoint function to track temporary points
@@ -384,5 +384,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerProp
     addMeasurement,
     clearTempPoints,
     tempPoints,
+    setProgress,
   };
 };

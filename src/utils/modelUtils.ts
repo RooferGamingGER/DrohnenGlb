@@ -16,6 +16,26 @@ export const backgroundOptions: BackgroundOption[] = [
   { id: 'gray', name: 'Grau', color: '#404040', texture: null },
 ];
 
+// Extract camera position from a model if it contains camera information
+export const extractCameraPositionFromModel = (model: THREE.Object3D): THREE.Vector3 | null => {
+  // Look for camera in the model
+  let cameraFound = null;
+  
+  model.traverse((child) => {
+    if (child.type === 'PerspectiveCamera' || child.type === 'OrthographicCamera') {
+      cameraFound = child;
+    }
+  });
+  
+  if (cameraFound && cameraFound instanceof THREE.Camera) {
+    // Return position of the found camera
+    return cameraFound.position.clone();
+  }
+  
+  // If no camera found, return null
+  return null;
+};
+
 // Load GLB model
 export const loadGLBModel = (
   file: File,
