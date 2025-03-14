@@ -696,6 +696,143 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setState(prev => ({ ...prev, progress: value }));
   };
 
+  const clearMeasurements = () => {
+    if (measurementGroupRef.current) {
+      measurements.forEach(measurement => {
+        if (measurement.labelObject) {
+          if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+            measurement.labelObject.material.map?.dispose();
+            measurement.labelObject.material.dispose();
+          }
+          measurementGroupRef.current?.remove(measurement.labelObject);
+        }
+        
+        if (measurement.lineObjects) {
+          measurement.lineObjects.forEach(line => {
+            line.geometry.dispose();
+            (line.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(line);
+          });
+        }
+        
+        if (measurement.pointObjects) {
+          measurement.pointObjects.forEach(point => {
+            point.geometry.dispose();
+            (point.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(point);
+          });
+        }
+      });
+      
+      setMeasurements([]);
+    }
+  };
+  
+  const resetView = () => {
+    if (modelRef.current && cameraRef.current && controlsRef.current) {
+      const box = new THREE.Box3().setFromObject(modelRef.current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = cameraRef.current.fov * (Math.PI / 180);
+      let cameraDistance = maxDim / 2 / Math.tan(fov / 2);
+      
+      cameraDistance = Math.max(cameraDistance, 1);
+      
+      const direction = new THREE.Vector3(1, 0.5, 1).normalize();
+      cameraRef.current.position.copy(center).add(direction.multiplyScalar(cameraDistance));
+      cameraRef.current.lookAt(center);
+      
+      controlsRef.current.target.copy(center);
+      controlsRef.current.update();
+    }
+  };
+  
+  const initScene = () => {
+    if (!containerRef.current) return;
+    
+    if (sceneRef.current) {
+      if (modelRef.current && sceneRef.current) {
+        sceneRef.current.remove(modelRef.current);
+        modelRef.current = null;
+      }
+      
+      if (measurementGroupRef.current) {
+        sceneRef.current.remove(measurementGroupRef.current);
+      }
+    }
+    
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+    
+    const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+    const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+    camera.position.z = 5;
+    cameraRef.current = camera;
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+    
+    lightsRef.current = {
+      directional: directionalLight,
+      ambient: ambientLight
+    };
+    
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+    controls.rotateSpeed = 0.7;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+    controls.update();
+    controlsRef.current = controls;
+    
+    const measurementGroup = new THREE.Group();
+    measurementGroup.name = "measurements";
+    scene.add(measurementGroup);
+    measurementGroupRef.current = measurementGroup;
+    
+    const animate = () => {
+      if (controlsRef.current) {
+        controlsRef.current.update();
+      }
+      
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+      
+      requestRef.current = requestAnimationFrame(animate);
+    };
+    
+    requestRef.current = requestAnimationFrame(animate);
+  };
+  
+  const toggleMeasurementsVisibility = (visible: boolean) => {
+    if (measurementGroupRef.current) {
+      measurementGroupRef.current.visible = visible;
+    }
+  };
+  
+  const updateMeasurement = (id: string, updates: Partial<Measurement>) => {
+    setMeasurements(prev => 
+      prev.map(measurement => 
+        measurement.id === id ? { ...measurement, ...updates } : measurement
+      )
+    );
+  };
+
   const handleMeasurementClick = (event: MouseEvent) => {
     if (isDraggingPoint) return;
     
@@ -1025,7 +1162,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     try {
       processingStartTimeRef.current = Date.now();
       
-      const updateUploadProgress = (percent: number) => {
+      const updateUploadProgress = (event: ProgressEvent<EventTarget>) => {
+        const percent = Math.round((event.loaded / event.total) * 100);
         uploadProgressRef.current = percent;
         setProgress(percent * 0.5);
       };
@@ -1119,12 +1257,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setBackground(option);
     
     if (sceneRef.current && rendererRef.current) {
-      if (option.type === 'color') {
-        sceneRef.current.background = new THREE.Color(option.value);
-        rendererRef.current.setClearColor(option.value, 1);
-      } else if (option.type === 'image') {
+      if (option.id === 'color') {
+        sceneRef.current.background = new THREE.Color(option.color);
+        rendererRef.current.setClearColor(option.color, 1);
+      } else if (option.id === 'image') {
         try {
-          const texture = await loadTexture(option.value);
+          const texture = await loadTexture(option.src || '');
           sceneRef.current.background = texture;
         } catch (error) {
           console.error("Error loading background texture:", error);
@@ -1136,93 +1274,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-
-    const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-    const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
-    camera.position.z = 5;
-    cameraRef.current = camera;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMappingExposure = 1;
-    containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-
-    lightsRef.current = {
-      directional: directionalLight,
-      ambient: ambientLight
-    };
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.1;
-    controls.rotateSpeed = 0.7;
-    controls.zoomSpeed = 1.2;
-    controls.panSpeed = 0.8;
+    initScene();
     
-    controls.rotateSpeed = 0.5;
-    controls.enableZoom = true;
-    controls.screenSpacePanning = true;
-    
-    const updateControlSpeed = () => {
-      if (controlsRef.current && modelRef.current) {
-        const box = new THREE.Box3().setFromObject(modelRef.current);
-        const center = box.getCenter(new THREE.Vector3());
-        const distance = camera.position.distanceTo(center);
-        
-        controlsRef.current.rotateSpeed = 0.5 * (distance / 5);
-        controlsRef.current.panSpeed = 0.6 * (distance / 5);
-      }
-    };
-    
-    controls.addEventListener('change', updateControlSpeed);
-    controls.update();
-    controlsRef.current = controls;
-    
-    const measurementGroup = new THREE.Group();
-    measurementGroup.name = "measurements";
-    scene.add(measurementGroup);
-    measurementGroupRef.current = measurementGroup;
-
-    const animate = () => {
-      if (controlsRef.current) {
-        controlsRef.current.update();
-      }
-      
-      if (measurementGroupRef.current && cameraRef.current) {
-        measurementGroupRef.current.children.forEach(child => {
-          if (child instanceof THREE.Sprite) {
-            child.quaternion.copy(cameraRef.current!.quaternion);
-          
-            if (child.userData && child.userData.isLabel) {
-              updateLabelScale(child, cameraRef.current);
-            }
-          }
-        });
-      }
-      
-      if (rendererRef.current && sceneRef.current && cameraRef.current) {
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
-      }
-      
-      requestRef.current = requestAnimationFrame(animate);
-    };
-    
-    requestRef.current = requestAnimationFrame(animate);
-
     const handleResize = () => {
       if (
         containerRef.current &&
@@ -1241,22 +1294,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
     window.addEventListener('resize', handleResize);
     
-    containerRef.current.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    containerRef.current.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    
     return () => {
       window.removeEventListener('resize', handleResize);
-      
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousedown', handleMouseDown);
-        containerRef.current.removeEventListener('touchstart', handleTouchStart);
-      }
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
       
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -1328,6 +1367,17 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     toggleEditMode,
     hoverPoint,
     canUndo,
-    loadedModel: modelRef.current
+    loadedModel: modelRef.current,
+    setProgress,
+    resetView,
+    clearMeasurements,
+    initScene,
+    renderer: rendererRef.current,
+    scene: sceneRef.current,
+    camera: cameraRef.current,
+    measurementGroupRef,
+    toggleMeasurementsVisibility,
+    updateMeasurement,
+    finalizeMeasurement
   };
 };

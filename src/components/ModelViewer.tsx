@@ -353,7 +353,7 @@ const ModelViewer: React.FC = () => {
       
       document.body.style.cursor = 'grabbing';
       
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
       
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
@@ -372,18 +372,16 @@ const ModelViewer: React.FC = () => {
           };
           
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
-          
-          
         }
       }
     } 
     else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
       raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera!,
+        modelViewer.camera,
         mousePosition,
         modelViewer.measurementGroupRef.current,
         0.2
@@ -405,7 +403,7 @@ const ModelViewer: React.FC = () => {
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
     if (modelViewer.activeTool === 'roof') {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
@@ -414,7 +412,6 @@ const ModelViewer: React.FC = () => {
         let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
         
         if (!activeMeasurement) {
-          // Instead of calling a non-existent method, create a new measurement directly
           const newMeasurementId = createMeasurementId();
           modelViewer.setMeasurements(prev => [
             ...prev,
@@ -439,7 +436,6 @@ const ModelViewer: React.FC = () => {
             const firstPoint = activeMeasurement.points[0].position;
             
             if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
-              // Instead of using finalizeMeasurement, update the measurement directly
               modelViewer.setMeasurements(prev => prev.map(m => {
                 if (m.id === activeMeasurement?.id) {
                   return {
@@ -477,7 +473,6 @@ const ModelViewer: React.FC = () => {
             }
           }
           
-          // Instead of using addPointToMeasurement, update the measurement directly
           const newPoint = {
             position: pointPosition.clone(),
             worldPosition: pointPosition.clone()
@@ -503,12 +498,12 @@ const ModelViewer: React.FC = () => {
     }
     
     if (modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
       raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera!,
+        modelViewer.camera,
         mousePosition,
         modelViewer.measurementGroupRef.current,
         0.2
@@ -588,7 +583,6 @@ const ModelViewer: React.FC = () => {
         let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
         
         if (!activeMeasurement) {
-          // Instead of calling a non-existent method, create a new measurement directly
           const newMeasurementId = createMeasurementId();
           modelViewer.setMeasurements(prev => [
             ...prev,
@@ -613,7 +607,6 @@ const ModelViewer: React.FC = () => {
             const firstPoint = activeMeasurement.points[0].position;
             
             if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
-              // Instead of using finalizeMeasurement, update the measurement directly
               modelViewer.setMeasurements(prev => prev.map(m => {
                 if (m.id === activeMeasurement?.id) {
                   return {
@@ -651,7 +644,6 @@ const ModelViewer: React.FC = () => {
             }
           }
           
-          // Instead of using addPointToMeasurement, update the measurement directly
           const newPoint = {
             position: pointPosition.clone(),
             worldPosition: pointPosition.clone()
@@ -746,8 +738,6 @@ const ModelViewer: React.FC = () => {
           };
           
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
-          
-          
         }
       }
     }
