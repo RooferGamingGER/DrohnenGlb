@@ -29,43 +29,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
   return (
     <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
-      {/* Upload Area - Now on the left side */}
-      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
-        <Card className={`w-full max-w-md mx-4 p-3 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'max-h-full' : ''}`}>
-          <div className="text-center mb-2">
-            <h2 className="text-lg font-bold text-foreground">Modell hochladen</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs md:text-sm">
-              Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
-            </p>
-          </div>
-          
-          <div
-            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-3 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-          >
-            <FileUp className="mb-2 text-primary animate-float h-8 w-8" />
-            <h3 className="font-semibold mb-1 text-foreground text-sm">GLB-Datei hochladen</h3>
-            <p className="text-muted-foreground mb-2 text-xs">
-              Ziehen Sie eine Datei hierher oder klicken
-            </p>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs py-1 px-3 h-auto">
-              <UploadCloud className="mr-1 h-3 w-3" />
-              Datei auswählen
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".glb"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-        </Card>
-      </div>
-      
-      {/* Information Panel - Now on the right side */}
+      {/* Information Panel - Now on the left side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col justify-center bg-primary/10 overflow-hidden`}>
         <div className="max-w-md mx-auto p-2 md:p-3 space-y-1.5 md:space-y-2">
           <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
@@ -125,6 +89,42 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Upload Area - Now on the right side */}
+      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
+        <Card className={`w-full max-w-md mx-4 p-3 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'my-2' : ''}`}>
+          <div className="text-center mb-2">
+            <h2 className="text-lg font-bold text-foreground">Modell hochladen</h2>
+            <p className="text-muted-foreground mt-0.5 text-xs md:text-sm">
+              Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
+            </p>
+          </div>
+          
+          <div
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-3 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+          >
+            <FileUp className="mb-2 text-primary animate-float h-8 w-8" />
+            <h3 className="font-semibold mb-1 text-foreground text-sm">GLB-Datei hochladen</h3>
+            <p className="text-muted-foreground mb-2 text-xs">
+              Ziehen Sie eine Datei hierher oder klicken
+            </p>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs py-1 px-3 h-auto">
+              <UploadCloud className="mr-1 h-3 w-3" />
+              Datei auswählen
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".glb"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+        </Card>
       </div>
     </div>
   );
