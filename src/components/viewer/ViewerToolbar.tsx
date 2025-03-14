@@ -29,15 +29,7 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
   return (
     <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? (isMobile ? 'fixed top-0 left-0 right-0' : 'fixed top-0 left-0 right-0') : ''}`}>
       <div>
-        {loadedModel && showMeasurementTools && isMobile && (
-          <button
-            className="bg-blue-600 text-white backdrop-blur-sm flex items-center gap-1 px-3 py-2 rounded-md text-sm"
-            onClick={toggleMeasurementTools}
-          >
-            <span className="sr-only">Messwerkzeuge schließen</span>
-            ✕ Messwerkzeuge
-          </button>
-        )}
+        {/* Remove the "X Messwerkzeuge" button in mobile view */}
       </div>
       
       <ViewerControls

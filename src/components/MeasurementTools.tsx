@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
@@ -119,7 +118,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     }
   };
 
-  const toggleMeasurementsList = () => {
+  const handleToggleMeasurementsList = () => {
     setShowMeasurementsList(!showMeasurementsList);
   };
 
@@ -135,130 +134,119 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     >
       <div className="flex flex-col gap-2">
         <TooltipProvider delayDuration={300}>
-          <div className={cn(
-            "flex items-center gap-2",
-            isMobile ? "flex-row justify-between" : "flex-col"
-          )}>
-            <div className={cn(
-              "flex",
-              isMobile ? "flex-row" : "flex-col",
-              "items-center gap-2"
-            )}>
+          <div className="flex items-center justify-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('none')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'none' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Navigieren"
+                >
+                  <Move size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Navigieren</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('length')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'length' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Länge messen"
+                >
+                  <Ruler size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Länge messen</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('height')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'height' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Höhe messen"
+                >
+                  <ArrowUpDown size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Höhe messen</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {canUndo && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => onToolChange('none')}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      activeTool === 'none' 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-secondary"
-                    )}
-                    aria-label="Navigieren"
+                    onClick={onUndoLastPoint}
+                    className="p-2 rounded-md hover:bg-secondary transition-colors"
+                    aria-label="Letzten Punkt rückgängig machen"
                   >
-                    <Move size={18} />
+                    <Undo size={18} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>Navigieren</p>
+                  <p>Letzten Punkt rückgängig machen</p>
                 </TooltipContent>
               </Tooltip>
-              
+            )}
+          </div>
+
+          {measurements.length > 0 && (
+            <div className="flex items-center justify-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => onToolChange('length')}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      activeTool === 'length' 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-secondary"
-                    )}
-                    aria-label="Länge messen"
+                    onClick={onClearMeasurements}
+                    className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label="Alle Messungen löschen"
                   >
-                    <Ruler size={18} />
+                    <Trash size={18} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>Länge messen</p>
+                  <p>Alle Messungen löschen</p>
                 </TooltipContent>
               </Tooltip>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onToolChange('height')}
-                    className={cn(
-                      "p-2 rounded-md transition-colors",
-                      activeTool === 'height' 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-secondary"
-                    )}
-                    aria-label="Höhe messen"
-                  >
-                    <ArrowUpDown size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "right"}>
-                  <p>Höhe messen</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {canUndo && (
+              {onToggleAllMeasurementsVisibility && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={onUndoLastPoint}
+                      onClick={onToggleAllMeasurementsVisibility}
                       className="p-2 rounded-md hover:bg-secondary transition-colors"
-                      aria-label="Letzten Punkt rückgängig machen"
+                      aria-label={allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}
                     >
-                      <Undo size={18} />
+                      {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side={isMobile ? "bottom" : "right"}>
-                    <p>Letzten Punkt rückgängig machen</p>
+                  <TooltipContent side="bottom">
+                    <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
                   </TooltipContent>
                 </Tooltip>
               )}
               
-              {measurements.length > 0 && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={onClearMeasurements}
-                        className="p-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
-                        aria-label="Alle Messungen löschen"
-                      >
-                        <Trash size={18} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side={isMobile ? "bottom" : "right"}>
-                      <p>Alle Messungen löschen</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  
-                  {onToggleAllMeasurementsVisibility && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={onToggleAllMeasurementsVisibility}
-                          className="p-2 rounded-md hover:bg-secondary transition-colors"
-                          aria-label={allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}
-                        >
-                          {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
               {isMobile && measurements.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -293,7 +281,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
             </div>
-          </div>
+          )}
         </TooltipProvider>
       </div>
       
