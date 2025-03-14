@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 20%;
 
-    --primary: 210 100% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 220 15% 94%;
@@ -25,21 +25,21 @@
     --muted: 220 15% 94%;
     --muted-foreground: 220 10% 50%;
 
-    --accent: 220 15% 94%;
-    --accent-foreground: 220 20% 20%;
+    --accent: 142 70% 40%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 220 15% 90%;
     --input: 220 15% 90%;
-    --ring: 210 100% 50%;
+    --ring: 217 91% 60%;
     
     --measurement-label-bg: 215 35% 18%;
     --measurement-label-text: 210 20% 98%;
     --measurement-label-border: 210 30% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   * {
@@ -152,6 +152,10 @@
 @layer utilities {
   .animate-spin-slow {
     animation: spin 3s linear infinite;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
