@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { useModelViewer } from '@/hooks/useModelViewer';
+import useModelViewer from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -539,6 +539,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   const handleTouchEnd = useCallback((event: TouchEvent) => {
   }, []);
 
+  const handleDeleteTempPoint = useCallback((index: number) => {
+    console.log("ModelViewer - Deleting temp point at index:", index);
+    if (modelViewer.deleteTempPoint) {
+      modelViewer.deleteTempPoint(index);
+    } else {
+      console.error("deleteTempPoint function is not available in modelViewer");
+    }
+  }, [modelViewer]);
+
   useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
@@ -654,7 +663,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
           onNewProject={handleNewProject}
           onTakeScreenshot={handleTakeScreenshot}
           tempPoints={modelViewer.tempPoints || []}
-          onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
+          onDeleteTempPoint={handleDeleteTempPoint}
         />
       )}
       

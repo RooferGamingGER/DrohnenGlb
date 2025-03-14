@@ -42,7 +42,7 @@ interface ModelViewerState {
   loadedModel: THREE.Group | null;
 }
 
-export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerProps) => {
+const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerProps) => {
   const { toast } = useToast();
   const [state, setState] = useState<ModelViewerState>({
     isLoading: false,
@@ -693,33 +693,66 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   const deleteTempPoint = (index: number) => {
-    if (temporaryPoints.length > index && measurementGroupRef.current) {
-      const newPoints = [...temporaryPoints];
-      const removedPoint = newPoints.splice(index, 1)[0];
-      setTemporaryPoints(newPoints);
-      
-      const pointMesh = measurementGroupRef.current.children.find(
-        child => child instanceof THREE.Mesh && 
-        child.position.equals(removedPoint.position) &&
-        child.name.startsWith('point-temp-')
-      );
-      
-      if (pointMesh && pointMesh instanceof THREE.Mesh) {
-        pointMesh.geometry.dispose();
-        pointMesh.material.dispose();
-        measurementGroupRef.current.remove(pointMesh);
-      }
-      
-      if (currentMeasurementRef.current && currentMeasurementRef.current.lines.length > 0) {
-        const lastLine = currentMeasurementRef.current.lines[currentMeasurementRef.current.lines.length - 1];
-        if (lastLine && measurementGroupRef.current) {
-          lastLine.geometry.dispose();
-          (lastLine.material as THREE.Material).dispose();
-          measurementGroupRef.current.remove(lastLine);
-          currentMeasurementRef.current.lines.pop();
+    console.log(`Deleting temp point at index ${index}`);
+    
+    if (index < 0 || index >= temporaryPoints.length) {
+      console.error(`Invalid index ${index}, tempPoints length: ${temporaryPoints.length}`);
+      return;
+    }
+    
+    if (!measurementGroupRef.current) {
+      console.error("measurement group is null");
+      return;
+    }
+    
+    const removedPoint = temporaryPoints[index];
+    console.log("Point to remove:", removedPoint);
+    
+    const pointMesh = measurementGroupRef.current.children.find(
+      child => child instanceof THREE.Mesh && 
+      child.name.startsWith('point-temp-') &&
+      child.position.distanceTo(removedPoint.position) < 0.001
+    );
+    
+    console.log("Found mesh to remove:", pointMesh);
+    
+    if (pointMesh && pointMesh instanceof THREE.Mesh) {
+      if (pointMesh.geometry) pointMesh.geometry.dispose();
+      if (pointMesh.material) {
+        if (Array.isArray(pointMesh.material)) {
+          pointMesh.material.forEach(material => material.dispose());
+        } else {
+          pointMesh.material.dispose();
         }
       }
+      
+      measurementGroupRef.current.remove(pointMesh);
+      console.log("Removed mesh from scene");
+    } else {
+      console.error("Could not find mesh for point at index", index);
     }
+    
+    if (currentMeasurementRef.current && currentMeasurementRef.current.lines.length > 0) {
+      const lastLine = currentMeasurementRef.current.lines[currentMeasurementRef.current.lines.length - 1];
+      if (lastLine && measurementGroupRef.current) {
+        lastLine.geometry.dispose();
+        (lastLine.material as THREE.Material).dispose();
+        measurementGroupRef.current.remove(lastLine);
+        currentMeasurementRef.current.lines.pop();
+        console.log("Removed line from scene");
+      }
+    }
+    
+    const newPoints = [...temporaryPoints];
+    newPoints.splice(index, 1);
+    setTemporaryPoints(newPoints);
+    console.log(`Updated temporaryPoints, new length: ${newPoints.length}`);
+    
+    toast({
+      title: "Punkt entfernt",
+      description: "Der temporäre Messpunkt wurde erfolgreich entfernt.",
+      duration: 3000,
+    });
   };
 
   const setProgress = (value: number) => {
@@ -1449,3 +1482,5 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     deleteTempPoint
   };
 };
+
+export default useModelViewer;

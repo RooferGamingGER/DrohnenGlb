@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -60,9 +59,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     .length;
 
   const handleDeleteTempPoint = (index: number) => {
-    console.log("Attempting to delete temp point at index:", index);
+    console.log("MeasurementToolsPanel - Attempting to delete temp point at index:", index);
     if (onDeleteTempPoint) {
       onDeleteTempPoint(index);
+    } else {
+      console.error("onDeleteTempPoint function is not available");
     }
   };
 
