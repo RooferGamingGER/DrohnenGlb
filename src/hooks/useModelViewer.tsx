@@ -1599,5 +1599,16 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     undoLastPoint,
     deleteMeasurement,
     deleteSinglePoint,
-
-
+    deleteTempPoint,
+    updateMeasurement,
+    toggleMeasurementsVisibility,
+    setProgress,
+    canUndo,
+    tempPoints: temporaryPoints,
+    measurementGroupRef,
+    renderer: rendererRef.current,
+    scene: sceneRef.current,
+    camera: cameraRef.current,
+    loadedModel: modelRef.current
+  };
+};
