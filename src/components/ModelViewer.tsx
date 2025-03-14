@@ -539,6 +539,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
   const handleTouchEnd = useCallback((event: TouchEvent) => {
   }, []);
 
+  const handleDeleteTempPoint = useCallback((index: number) => {
+    console.log("ModelViewer: Delete temp point at index:", index);
+    if (modelViewer.deleteTempPoint) {
+      modelViewer.deleteTempPoint(index);
+    } else {
+      console.error("deleteTempPoint function is not available in modelViewer");
+    }
+  }, [modelViewer]);
+
   useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
@@ -654,7 +663,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
           onNewProject={handleNewProject}
           onTakeScreenshot={handleTakeScreenshot}
           tempPoints={modelViewer.tempPoints || []}
-          onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
+          onDeleteTempPoint={handleDeleteTempPoint}
         />
       )}
       
@@ -675,3 +684,4 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
 };
 
 export default ModelViewer;
+
