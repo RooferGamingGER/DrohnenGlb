@@ -19,7 +19,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="flex h-full flex-col">
+          <div className="flex h-full flex-col bg-gradient-to-b from-background to-background/90">
             <main className="flex-1 overflow-y-auto">
               <Routes>
                 {/* Main app with model viewer, protected by authentication */}

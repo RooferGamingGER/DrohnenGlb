@@ -18,12 +18,12 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ progress }) => {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-      <div className="w-64 space-y-4">
-        <h3 className="text-lg font-medium text-center">
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-md z-10 animate-fade-in">
+      <div className="glass w-80 p-6 rounded-lg space-y-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
+        <h3 className="text-xl font-medium text-center text-foreground">
           Modell wird geladen...
         </h3>
-        <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2 bg-secondary" />
         <p className="text-sm text-muted-foreground text-center">
           {getProgressStatus(progress)}
         </p>

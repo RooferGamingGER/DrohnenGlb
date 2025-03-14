@@ -6,7 +6,7 @@ const Index = () => {
   const { isPortrait } = useIsMobile();
   
   return (
-    <div className="h-screen w-full overflow-hidden bg-white relative">
+    <div className="h-screen w-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative">
       <div className="block h-full">
         <ModelViewer forceHideHeader={true} />
       </div>
