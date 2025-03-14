@@ -44,27 +44,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
   
-  // Determine if header should be shown based on sidebar visibility and orientation
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
     
-    // In portrait mode (mobile), start with header visible
     if (isPortrait) return !showMeasurementTools;
     
-    // In landscape mode (desktop), start with sidebar, hide header
     return !showMeasurementTools;
   }, [forceHideHeader, isPortrait, showMeasurementTools]);
   
   const [showHeader, setShowHeader] = useState(shouldShowHeader());
   
-  // Update header visibility whenever dependencies change
   useEffect(() => {
     setShowHeader(shouldShowHeader());
   }, [shouldShowHeader, showMeasurementTools, isPortrait]);
   
-  // Initialize showMeasurementTools based on device orientation
   useEffect(() => {
-    // On first load, in landscape (desktop) start with sidebar visible
     if (!isPortrait) {
       setShowMeasurementTools(true);
     }
@@ -83,7 +77,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   
   const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
 
-  // Load the initial file if provided
   useEffect(() => {
     if (initialFile) {
       handleFileSelected(initialFile);
@@ -686,6 +679,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           onTakeScreenshot={handleTakeScreenshot}
           tempPoints={modelViewer.tempPoints || []}
           onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
+          onDeleteSinglePoint={(measurementId, pointIndex) => modelViewer.deleteSinglePoint(measurementId, pointIndex)}
         />
       )}
       

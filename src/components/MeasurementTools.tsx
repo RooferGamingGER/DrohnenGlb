@@ -32,6 +32,7 @@ interface MeasurementToolsProps {
   scrollThreshold?: number;
   tempPoints?: MeasurementPoint[];
   onDeleteTempPoint?: (index: number) => void;
+  onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
