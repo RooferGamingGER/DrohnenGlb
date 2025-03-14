@@ -1,4 +1,3 @@
-
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
