@@ -24,7 +24,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-100 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100 p-4">
       <div className="flex flex-col w-full max-w-2xl bg-white rounded-xl shadow-md overflow-hidden">
         {/* DropZone-Fenster */}
         <div className="p-6 flex flex-col items-center justify-center">
