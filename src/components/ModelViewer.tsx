@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -11,7 +10,6 @@ import {
 } from '@/utils/screenshotUtils';
 import { highlightMeasurementPoints } from '@/utils/measurementUtils';
 
-// Refactored components
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
 import ViewerContainer from '@/components/viewer/ViewerContainer';
 import LoadingOverlay from '@/components/viewer/LoadingOverlay';
@@ -78,7 +76,6 @@ const ModelViewer: React.FC = () => {
   }, [modelViewer]);
 
   const handleToolChange = useCallback((tool: any) => {
-    // Wenn ein Werkzeug ausgewählt wird, alle Messungen aus dem Bearbeitungsmodus nehmen
     if (tool !== 'none') {
       modelViewer.measurements.forEach(measurement => {
         if (measurement.editMode) {
@@ -233,26 +230,21 @@ const ModelViewer: React.FC = () => {
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (!measurement || !modelViewer.measurementGroupRef?.current) return;
 
-    // Deaktiviere Editiermodus für alle anderen Messungen
     modelViewer.measurements.forEach(m => {
       if (m.id !== id && m.editMode) {
-        highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
+        modelViewer.highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
         modelViewer.updateMeasurement(m.id, { editMode: false });
       }
     });
 
-    // Toggle Editiermodus für die ausgewählte Messung
     const newEditMode = !measurement.editMode;
     
-    // Aktiviere/deaktiviere den Bewegungsmodus
     if (newEditMode) {
-      // Wechsle zum Navigations-Tool, wenn ein anderes Tool aktiv ist
       if (modelViewer.activeTool !== 'none') {
         modelViewer.setActiveTool('none');
       }
       
-      // Aktiviere den Editiermodus für diese Messung
-      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
+      modelViewer.highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
       
       toast({
         title: "Bearbeitungsmodus aktiviert",
@@ -260,8 +252,7 @@ const ModelViewer: React.FC = () => {
         duration: 5000,
       });
     } else {
-      // Deaktiviere den Editiermodus für diese Messung
-      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
+      modelViewer.highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
       
       toast({
         title: "Bearbeitungsmodus deaktiviert",

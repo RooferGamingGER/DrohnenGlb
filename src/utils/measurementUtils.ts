@@ -194,7 +194,8 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
     isDraggable: true,
     lastClickTime: 0, // To track double-clicks
     isBeingDragged: false,
-    isSelected: false
+    isSelected: false,
+    isEditable: false
   };
   
   return point;
@@ -229,7 +230,12 @@ export const togglePointSelection = (point: THREE.Mesh): boolean => {
   // Update the material based on the new selection state
   if (point.material instanceof THREE.MeshBasicMaterial) {
     point.material.dispose();
-    point.material = createDraggablePointMaterial(false, point.userData.isSelected);
+    
+    if (point.userData.isEditable) {
+      point.material = createEditablePointMaterial(point.userData.isSelected);
+    } else {
+      point.material = createDraggablePointMaterial(false, point.userData.isSelected);
+    }
   }
   
   return point.userData.isSelected;
@@ -255,16 +261,25 @@ export const highlightMeasurementPoints = (
         point.userData.originalMaterial = point.material.clone();
       }
       
-      // Apply appropriate material
+      // Apply appropriate material and update editable state
       if (highlight) {
+        point.userData.isEditable = true;
         point.material.dispose();
         point.material = createEditablePointMaterial(false);
-      } else if (point.userData.originalMaterial) {
+      } else {
         // Restore original material when exiting edit mode
-        point.material.dispose();
-        point.material = point.userData.originalMaterial;
-        point.userData.originalMaterial = null;
+        point.userData.isEditable = false;
+        if (point.userData.originalMaterial) {
+          point.material.dispose();
+          point.material = point.userData.originalMaterial;
+          point.userData.originalMaterial = null;
+        }
       }
     }
   });
+};
+
+// Vergrößert den Hittest-Bereich für einen Punkt
+export const getPointHitTestRadius = (): number => {
+  return 0.2; // Größerer Bereich als die visuelle Größe des Punktes
 };
