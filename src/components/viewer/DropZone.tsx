@@ -24,20 +24,20 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="flex flex-col min-h-screen p-4">
+    <div className="flex flex-col min-h-screen p-2"> {/* Padding reduziert */}
       {/* Hauptinhalt (DropZone und "How It Works") */}
-      <div className="flex flex-col md:flex-row w-full max-w-xl items-start justify-center">
+      <div className="flex flex-col md:flex-row w-full max-w-lg items-start justify-center"> {/* max-w weiter reduziert */}
         {/* DropZone-Fenster */}
-        <div className="w-full md:w-1/2 p-4 flex flex-col items-center flex-shrink-1">
+        <div className="w-full md:w-1/2 p-3 flex flex-col items-center flex-shrink-1"> {/* Padding reduziert */}
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-sm"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer w-full max-w-xs" {/* max-w weiter reduziert, Padding reduziert */}
             onClick={() => fileInputRef.current?.click()}
           >
-            <FileUp className="h-6 w-6 mx-auto mb-3 text-gray-500" />
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">GLB-Datei hochladen</h3>
-            <p className="text-sm text-gray-600 mb-4">Wählen Sie eine GLB-Datei zum Hochladen aus.</p>
-            <Button className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-sm">
-              <Upload className="mr-2 h-4 w-4" />
+            <FileUp className="h-5 w-5 mx-auto mb-2 text-gray-500" /> {/* Icons weiter verkleinert */}
+            <h3 className="text-sm font-semibold mb-1 text-gray-800">GLB-Datei hochladen</h3> {/* Schriftgröße weiter reduziert */}
+            <p className="text-xs text-gray-600 mb-3">Wählen Sie eine GLB-Datei zum Hochladen aus.</p> {/* Schriftgröße weiter reduziert */}
+            <Button className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-xs"> {/* Button weiter verkleinert und Schriftgröße reduziert */}
+              <Upload className="mr-1 h-3 w-3" /> {/* Icon verkleinert */}
               Datei auswählen
             </Button>
             <input
@@ -51,38 +51,38 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </div>
 
         {/* "How It Works"-Fenster */}
-        <div className="w-full md:w-1/2 p-4 flex flex-col items-center flex-shrink-1">
-          <div className="bg-white rounded-lg p-4 max-w-sm w-full">
-            <h2 className="text-xl font-bold mb-3 text-gray-800">Erklärung</h2>
+        <div className="w-full md:w-1/2 p-3 flex flex-col items-center flex-shrink-1"> {/* Padding reduziert */}
+          <div className="bg-white rounded-lg p-3 max-w-xs w-full"> {/* max-w reduziert */}
+            <h2 className="text-md font-bold mb-2 text-gray-800">Erklärung</h2> {/* Schriftgröße reduziert */}
 
-            <div className="flex items-start mb-3">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <ArrowDown className="h-4 w-4 text-blue-500" />
+            <div className="flex items-start mb-2">
+              <div className="bg-blue-100 rounded-full p-1 mr-1"> {/* Padding reduziert */}
+                <ArrowDown className="h-3 w-3 text-blue-500" /> {/* Icon verkleinert */}
               </div>
               <div>
-                <h3 className="text-md font-semibold mb-1 text-gray-800">Exportieren vom Server</h3>
-                <p className="text-sm text-gray-600">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
+                <h3 className="text-xs font-semibold mb-0 text-gray-800">Exportieren vom Server</h3> {/* Schriftgröße weiter reduziert */}
+                <p className="text-xs text-gray-600">Exportieren Sie die Datei 'Textured Model (glTF)'</p> {/* Schriftgröße weiter reduziert */}
               </div>
             </div>
 
-            <div className="flex items-start mb-3">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <ArrowUpRight className="h-4 w-4 text-blue-500" />
+            <div className="flex items-start mb-2">
+              <div className="bg-blue-100 rounded-full p-1 mr-1"> {/* Padding reduziert */}
+                <ArrowUpRight className="h-3 w-3 text-blue-500" /> {/* Icon verkleinert */}
               </div>
               <div>
-                <h3 className="text-md font-semibold mb-1 text-gray-800">GLB-Datei hochladen</h3>
-                <p className="text-sm text-gray-600">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
+                <h3 className="text-xs font-semibold mb-0 text-gray-800">GLB-Datei hochladen</h3> {/* Schriftgröße weiter reduziert */}
+                <p className="text-xs text-gray-600">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p> {/* Schriftgröße weiter reduziert */}
               </div>
             </div>
 
             <div className="flex items-start">
-              <div className="bg-blue-100 rounded-full p-2 mr-2">
-                <Send className="h-4 w-4 text-blue-500" />
+              <div className="bg-blue-100 rounded-full p-1 mr-1"> {/* Padding reduziert */}
+                <Send className="h-3 w-3 text-blue-500" /> {/* Icon verkleinert */}
               </div>
               <div>
-                <h3 className="text-md font-semibold mb-1 text-gray-800">Testphase</h3>
-                <p className="text-sm text-gray-600 mb-1">Die Software befindet sich aktuell in der Testphase.</p>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-xs font-semibold mb-0 text-gray-800">Testphase</h3> {/* Schriftgröße weiter reduziert */}
+                <p className="text-xs text-gray-600 mb-0">Die Software befindet sich aktuell in der Testphase.</p> {/* Schriftgröße weiter reduziert */}
+                <p className="text-xs text-gray-600"> {/* Schriftgröße weiter reduziert */}
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
                   <a href="mailto:info@drohnenvermessung-roofergaming.de" className="text-blue-600 underline">
                     info@drohnenvermessung-roofergaming.de
