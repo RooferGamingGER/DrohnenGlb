@@ -16,6 +16,19 @@ export const backgroundOptions: BackgroundOption[] = [
   { id: 'gray', name: 'Grau', color: '#404040', texture: null },
 ];
 
+// Extract camera position from model for better initial view
+export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 => {
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  
+  // Calculate a good distance based on the model's size
+  const maxDimension = Math.max(size.x, size.y, size.z);
+  const distance = maxDimension * 1.5;
+  
+  // Position the camera at an angle
+  return new THREE.Vector3(distance, distance * 0.8, distance);
+};
+
 // Load GLB model
 export const loadGLBModel = (
   file: File,

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
-import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin } from 'lucide-react';
+import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ interface MeasurementToolsProps {
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;
+  tempPoints?: MeasurementPoint[];
+  onDeleteTempPoint?: (index: number) => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -48,7 +50,9 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onToggleEditMode,
   screenshots,
   isMobile = false,
-  scrollThreshold = 3
+  scrollThreshold = 3,
+  tempPoints = [],
+  onDeleteTempPoint
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -121,6 +125,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleToggleMeasurementsList = () => {
     setShowMeasurementsList(!showMeasurementsList);
+  };
+
+  const handleDeleteTempPoint = (index: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onDeleteTempPoint) {
+      onDeleteTempPoint(index);
+    }
   };
 
   return (
@@ -214,7 +226,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             )}
           </div>
 
-          {measurements.length > 0 && (
+          {(measurements.length > 0 || tempPoints.length > 0) && (
             <div className="flex items-center justify-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -248,7 +260,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </Tooltip>
               )}
               
-              {isMobile && measurements.length > 0 && (
+              {isMobile && (measurements.length > 0 || tempPoints.length > 0) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -264,34 +276,40 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   </TooltipContent>
                 </Tooltip>
               )}
-              
-              {onClose && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onClose}
-                      className="p-2 rounded-md hover:bg-secondary transition-colors"
-                      aria-label="Messungswerkzeuge schließen"
-                    >
-                      <X size={18} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side={isMobile ? "bottom" : "right"}>
-                    <p>Schließen</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           )}
         </TooltipProvider>
       </div>
       
-      {measurements.length > 0 && showMeasurementsList && (
+      {(measurements.length > 0 || tempPoints.length > 0) && showMeasurementsList && (
         <div className="text-xs space-y-1 max-w-full">
           <h3 className="font-medium">Messungen</h3>
           
-          <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
+          <ScrollArea className={(measurements.length + tempPoints.length) > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
+              {/* Display temporary measurement points */}
+              {tempPoints.length > 0 && (
+                <li className="bg-orange-100/80 p-2 rounded">
+                  <div className="mb-1 font-medium">Temporäre Punkte</div>
+                  {tempPoints.map((point, index) => (
+                    <div key={index} className="flex items-center justify-between pl-2 py-1">
+                      <div className="flex items-center gap-1">
+                        <MapPin size={14} />
+                        <span>Punkt {index + 1}</span>
+                      </div>
+                      <button 
+                        onClick={(e) => handleDeleteTempPoint(index, e)}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        aria-label="Punkt löschen"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </li>
+              )}
+              
+              {/* Display completed measurements */}
               {measurements.map((m) => (
                 <li key={m.id} className={cn(
                   "bg-background/40 p-2 rounded",

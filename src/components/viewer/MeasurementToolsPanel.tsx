@@ -21,12 +21,13 @@ interface MeasurementToolsPanelProps {
   onToggleEditMode: (id: string) => void;
   allMeasurementsVisible: boolean;
   canUndo: boolean;
-  onClose: () => void;
   screenshots: { id: string, imageDataUrl: string, description: string }[];
   isMobile: boolean;
   isFullscreen: boolean;
   onNewProject: () => void;
   onTakeScreenshot: () => void;
+  tempPoints: MeasurementPoint[];
+  onDeleteTempPoint: (index: number) => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
@@ -42,12 +43,13 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onToggleEditMode,
   allMeasurementsVisible,
   canUndo,
-  onClose,
   screenshots,
   isMobile,
   isFullscreen,
   onNewProject,
-  onTakeScreenshot
+  onTakeScreenshot,
+  tempPoints,
+  onDeleteTempPoint
 }) => {
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
@@ -149,10 +151,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             allMeasurementsVisible={allMeasurementsVisible}
             measurements={measurements}
             canUndo={canUndo}
-            onClose={onClose}
             screenshots={screenshots}
             isMobile={isMobile}
             scrollThreshold={3}
+            tempPoints={tempPoints}
+            onDeleteTempPoint={onDeleteTempPoint}
           />
         </div>
       </div>
@@ -222,10 +225,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               allMeasurementsVisible={allMeasurementsVisible}
               measurements={measurements}
               canUndo={canUndo}
-              onClose={onClose}
               screenshots={screenshots}
               isMobile={isMobile}
               scrollThreshold={5}
+              tempPoints={tempPoints}
+              onDeleteTempPoint={onDeleteTempPoint}
             />
           </ScrollArea>
         </SidebarContent>
