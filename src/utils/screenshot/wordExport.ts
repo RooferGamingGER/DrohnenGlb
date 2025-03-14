@@ -1,6 +1,6 @@
 
 import { saveAs } from 'file-saver';
-import { Measurement } from '../measurementUtils';
+import { Measurement, isInclinationSignificant } from '../measurementUtils';
 import { Screenshot } from './types';
 
 /**
@@ -45,17 +45,23 @@ export const exportMeasurementsToWord = (
             <th>Beschreibung</th>
             <th>Typ</th>
             <th>Messwert</th>
+            <th>Dachneigung</th>
           </tr>
         </thead>
         <tbody>
     `;
     
     measurements.forEach(m => {
+      const hasSignificantInclination = m.type === 'length' && 
+                                       m.inclination !== undefined && 
+                                       isInclinationSignificant(m.inclination);
+      
       htmlContent += `
         <tr>
           <td>${m.description || '-'}</td>
           <td>${m.type === 'length' ? 'Länge' : 'Höhe'}</td>
           <td>${m.value.toFixed(2)} ${m.unit}</td>
+          <td>${hasSignificantInclination ? `${m.inclination?.toFixed(1)}°` : '-'}</td>
         </tr>
       `;
     });
