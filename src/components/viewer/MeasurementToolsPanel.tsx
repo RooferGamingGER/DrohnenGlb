@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -91,10 +90,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center sticky top-0 bg-white">
-            <span className="font-bold">Zusammenfassung</span>
             <div className="flex space-x-2">
-              <span className="measurement-label inline-block px-2 py-1 text-xs">Gesamte Länge: {totalLength.toFixed(2)} m</span>
-              <span className="text-xs">Anzahl: {totalLengthCount}</span>
             </div>
           </div>
           
@@ -166,17 +162,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
         <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
-          <h2 className="text-lg font-bold">Zusammenfassung</h2>
-          <div className="space-y-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span>Gesamte Länge:</span>
-              <span className="measurement-label inline-block px-2 py-0.5 text-sm">{totalLength.toFixed(2)} m</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Anzahl der Messungen:</span>
-              <span>{totalLengthCount}</span>
-            </div>
-          </div>
         </SidebarHeader>
         
         <SidebarContent className="p-4">
