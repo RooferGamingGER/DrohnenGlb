@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { MeasurementType, Measurement, MeasurementPoint } from '@/utils/measurementUtils';
-import { extractCameraPositionFromModel } from '@/utils/modelUtils';
+import { extractCameraPositionFromModel, centerModel } from '@/utils/modelUtils';
 
 interface ModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -111,84 +111,95 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: ModelViewerProp
     setProgress(0);
     setError(null);
 
-    const reader = new FileReader();
+    if (!scene || !camera || !renderer) {
+      setError("Scene not initialized");
+      setIsLoading(false);
+      return;
+    }
 
-    reader.onload = async (event) => {
-      try {
-        if (!scene || !camera || !renderer) {
-          throw new Error("Scene not initialized");
-        }
+    // Remove any previously loaded model
+    if (loadedModel) {
+      scene.remove(loadedModel);
+      setLoadedModel(null);
+    }
 
-        const contents = event.target?.result;
-        if (typeof contents !== 'string') {
-          throw new Error("Failed to read file content");
-        }
+    try {
+      const gltfLoader = new GLTFLoader();
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+      dracoLoader.setDecoderConfig({ type: 'js' });
+      gltfLoader.setDRACOLoader(dracoLoader);
 
-        const gltfLoader = new GLTFLoader();
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath('/draco/');
-        gltfLoader.setDRACOLoader(dracoLoader);
+      // Create a URL from the file
+      const fileURL = URL.createObjectURL(file);
 
-        gltfLoader.load(
-          contents,
-          (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
+      gltfLoader.load(
+        fileURL,
+        (gltf) => {
+          // Clean up the object URL
+          URL.revokeObjectURL(fileURL);
+          
+          const model = gltf.scene;
+          
+          // Center the model
+          centerModel(model);
+          
+          // Add the model to the scene
+          scene.add(model);
 
-            // Extract camera position from the model, if available
-            const newCameraPosition = extractCameraPositionFromModel(model);
-            if (newCameraPosition) {
-              camera.position.copy(newCameraPosition);
-            } else {
-              // Reset camera position if no camera is found in the model
-              camera.position.set(0, 0, 5);
-            }
+          // Extract camera position from the model, if available
+          const newCameraPosition = extractCameraPositionFromModel(model);
+          if (newCameraPosition) {
+            camera.position.copy(newCameraPosition);
+          } else {
+            // Position camera to show the entire model
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            camera.position.set(0, 0, maxDim * 2);
+          }
 
-            // Handle animations
-            if (gltf.animations && gltf.animations.length > 0) {
-              mixerRef.current = new THREE.AnimationMixer(model);
-              gltf.animations.forEach(animation => {
-                mixerRef.current?.clipAction(animation).play();
-              });
-            }
+          // Reset controls target to the center of the model
+          if (controls) {
+            controls.target.set(0, 0, 0);
+            controls.update();
+          }
 
-            setLoadedModel(model);
-            resetView();
-            setIsLoading(false);
-            onLoadComplete?.();
-          },
-          (xhr) => {
+          // Handle animations
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixerRef.current = new THREE.AnimationMixer(model);
+            gltf.animations.forEach(animation => {
+              mixerRef.current?.clipAction(animation).play();
+            });
+          }
+
+          setLoadedModel(model);
+          setProgress(100);
+          setIsLoading(false);
+          
+          if (onLoadComplete) {
+            setTimeout(onLoadComplete, 500);
+          }
+        },
+        (xhr) => {
+          if (xhr.lengthComputable) {
             const loadingProgress = Math.round((xhr.loaded / xhr.total) * 100);
             setProgress(loadingProgress);
-          },
-          (error) => {
-            console.error("An error happened:", error);
-            setError(`Failed to load model: ${error.message || 'Unknown error'}`);
-            setIsLoading(false);
           }
-        );
-      } catch (err: any) {
-        console.error("An error occurred:", err);
-        setError(`Failed to load model: ${err.message || 'Unknown error'}`);
-        setIsLoading(false);
-      }
-    };
-
-    reader.onprogress = (event) => {
-      if (event.total > 0) {
-        const loadingProgress = Math.round((event.loaded / event.total) * 100);
-        setProgress(loadingProgress);
-      }
-    };
-
-    reader.onerror = (error) => {
-      console.error("Error reading file:", error);
-      setError(`Failed to read file: Unknown error`);
+        },
+        (error) => {
+          URL.revokeObjectURL(fileURL);
+          console.error("An error happened:", error);
+          setError(`Failed to load model: ${error.message || 'Unknown error'}`);
+          setIsLoading(false);
+        }
+      );
+    } catch (err: any) {
+      console.error("An error occurred:", err);
+      setError(`Failed to load model: ${err.message || 'Unknown error'}`);
       setIsLoading(false);
-    };
-
-    reader.readAsDataURL(file);
-  }, [scene, camera, renderer, onLoadComplete]);
+    }
+  }, [scene, camera, renderer, controls, loadedModel, onLoadComplete]);
 
   const resetView = useCallback(() => {
     if (!loadedModel || !camera || !controls) return;
