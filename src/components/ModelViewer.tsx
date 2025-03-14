@@ -23,10 +23,14 @@ import DropZone from '@/components/viewer/DropZone';
 import MeasurementToolsPanel from '@/components/viewer/MeasurementToolsPanel';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
 
-const ModelViewer: React.FC = () => {
+interface ModelViewerProps {
+  forceHideHeader?: boolean;
+}
+
+const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isMobile } = useIsMobile();
+  const { isMobile, isPortrait } = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -608,6 +612,13 @@ const ModelViewer: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Ensure we're showing the measurement tools panel if we're in landscape on mobile
+    if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
+      setShowMeasurementTools(true);
+    }
+  }, [isMobile, isPortrait, modelViewer.loadedModel, showMeasurementTools]);
+
+  useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
@@ -677,6 +688,7 @@ const ModelViewer: React.FC = () => {
         onTakeScreenshot={handleTakeScreenshot}
         onExportMeasurements={handleExportMeasurements}
         isMobile={isMobile}
+        forceHideHeader={forceHideHeader}
       />
       
       <ViewerContainer
