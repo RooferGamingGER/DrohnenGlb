@@ -128,7 +128,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   };
 
   const handleDeleteTempPoint = (index: number, event: React.MouseEvent) => {
-    console.log("Delete temp point triggered for index:", index);
     event.preventDefault();
     event.stopPropagation();
     if (onDeleteTempPoint) {
@@ -164,8 +163,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Move size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "top"}>
-                <p>Navigieren (Drehen und Verschieben)</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Navigieren</p>
               </TooltipContent>
             </Tooltip>
             
@@ -184,8 +183,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <Ruler size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "top"}>
-                <p>Länge messen (2 Punkte markieren)</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Länge messen</p>
               </TooltipContent>
             </Tooltip>
             
@@ -204,8 +203,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   <ArrowUpDown size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side={isMobile ? "bottom" : "top"}>
-                <p>Höhe messen (vertikale Distanz)</p>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
 
@@ -220,7 +219,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Undo size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "top"}>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Letzten Punkt rückgängig machen</p>
                 </TooltipContent>
               </Tooltip>
@@ -239,8 +238,8 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     <Trash size={18} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={isMobile ? "bottom" : "top"}>
-                  <p>Alle Messungen und Punkte löschen</p>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Alle Messungen löschen</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -255,7 +254,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       {allMeasurementsVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
+                  <TooltipContent side="bottom">
                     <p>{allMeasurementsVisible ? "Alle Messungen ausblenden" : "Alle Messungen einblenden"}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -272,7 +271,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       <List size={18} />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
+                  <TooltipContent side="bottom">
                     <p>{showMeasurementsList ? "Messungen ausblenden" : "Messungen einblenden"}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -293,25 +292,18 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <li className="bg-orange-100/80 p-2 rounded">
                   <div className="mb-1 font-medium">Temporäre Punkte</div>
                   {tempPoints.map((point, index) => (
-                    <div key={index} className="flex items-center justify-between py-1 px-2 bg-orange-50/80 rounded my-1">
+                    <div key={index} className="flex items-center justify-between pl-2 py-1">
                       <div className="flex items-center gap-1">
-                        <MapPin size={14} className="text-orange-600" />
+                        <MapPin size={14} />
                         <span>Punkt {index + 1}</span>
                       </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button 
-                            onClick={(e) => handleDeleteTempPoint(index, e)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                            aria-label="Punkt löschen"
-                          >
-                            <X size={14} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Temporären Punkt löschen</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <button 
+                        onClick={(e) => handleDeleteTempPoint(index, e)}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        aria-label="Punkt löschen"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   ))}
                 </li>
@@ -347,73 +339,45 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                     </span>
                     <div className="flex items-center">
                       {onToggleEditMode && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button 
-                              onClick={(e) => handleToggleEditMode(m.id, e)}
-                              className={cn(
-                                "p-1 rounded mr-1",
-                                m.editMode 
-                                  ? "text-primary-foreground bg-primary" 
-                                  : "text-primary hover:bg-primary/10"
-                              )}
-                              aria-label={m.editMode ? "Bearbeitungsmodus beenden" : "Punkte verschieben"}
-                            >
-                              <GripHorizontal size={14} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p>{m.editMode ? "Bearbeitungsmodus beenden" : "Punkte verschieben"}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <button 
+                          onClick={(e) => handleToggleEditMode(m.id, e)}
+                          className={cn(
+                            "p-1 rounded mr-1",
+                            m.editMode 
+                              ? "text-primary-foreground bg-primary" 
+                              : "text-primary hover:bg-primary/10"
+                          )}
+                          aria-label={m.editMode ? "Bearbeitungsmodus beenden" : "Punkte verschieben"}
+                        >
+                          <GripHorizontal size={14} />
+                        </button>
                       )}
                       
                       {onToggleMeasurementVisibility && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button 
-                              onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
-                              className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
-                              aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
-                            >
-                              {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p>{m.visible === false ? "Messung einblenden" : "Messung ausblenden"}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <button 
+                          onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
+                          className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                          aria-label={m.visible === false ? "Messung einblenden" : "Messung ausblenden"}
+                        >
+                          {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
                       )}
                       
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button 
-                            onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
-                            className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
-                            aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
-                          >
-                            {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>{editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <button 
+                        onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
+                        className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
+                        aria-label={editingId === m.id ? "Beschreibung speichern" : "Beschreibung bearbeiten"}
+                      >
+                        {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
+                      </button>
                       
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button 
-                            onClick={(e) => handleDeleteMeasurement(m.id, e)}
-                            className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                            aria-label="Messung löschen"
-                          >
-                            <X size={14} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Messung löschen</p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <button 
+                        onClick={(e) => handleDeleteMeasurement(m.id, e)}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        aria-label="Messung löschen"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   </div>
                   
