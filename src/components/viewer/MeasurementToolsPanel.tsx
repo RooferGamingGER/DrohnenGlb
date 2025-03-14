@@ -3,9 +3,10 @@ import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileDown, Printer } from "lucide-react";
+import { FileDown, Printer, Home, RefreshCcw, Camera } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MeasurementToolsPanelProps {
   measurements: Measurement[];
@@ -24,6 +25,8 @@ interface MeasurementToolsPanelProps {
   screenshots: { id: string, imageDataUrl: string, description: string }[];
   isMobile: boolean;
   isFullscreen: boolean;
+  onNewProject: () => void;
+  onTakeScreenshot: () => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
@@ -42,7 +45,9 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onClose,
   screenshots,
   isMobile,
-  isFullscreen
+  isFullscreen,
+  onNewProject,
+  onTakeScreenshot
 }) => {
   const totalArea = measurements
     .filter(m => m.type === 'area' && m.value && m.visible)
@@ -108,7 +113,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
 
   if (isMobile && isFullscreen) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 px-2 pb-2 z-20">
+      <div className="fixed bottom-0 left-0 right-0 px-2 pb-16 z-20">
         <MeasurementTools
           activeTool={activeTool}
           onToolChange={onToolChange}
@@ -135,46 +140,70 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
         <SidebarHeader className="p-4 border-b border-zinc-200">
-          <h2 className="text-lg font-bold">Musterprojekt</h2>
+          <h2 className="text-lg font-bold">Zusammenfassung</h2>
+          <div className="space-y-2 mt-2">
+            <div className="flex justify-between">
+              <span>Gesamte Fläche:</span>
+              <span>{totalArea.toFixed(2)} m²</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Anzahl der Flächen:</span>
+              <span>{totalAreaCount}</span>
+            </div>
+          </div>
         </SidebarHeader>
         
         <SidebarContent className="p-4">
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-2">Zusammenfassung</h3>
-              <ul className="space-y-2">
-                <li className="flex justify-between">
-                  <span>Gesamte Fläche:</span>
-                  <span>{totalArea.toFixed(2)} m²</span>
-                </li>
-                <li className="flex justify-between">
-                  <span>Anzahl der Flächen:</span>
-                  <span>{totalAreaCount}</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="mt-6">
-              <MeasurementTools
-                activeTool={activeTool}
-                onToolChange={onToolChange}
-                onClearMeasurements={onClearMeasurements}
-                onDeleteMeasurement={onDeleteMeasurement}
-                onUndoLastPoint={onUndoLastPoint}
-                onUpdateMeasurement={onUpdateMeasurement}
-                onToggleMeasurementVisibility={onToggleMeasurementVisibility}
-                onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
-                onToggleEditMode={onToggleEditMode}
-                allMeasurementsVisible={allMeasurementsVisible}
-                measurements={measurements}
-                canUndo={canUndo}
-                onClose={onClose}
-                screenshots={screenshots}
-                isMobile={isMobile}
-                scrollThreshold={5}
-              />
-            </div>
+          <div className="flex flex-col space-y-3 mb-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onTakeScreenshot}
+              className="w-full justify-start"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Screenshot anfertigen
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onNewProject}
+              className="w-full justify-start"
+            >
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Projekt neu laden
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/'}
+              className="w-full justify-start"
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Zurück zur Hauptseite
+            </Button>
           </div>
+          
+          <ScrollArea className="h-[calc(100vh-380px)]">
+            <MeasurementTools
+              activeTool={activeTool}
+              onToolChange={onToolChange}
+              onClearMeasurements={onClearMeasurements}
+              onDeleteMeasurement={onDeleteMeasurement}
+              onUndoLastPoint={onUndoLastPoint}
+              onUpdateMeasurement={onUpdateMeasurement}
+              onToggleMeasurementVisibility={onToggleMeasurementVisibility}
+              onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
+              onToggleEditMode={onToggleEditMode}
+              allMeasurementsVisible={allMeasurementsVisible}
+              measurements={measurements}
+              canUndo={canUndo}
+              onClose={onClose}
+              screenshots={screenshots}
+              isMobile={isMobile}
+              scrollThreshold={5}
+            />
+          </ScrollArea>
         </SidebarContent>
         
         <SidebarFooter className="p-4 border-t border-zinc-200 mt-auto">
