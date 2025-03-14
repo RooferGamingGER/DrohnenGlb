@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ interface MeasurementToolsProps {
   onToggleMeasurementVisibility?: (id: string) => void;
   onToggleAllMeasurementsVisibility?: () => void;
   allMeasurementsVisible?: boolean;
+  onToggleEditMode?: (id: string) => void;
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;
@@ -44,6 +45,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
   allMeasurementsVisible = true,
+  onToggleEditMode,
   screenshots,
   isMobile = false,
   scrollThreshold = 3
@@ -89,6 +91,14 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.stopPropagation();
     if (onToggleMeasurementVisibility) {
       onToggleMeasurementVisibility(id);
+    }
+  };
+
+  const handleToggleEditMode = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onToggleEditMode) {
+      onToggleEditMode(id);
     }
   };
 
@@ -294,7 +304,10 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
               {measurements.map((m) => (
-                <li key={m.id} className="bg-background/40 p-2 rounded">
+                <li key={m.id} className={cn(
+                  "bg-background/40 p-2 rounded",
+                  m.editMode && "border border-primary/70"
+                )}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-2">
                       {m.type === 'length' && (
@@ -318,6 +331,21 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       )}
                     </span>
                     <div className="flex items-center">
+                      {onToggleEditMode && (
+                        <button 
+                          onClick={(e) => handleToggleEditMode(m.id, e)}
+                          className={cn(
+                            "p-1 rounded mr-1",
+                            m.editMode 
+                              ? "text-primary-foreground bg-primary" 
+                              : "text-primary hover:bg-primary/10"
+                          )}
+                          aria-label={m.editMode ? "Bearbeitungsmodus beenden" : "Punkte verschieben"}
+                        >
+                          <GripHorizontal size={14} />
+                        </button>
+                      )}
+                      
                       {onToggleMeasurementVisibility && (
                         <button 
                           onClick={(e) => handleToggleMeasurementVisibility(m.id, e)}
@@ -327,6 +355,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           {m.visible === false ? <Eye size={14} /> : <EyeOff size={14} />}
                         </button>
                       )}
+                      
                       <button 
                         onClick={(e) => editingId === m.id ? handleEditSave(m.id, e) : handleEditStart(m.id, m.description, e)}
                         className="text-primary hover:bg-primary/10 p-1 rounded mr-1"
@@ -334,6 +363,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                       >
                         {editingId === m.id ? <Check size={14} /> : <Pencil size={14} />}
                       </button>
+                      
                       <button 
                         onClick={(e) => handleDeleteMeasurement(m.id, e)}
                         className="text-destructive hover:bg-destructive/10 p-1 rounded"
@@ -360,6 +390,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         {m.description}
                       </p>
                     )
+                  )}
+                  
+                  {m.editMode && (
+                    <div className="mt-1 text-xs text-primary">
+                      Klicken Sie einen Punkt an, um ihn zu verschieben
+                    </div>
                   )}
                 </li>
               ))}

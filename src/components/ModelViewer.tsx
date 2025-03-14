@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -8,6 +9,7 @@ import {
   exportMeasurementsToPDF, 
   exportMeasurementsToWord 
 } from '@/utils/screenshotUtils';
+import { highlightMeasurementPoints } from '@/utils/measurementUtils';
 
 // Refactored components
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -76,6 +78,14 @@ const ModelViewer: React.FC = () => {
   }, [modelViewer]);
 
   const handleToolChange = useCallback((tool: any) => {
+    // Wenn ein Werkzeug ausgewählt wird, alle Messungen aus dem Bearbeitungsmodus nehmen
+    if (tool !== 'none') {
+      modelViewer.measurements.forEach(measurement => {
+        if (measurement.editMode) {
+          toggleEditMode(measurement.id);
+        }
+      });
+    }
     modelViewer.setActiveTool(tool);
   }, [modelViewer]);
 
@@ -214,9 +224,53 @@ const ModelViewer: React.FC = () => {
       toast({
         title: newVisibility ? "Messung eingeblendet" : "Messung ausgeblendet",
         description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`,
-        duration: 5000,
+        duration: 3000,
       });
     }
+  }, [modelViewer, toast]);
+
+  const toggleEditMode = useCallback((id: string) => {
+    const measurement = modelViewer.measurements.find(m => m.id === id);
+    if (!measurement || !modelViewer.measurementGroupRef?.current) return;
+
+    // Deaktiviere Editiermodus für alle anderen Messungen
+    modelViewer.measurements.forEach(m => {
+      if (m.id !== id && m.editMode) {
+        highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
+        modelViewer.updateMeasurement(m.id, { editMode: false });
+      }
+    });
+
+    // Toggle Editiermodus für die ausgewählte Messung
+    const newEditMode = !measurement.editMode;
+    
+    // Aktiviere/deaktiviere den Bewegungsmodus
+    if (newEditMode) {
+      // Wechsle zum Navigations-Tool, wenn ein anderes Tool aktiv ist
+      if (modelViewer.activeTool !== 'none') {
+        modelViewer.setActiveTool('none');
+      }
+      
+      // Aktiviere den Editiermodus für diese Messung
+      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
+      
+      toast({
+        title: "Bearbeitungsmodus aktiviert",
+        description: "Klicken Sie auf einen Messpunkt, um ihn zu verschieben.",
+        duration: 5000,
+      });
+    } else {
+      // Deaktiviere den Editiermodus für diese Messung
+      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
+      
+      toast({
+        title: "Bearbeitungsmodus deaktiviert",
+        description: "Die Messung kann nicht mehr bearbeitet werden.",
+        duration: 3000,
+      });
+    }
+    
+    modelViewer.updateMeasurement(id, { editMode: newEditMode });
   }, [modelViewer, toast]);
 
   useEffect(() => {
@@ -276,6 +330,7 @@ const ModelViewer: React.FC = () => {
           onUpdateMeasurement={modelViewer.updateMeasurement}
           onToggleMeasurementVisibility={toggleSingleMeasurementVisibility}
           onToggleAllMeasurementsVisibility={toggleMeasurementsVisibility}
+          onToggleEditMode={toggleEditMode}
           allMeasurementsVisible={measurementsVisible}
           canUndo={modelViewer.canUndo}
           onClose={toggleMeasurementTools}

@@ -12,6 +12,7 @@ interface MeasurementToolsPanelProps {
   onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
   onToggleMeasurementVisibility: (id: string) => void;
   onToggleAllMeasurementsVisibility: () => void;
+  onToggleEditMode: (id: string) => void;
   allMeasurementsVisible: boolean;
   canUndo: boolean;
   onClose: () => void;
@@ -30,6 +31,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onUpdateMeasurement,
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
+  onToggleEditMode,
   allMeasurementsVisible,
   canUndo,
   onClose,
@@ -50,6 +52,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         onUpdateMeasurement={onUpdateMeasurement}
         onToggleMeasurementVisibility={onToggleMeasurementVisibility}
         onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
+        onToggleEditMode={onToggleEditMode}
         allMeasurementsVisible={allMeasurementsVisible}
         measurements={measurements}
         canUndo={canUndo}

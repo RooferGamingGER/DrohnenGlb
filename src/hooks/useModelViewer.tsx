@@ -19,6 +19,7 @@ import {
   createTextSprite,
   updateLabelScale,
   createDraggablePointMaterial,
+  createEditablePointMaterial,
   createDraggablePoint,
   createMeasurementLine,
   isDoubleClick,
@@ -149,7 +150,19 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         document.body.style.cursor = 'pointer';
         
         if (intersects[0].object instanceof THREE.Mesh) {
-          intersects[0].object.material = createDraggablePointMaterial(true);
+          const nameParts = pointId.split('-');
+          if (nameParts.length >= 3) {
+            const measurementId = nameParts[1];
+            const measurement = measurements.find(m => m.id === measurementId);
+            
+            if (!measurement?.editMode) {
+              intersects[0].object.material = createDraggablePointMaterial(true);
+            } else {
+              intersects[0].object.material = createEditablePointMaterial(false);
+            }
+          } else {
+            intersects[0].object.material = createDraggablePointMaterial(true);
+          }
         }
       } else {
         if (hoveredPointId) {
@@ -158,7 +171,19 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           );
           
           if (prevHoveredPoint && prevHoveredPoint instanceof THREE.Mesh) {
-            prevHoveredPoint.material = createDraggablePointMaterial(false);
+            const nameParts = hoveredPointId.split('-');
+            if (nameParts.length >= 3) {
+              const measurementId = nameParts[1];
+              const measurement = measurements.find(m => m.id === measurementId);
+              
+              if (measurement?.editMode) {
+                prevHoveredPoint.material = createEditablePointMaterial(false);
+              } else {
+                prevHoveredPoint.material = createDraggablePointMaterial(false);
+              }
+            } else {
+              prevHoveredPoint.material = createDraggablePointMaterial(false);
+            }
           }
         }
         
@@ -178,6 +203,48 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     if (!containerRef.current || !measurementGroupRef.current) return;
     
     if (hoveredPointId && !isDraggingPoint) {
+      const nameParts = hoveredPointId.split('-');
+      if (nameParts.length >= 3) {
+        const measurementId = nameParts[1];
+        const measurement = measurements.find(m => m.id === measurementId);
+        
+        if (measurement?.editMode) {
+          const pointIndex = parseInt(nameParts[2], 10);
+          const pointMesh = measurementGroupRef.current.children.find(
+            child => child.name === hoveredPointId
+          ) as THREE.Mesh;
+          
+          if (pointMesh) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            setIsDraggingPoint(true);
+            draggedPointRef.current = pointMesh;
+            document.body.style.cursor = 'grabbing';
+            
+            setSelectedMeasurementId(measurementId);
+            setSelectedPointIndex(pointIndex);
+            
+            if (controlsRef.current) {
+              controlsRef.current.enabled = false;
+            }
+            
+            pointMesh.userData = {
+              ...pointMesh.userData,
+              isBeingDragged: true
+            };
+            
+            toast({
+              title: "Punkt wird verschoben",
+              description: "Bewegen Sie den Punkt an die gewünschte Position.",
+              duration: 3000,
+            });
+            
+            return;
+          }
+        }
+      }
+      
       const currentTime = new Date().getTime();
       const pointMesh = measurementGroupRef.current.children.find(
         child => child.name === hoveredPointId
@@ -381,13 +448,26 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         controlsRef.current.enabled = true;
       }
       
-      toast({
-        title: "Position aktualisiert",
-        description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
-        duration: 3000,
-      });
+      if (selectedMeasurementId) {
+        const measurement = measurements.find(m => m.id === selectedMeasurementId);
+        if (measurement?.editMode) {
+          toast({
+            title: "Position aktualisiert",
+            description: "Die Messung wurde an die neue Position angepasst.",
+            duration: 3000,
+          });
+        } else {
+          toast({
+            title: "Position aktualisiert",
+            description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
+            duration: 3000,
+          });
+        }
+      }
       
       setIsDraggingPoint(false);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
     }
   };
 

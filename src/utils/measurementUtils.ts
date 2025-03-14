@@ -17,6 +17,7 @@ export interface Measurement {
   description?: string;
   isActive?: boolean;
   visible?: boolean;
+  editMode?: boolean; // Neues Feld für den Bearbeitungsmodus
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
@@ -170,6 +171,15 @@ export const createDraggablePointMaterial = (isHovered: boolean = false, isSelec
   });
 };
 
+// For edit mode, create a different material to highlight points that are editable
+export const createEditablePointMaterial = (isSelected: boolean = false): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({ 
+    color: isSelected ? 0x00ff00 : 0x2563eb, // Using blue from the tailwind color palette
+    opacity: 0.9,
+    transparent: true
+  });
+};
+
 // Create draggable measurement point with increased size for better touch interaction
 export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
   // Significantly increased size for better touch/click targets
@@ -228,4 +238,33 @@ export const togglePointSelection = (point: THREE.Mesh): boolean => {
 // Check if a point is currently selected
 export const isPointSelected = (point: THREE.Mesh): boolean => {
   return point.userData?.isSelected === true;
+};
+
+// Highlight measurement points for edit mode
+export const highlightMeasurementPoints = (
+  measurement: Measurement, 
+  scene: THREE.Group, 
+  highlight: boolean
+): void => {
+  if (!measurement.pointObjects) return;
+  
+  measurement.pointObjects.forEach((point) => {
+    if (point instanceof THREE.Mesh && point.material instanceof THREE.MeshBasicMaterial) {
+      // Store original material if entering edit mode
+      if (highlight && !point.userData.originalMaterial) {
+        point.userData.originalMaterial = point.material.clone();
+      }
+      
+      // Apply appropriate material
+      if (highlight) {
+        point.material.dispose();
+        point.material = createEditablePointMaterial(false);
+      } else if (point.userData.originalMaterial) {
+        // Restore original material when exiting edit mode
+        point.material.dispose();
+        point.material = point.userData.originalMaterial;
+        point.userData.originalMaterial = null;
+      }
+    }
+  });
 };
