@@ -24,14 +24,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Kopfzeile (Beispiel) */}
-      <header className="bg-gray-200 p-4 fixed top-0 left-0 w-full z-10">
-        <h1 className="text-2xl font-bold">Ihre Kopfzeile</h1>
-      </header>
-
-      {/* Hauptinhalt */}
-      <div className="flex flex-col md:flex-row items-center justify-center p-4 mt-20 flex-grow">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      {/* Hauptinhalt (DropZone und "How It Works") */}
+      <div className="flex flex-col md:flex-row w-full max-w-2xl items-center justify-center">
         {/* DropZone-Fenster */}
         <div className="w-full md:w-1/2 p-6 flex flex-col items-center">
           <div
