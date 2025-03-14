@@ -425,7 +425,107 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
   
-  // Update label position if it exists
+  // Recalculate measurement value and inclination
+  if (measurement.points.length >= 2) {
+    // Update the value based on the measurement type
+    if (measurement.type === 'length') {
+      measurement.value = calculateDistance(
+        measurement.points[0].position,
+        measurement.points[1].position
+      );
+      
+      // Update inclination for length measurements
+      measurement.inclination = calculateInclination(
+        measurement.points[0].position,
+        measurement.points[1].position
+      );
+      
+      // Update the label text with the new value and inclination
+      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+        const labelText = formatMeasurementWithInclination(measurement.value, measurement.inclination);
+        
+        // Get the current position to maintain it
+        const currentPosition = measurement.labelObject.position.clone();
+        
+        // Calculate the updated midpoint
+        const midpoint = new THREE.Vector3().addVectors(
+          measurement.points[0].position,
+          measurement.points[1].position
+        ).multiplyScalar(0.5);
+        
+        // Add a small offset above the line for better visibility
+        midpoint.y += 0.1;
+        
+        // Update the sprite with the new text and position
+        const updatedSprite = createTextSprite(
+          labelText,
+          midpoint,
+          0x00ff00
+        );
+        
+        // Preserve the userData and scale from the existing label
+        updatedSprite.userData = measurement.labelObject.userData;
+        updatedSprite.scale.copy(measurement.labelObject.scale);
+        
+        // Replace the old label with the new one
+        if (measurement.labelObject.parent) {
+          const parent = measurement.labelObject.parent;
+          if (measurement.labelObject.material.map) {
+            measurement.labelObject.material.map.dispose();
+          }
+          measurement.labelObject.material.dispose();
+          parent.remove(measurement.labelObject);
+          parent.add(updatedSprite);
+          measurement.labelObject = updatedSprite;
+        }
+      }
+    } 
+    else if (measurement.type === 'height') {
+      measurement.value = calculateHeight(
+        measurement.points[0].position,
+        measurement.points[1].position
+      );
+      
+      // Update the label text with the new height value
+      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+        const labelText = `${measurement.value.toFixed(2)} ${measurement.unit}`;
+        
+        // Calculate the updated vertical midpoint
+        const midHeight = (measurement.points[0].position.y + measurement.points[1].position.y) / 2;
+        const midPoint = new THREE.Vector3(
+          measurement.points[0].position.x,
+          midHeight,
+          measurement.points[0].position.z
+        );
+        midPoint.x += 0.1;
+        
+        // Update the sprite with the new text and position
+        const updatedSprite = createTextSprite(
+          labelText,
+          midPoint,
+          0x0000ff
+        );
+        
+        // Preserve the userData and scale from the existing label
+        updatedSprite.userData = measurement.labelObject.userData;
+        updatedSprite.scale.copy(measurement.labelObject.scale);
+        
+        // Replace the old label with the new one
+        if (measurement.labelObject.parent) {
+          const parent = measurement.labelObject.parent;
+          if (measurement.labelObject.material.map) {
+            measurement.labelObject.material.map.dispose();
+          }
+          measurement.labelObject.material.dispose();
+          parent.remove(measurement.labelObject);
+          parent.add(updatedSprite);
+          measurement.labelObject = updatedSprite;
+        }
+      }
+    }
+  }
+  
+  // Update label position if it exists (use the existing label position update code)
   if (measurement.labelObject) {
     // For two-point measurements, place label in the middle
     if (measurement.points.length === 2) {
