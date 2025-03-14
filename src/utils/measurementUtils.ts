@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -162,7 +163,17 @@ export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): vo
   );
 };
 
-// Create draggable point material
+// Deutlich verbesserte visuelle Darstellung im Editiermodus
+export const createEditablePointMaterial = (isSelected: boolean = false): THREE.MeshBasicMaterial => {
+  // Auffälligere, intensive Farbe für Editiermodus
+  return new THREE.MeshBasicMaterial({ 
+    color: isSelected ? 0x00ff00 : 0xff00ff, // Magenta für bearbeitbare Punkte
+    opacity: 0.9,
+    transparent: true
+  });
+};
+
+// Standard-Punktmaterial, wenn nicht im Editiermodus
 export const createDraggablePointMaterial = (isHovered: boolean = false, isSelected: boolean = false): THREE.MeshBasicMaterial => {
   return new THREE.MeshBasicMaterial({ 
     color: isSelected ? 0x00ff00 : (isHovered ? 0xffff00 : 0xff0000),
@@ -171,19 +182,10 @@ export const createDraggablePointMaterial = (isHovered: boolean = false, isSelec
   });
 };
 
-// For edit mode, create a different material to highlight points that are editable
-export const createEditablePointMaterial = (isSelected: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({ 
-    color: isSelected ? 0x00ff00 : 0x2563eb, // Using blue from the tailwind color palette
-    opacity: 0.9,
-    transparent: true
-  });
-};
-
 // Create draggable measurement point with increased size for better touch interaction
 export const createDraggablePoint = (position: THREE.Vector3, name: string): THREE.Mesh => {
-  // Significantly increased size for better touch/click targets
-  const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);  // Increased size from 0.12 to 0.15
+  // Normale Größe für nicht-editierbare Punkte
+  const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
   const pointMaterial = createDraggablePointMaterial();
   const point = new THREE.Mesh(pointGeometry, pointMaterial);
   point.position.copy(position);
@@ -192,10 +194,11 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
   // Add custom userData to track interaction state
   point.userData = {
     isDraggable: true,
-    lastClickTime: 0, // To track double-clicks
+    lastClickTime: 0,
     isBeingDragged: false,
     isSelected: false,
-    isEditable: false
+    isEditable: false,
+    originalScale: new THREE.Vector3(1, 1, 1)
   };
   
   return point;
@@ -205,7 +208,7 @@ export const createDraggablePoint = (position: THREE.Vector3, name: string): THR
 export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0x00ff00): THREE.Line => {
   const lineMaterial = new THREE.LineBasicMaterial({ 
     color: color,
-    linewidth: 8, // Increased from 5 to 8 for better visibility
+    linewidth: 8,
     opacity: 0.9,
     transparent: true,
   });
@@ -246,7 +249,7 @@ export const isPointSelected = (point: THREE.Mesh): boolean => {
   return point.userData?.isSelected === true;
 };
 
-// Highlight measurement points for edit mode
+// Highlight measurement points for edit mode - VERBESSERTE VERSION
 export const highlightMeasurementPoints = (
   measurement: Measurement, 
   scene: THREE.Group, 
@@ -261,14 +264,41 @@ export const highlightMeasurementPoints = (
         point.userData.originalMaterial = point.material.clone();
       }
       
+      // Speichere originale Skalierung, falls noch nicht vorhanden
+      if (!point.userData.originalScale) {
+        point.userData.originalScale = point.scale.clone();
+      }
+      
       // Apply appropriate material and update editable state
       if (highlight) {
+        // Setze Editiermodus-Flag
         point.userData.isEditable = true;
+        
+        // Wechsle Material zur auffälligen Editiermodusfarbe
         point.material.dispose();
         point.material = createEditablePointMaterial(false);
+        
+        // Vergrößere den Punkt deutlich für bessere Sichtbarkeit und Interaktion
+        const scaleUp = 1.75; // 175% der Originalgröße
+        point.scale.set(
+          point.userData.originalScale.x * scaleUp,
+          point.userData.originalScale.y * scaleUp,
+          point.userData.originalScale.z * scaleUp
+        );
+        
+        // Setze benutzerdefinierten Cursor-Stil
+        document.body.style.cursor = 'grab';
       } else {
-        // Restore original material when exiting edit mode
+        // Deaktiviere Editiermodus
         point.userData.isEditable = false;
+        
+        // Setze normalen Cursor zurück
+        document.body.style.cursor = 'auto';
+        
+        // Setze Originalgröße zurück
+        point.scale.copy(point.userData.originalScale);
+        
+        // Restore original material when exiting edit mode
         if (point.userData.originalMaterial) {
           point.material.dispose();
           point.material = point.userData.originalMaterial;
@@ -279,7 +309,82 @@ export const highlightMeasurementPoints = (
   });
 };
 
-// Vergrößert den Hittest-Bereich für einen Punkt
+// Vergrößerter Hittest-Radius für bessere Erkennung
 export const getPointHitTestRadius = (): number => {
-  return 0.2; // Größerer Bereich als die visuelle Größe des Punktes
+  return 0.3; // Deutlich größerer Bereich als die visuelle Größe des Punktes
+};
+
+// Neuer Helfer: Zeige "Kann ziehen"-Cursor, wenn über editierbarem Punkt
+export const updateCursorForDraggablePoint = (isOverDraggablePoint: boolean, isDragging: boolean = false): void => {
+  if (isOverDraggablePoint) {
+    document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
+  } else {
+    document.body.style.cursor = 'auto';
+  }
+};
+
+// Neuer Helfer: Finde den nächsten Punkt innerhalb des Hit-Radius
+export const findNearestEditablePoint = (
+  raycaster: THREE.Raycaster,
+  camera: THREE.Camera,
+  mousePosition: THREE.Vector2,
+  scene: THREE.Group,
+  hitRadius: number = 0.3
+): THREE.Mesh | null => {
+  // Aktualisiere Raycaster mit aktueller Mausposition
+  raycaster.setFromCamera(mousePosition, camera);
+  
+  // Suche nach Schnittpunkten mit der Szene
+  const intersects = raycaster.intersectObjects(scene.children, true);
+  
+  // Wenn ein Punkt getroffen wurde
+  if (intersects.length > 0) {
+    // Finde das erste getroffene Objekt, das editierbar ist
+    for (const intersect of intersects) {
+      const object = intersect.object;
+      if (object instanceof THREE.Mesh && 
+          object.userData && 
+          object.userData.isDraggable && 
+          object.userData.isEditable) {
+        return object;
+      }
+    }
+  }
+  
+  // Wenn kein direkter Treffer, suche nach Punkten in der Nähe
+  const possiblePoints: {point: THREE.Mesh, distance: number}[] = [];
+  
+  // Iteriere durch alle Kinder der Szene
+  scene.traverse((object) => {
+    if (object instanceof THREE.Mesh && 
+        object.userData && 
+        object.userData.isDraggable && 
+        object.userData.isEditable) {
+      
+      // Berechne die Bildschirmposition des Punktes
+      const pointPosition = new THREE.Vector3();
+      object.getWorldPosition(pointPosition);
+      
+      const screenPosition = pointPosition.clone().project(camera);
+      
+      // Berechne die Distanz zur Mausposition auf dem Bildschirm
+      const distance = Math.sqrt(
+        Math.pow(screenPosition.x - mousePosition.x, 2) + 
+        Math.pow(screenPosition.y - mousePosition.y, 2)
+      );
+      
+      // Wenn der Punkt innerhalb des Hit-Radius liegt, füge ihn zur Liste hinzu
+      if (distance < hitRadius) {
+        possiblePoints.push({point: object, distance});
+      }
+    }
+  });
+  
+  // Sortiere die Punkte nach Distanz und gib den nächsten zurück
+  if (possiblePoints.length > 0) {
+    possiblePoints.sort((a, b) => a.distance - b.distance);
+    return possiblePoints[0].point;
+  }
+  
+  return null;
 };

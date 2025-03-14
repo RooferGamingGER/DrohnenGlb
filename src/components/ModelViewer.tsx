@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useModelViewer } from '@/hooks/useModelViewer';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -8,7 +9,11 @@ import {
   exportMeasurementsToPDF, 
   exportMeasurementsToWord 
 } from '@/utils/screenshotUtils';
-import { highlightMeasurementPoints } from '@/utils/measurementUtils';
+import { 
+  highlightMeasurementPoints, 
+  updateCursorForDraggablePoint,
+  findNearestEditablePoint
+} from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
 import ViewerContainer from '@/components/viewer/ViewerContainer';
@@ -26,6 +31,11 @@ const ModelViewer: React.FC = () => {
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
   const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
+  
+  // State für den verbesserten Drag-Mechanismus
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
+  const [lastMousePosition, setLastMousePosition] = useState<{x: number, y: number} | null>(null);
   
   const modelViewer = useModelViewer({
     containerRef,
@@ -230,6 +240,7 @@ const ModelViewer: React.FC = () => {
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (!measurement || !modelViewer.measurementGroupRef?.current) return;
 
+    // Deaktiviere den Editiermodus für alle anderen Messungen
     modelViewer.measurements.forEach(m => {
       if (m.id !== id && m.editMode) {
         highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
@@ -240,18 +251,21 @@ const ModelViewer: React.FC = () => {
     const newEditMode = !measurement.editMode;
     
     if (newEditMode) {
+      // Wenn ein Messwerkzeug aktiv ist, deaktiviere es
       if (modelViewer.activeTool !== 'none') {
         modelViewer.setActiveTool('none');
       }
       
+      // Hebe die Messpunkte hervor und vergrößere sie
       highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
       
       toast({
         title: "Bearbeitungsmodus aktiviert",
-        description: "Klicken Sie auf einen Messpunkt, um ihn zu verschieben.",
+        description: "Klicken und ziehen Sie einen Messpunkt, um ihn zu bewegen.",
         duration: 5000,
       });
     } else {
+      // Setze die Messpunkte zurück
       highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
       
       toast({
@@ -264,10 +278,156 @@ const ModelViewer: React.FC = () => {
     modelViewer.updateMeasurement(id, { editMode: newEditMode });
   }, [modelViewer, toast]);
 
+  // Neuer Handler für Mouse-Move-Events zum Verschieben von Punkten
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
+    if (!modelViewer.loadedModel || !containerRef.current) return;
+    
+    // Berechne relative Mausposition im Viewer
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Aktualisiere Mausposition
+    const mousePosition = new THREE.Vector2(mouseX, mouseY);
+    
+    // Wenn wir gerade ziehen und einen Punkt haben
+    if (isDragging && draggedPoint) {
+      // Verändere Cursor während des Ziehens
+      updateCursorForDraggablePoint(true, true);
+      
+      // Raycaster für Tiefenbestimmung
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mousePosition, modelViewer.camera);
+      
+      // Schneide mit dem Modell, um die Tiefe zu bestimmen
+      const intersects = raycaster.intersectObject(modelViewer.loadedModel, true);
+      
+      if (intersects.length > 0) {
+        // Finde den zugehörigen Measurement
+        const measurementId = draggedPoint.name.split('_')[0];
+        const pointIndex = parseInt(draggedPoint.name.split('_')[1]);
+        
+        const measurement = modelViewer.measurements.find(m => m.id === measurementId);
+        
+        if (measurement) {
+          // Aktualisiere die Position des Punktes
+          const newPosition = intersects[0].point.clone();
+          draggedPoint.position.copy(newPosition);
+          
+          // Aktualisiere das Measurement
+          const updatedPoints = [...measurement.points];
+          updatedPoints[pointIndex] = {
+            position: newPosition.clone(),
+            worldPosition: newPosition.clone()
+          };
+          
+          // Aktualisiere die Messung
+          modelViewer.updateMeasurement(measurementId, { points: updatedPoints });
+        }
+      }
+    } 
+    // Wenn wir nicht ziehen, prüfe ob wir über einem bearbeitbaren Punkt sind
+    else if (!isDragging && modelViewer.measurementGroupRef?.current) {
+      // Finde den nächsten editierbaren Punkt in der Nähe des Mauszeigers
+      const nearestPoint = findNearestEditablePoint(
+        modelViewer.raycaster,
+        modelViewer.camera,
+        mousePosition,
+        modelViewer.measurementGroupRef.current
+      );
+      
+      // Aktualisiere den Cursor basierend auf dem Ergebnis
+      updateCursorForDraggablePoint(!!nearestPoint);
+    }
+    
+    // Aktualisiere die letzte Mausposition
+    setLastMousePosition({ x: event.clientX, y: event.clientY });
+    
+  }, [isDragging, draggedPoint, modelViewer]);
+
+  // Neuer Handler für Mouse-Down-Events
+  const handleMouseDown = useCallback((event: MouseEvent) => {
+    // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
+    if (!modelViewer.loadedModel || !containerRef.current) return;
+    
+    // Prüfe, ob ein editierbarer Punkt angeklickt wurde
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    const mousePosition = new THREE.Vector2(mouseX, mouseY);
+    
+    // Suche nach einem editierbaren Punkt in der Nähe
+    if (modelViewer.measurementGroupRef?.current) {
+      const nearestPoint = findNearestEditablePoint(
+        modelViewer.raycaster,
+        modelViewer.camera,
+        mousePosition,
+        modelViewer.measurementGroupRef.current
+      );
+      
+      if (nearestPoint) {
+        // Punkt gefunden, starte Drag-Operation
+        setIsDragging(true);
+        setDraggedPoint(nearestPoint);
+        updateCursorForDraggablePoint(true, true);
+        
+        // Verhindere OrbitControls, wenn wir einen Punkt verschieben
+        if (modelViewer.orbitControls) {
+          modelViewer.orbitControls.enabled = false;
+        }
+      }
+    }
+  }, [modelViewer]);
+
+  // Neuer Handler für Mouse-Up-Events
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      // Beende Drag-Operation
+      setIsDragging(false);
+      setDraggedPoint(null);
+      updateCursorForDraggablePoint(false);
+      
+      // Aktiviere OrbitControls wieder
+      if (modelViewer.orbitControls) {
+        modelViewer.orbitControls.enabled = true;
+      }
+    }
+  }, [isDragging, modelViewer.orbitControls]);
+
+  // Event-Listener für Maus-Events
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseDown, handleMouseUp]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && modelViewer.activeTool !== 'none') {
-        modelViewer.setActiveTool('none');
+      if (event.key === 'Escape') {
+        // Bei Escape-Taste den Drag-Modus abbrechen
+        if (isDragging) {
+          setIsDragging(false);
+          setDraggedPoint(null);
+          updateCursorForDraggablePoint(false);
+          
+          // Aktiviere OrbitControls wieder
+          if (modelViewer.orbitControls) {
+            modelViewer.orbitControls.enabled = true;
+          }
+        }
+        
+        // Wenn ein Werkzeug aktiv ist, deaktiviere es
+        if (modelViewer.activeTool !== 'none') {
+          modelViewer.setActiveTool('none');
+        }
       }
     };
     
@@ -275,7 +435,7 @@ const ModelViewer: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [modelViewer]);
+  }, [isDragging, modelViewer]);
 
   return (
     <div className="relative h-full w-full flex flex-col">
