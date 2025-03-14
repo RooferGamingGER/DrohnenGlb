@@ -32,6 +32,7 @@ interface MeasurementToolsProps {
   scrollThreshold?: number;
   tempPoints?: MeasurementPoint[];
   onDeleteTempPoint?: (index: number) => void;
+  onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -52,11 +53,13 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   isMobile = false,
   scrollThreshold = 3,
   tempPoints = [],
-  onDeleteTempPoint
+  onDeleteTempPoint,
+  onDeleteSinglePoint
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
+  const [expandedMeasurement, setExpandedMeasurement] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
@@ -123,6 +126,20 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
 
   const handleToggleMeasurementsList = () => {
     setShowMeasurementsList(!showMeasurementsList);
+  };
+
+  const handleDeleteSinglePoint = (measurementId: string, pointIndex: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onDeleteSinglePoint) {
+      onDeleteSinglePoint(measurementId, pointIndex);
+    }
+  };
+
+  const toggleMeasurementExpand = (id: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setExpandedMeasurement(expandedMeasurement === id ? null : id);
   };
 
   return (
@@ -282,7 +299,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   m.editMode && "border border-primary/70"
                 )}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 cursor-pointer" onClick={(e) => toggleMeasurementExpand(m.id, e)}>
                       {m.type === 'length' && (
                         <>
                           <Ruler size={14} />
@@ -368,6 +385,31 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                   {m.editMode && (
                     <div className="mt-1 text-xs text-primary">
                       Klicken Sie einen Punkt an, um ihn zu verschieben
+                    </div>
+                  )}
+
+                  {expandedMeasurement === m.id && m.points && m.points.length > 0 && (
+                    <div className="mt-2 border-t border-gray-200 pt-2">
+                      <h4 className="text-xs font-medium mb-1">Messpunkte</h4>
+                      <ul className="space-y-1">
+                        {m.points.map((point, idx) => (
+                          <li key={idx} className="flex items-center justify-between bg-background/60 p-1 rounded">
+                            <span className="flex items-center">
+                              <MapPin size={12} className="mr-1" />
+                              Punkt {idx + 1}
+                            </span>
+                            {onDeleteSinglePoint && (
+                              <button
+                                onClick={(e) => handleDeleteSinglePoint(m.id, idx, e)}
+                                className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                                aria-label={`Punkt ${idx + 1} löschen`}
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </li>
