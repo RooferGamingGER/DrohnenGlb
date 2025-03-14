@@ -77,9 +77,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   } | null>(null);
   const requestRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
+  
   const processingStartTimeRef = useRef<number | null>(null);
-  const uploadProgressRef = useRef<number>(0);
-  const processingIntervalRef = useRef<number | null>(null);
+  const loadStartTimeRef = useRef<number | null>(null);
+  const modelSizeRef = useRef<number>(0);
+  const progressIntervalRef = useRef<number | null>(null);
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
@@ -1210,9 +1212,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       clearMeasurements();
 
-      if (processingIntervalRef.current) {
-        clearInterval(processingIntervalRef.current);
-        processingIntervalRef.current = null;
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
 
       setState({
@@ -1222,41 +1224,38 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         loadedModel: null,
       });
 
-      uploadProgressRef.current = 0;
+      modelSizeRef.current = file.size;
+      loadStartTimeRef.current = Date.now();
 
-      const model = await loadGLBModel(
-        file,
-        (event) => {
-          if (event.lengthComputable) {
-            const uploadPercentage = Math.round((event.loaded / event.total) * 100);
-            uploadProgressRef.current = uploadPercentage;
-            const scaledProgress = Math.floor(uploadPercentage * 0.7);
-            setState(prev => ({ ...prev, progress: scaledProgress }));
-          }
-        }
-      );
+      const totalEstimatedTime = Math.max(3000, Math.min(15000, file.size / 100000));
+      let lastUpdateTime = Date.now();
 
-      setState(prev => ({ ...prev, progress: 70 }));
-      processingStartTimeRef.current = Date.now();
-      
-      const estimatedProcessingTime = 3000;
-      
-      processingIntervalRef.current = window.setInterval(() => {
-        const elapsedTime = Date.now() - (processingStartTimeRef.current || 0);
-        const processingProgress = Math.min(
-          Math.floor(70 + (elapsedTime / estimatedProcessingTime) * 30), 
-          99
-        );
+      progressIntervalRef.current = window.setInterval(() => {
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - (loadStartTimeRef.current || 0);
+        const deltaTime = currentTime - lastUpdateTime;
+        lastUpdateTime = currentTime;
         
-        setState(prev => ({ ...prev, progress: processingProgress }));
+        const baseProgress = Math.min(99, (elapsedTime / totalEstimatedTime) * 100);
         
-        if (processingProgress >= 99) {
-          if (processingIntervalRef.current) {
-            clearInterval(processingIntervalRef.current);
-            processingIntervalRef.current = null;
-          }
+        let adjustedProgress = baseProgress;
+        if (baseProgress > 90) {
+          adjustedProgress = 90 + (baseProgress - 90) * 0.5;
+        } else if (baseProgress > 80) {
+          adjustedProgress = 80 + (baseProgress - 80) * 0.7;
+        } else if (baseProgress > 70) {
+          adjustedProgress = 70 + (baseProgress - 70) * 0.8;
         }
+        
+        setState(prev => ({
+          ...prev,
+          progress: Math.round(adjustedProgress)
+        }));
       }, 100);
+
+      const model = await loadGLBModel(file);
+
+      processingStartTimeRef.current = Date.now();
 
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
@@ -1280,9 +1279,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       sceneRef.current.add(model);
       modelRef.current = model;
 
-      if (processingIntervalRef.current) {
-        clearInterval(processingIntervalRef.current);
-        processingIntervalRef.current = null;
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
 
       setState({
@@ -1306,9 +1305,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     } catch (error) {
       console.error('Error loading model:', error);
       
-      if (processingIntervalRef.current) {
-        clearInterval(processingIntervalRef.current);
-        processingIntervalRef.current = null;
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
       
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -1372,12 +1371,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       controlsRef.current.target.copy(center);
       controlsRef.current.update();
-      
-      toast({
-        title: "Ansicht zurückgesetzt",
-        description: "Die Modellansicht wurde zurückgesetzt.",
-        duration: 3000,
-      });
     }
   };
 

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -30,10 +29,7 @@ export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 =
 };
 
 // Load GLB model
-export const loadGLBModel = (
-  file: File,
-  onProgress?: (event: ProgressEvent) => void
-): Promise<THREE.Group> => {
+export const loadGLBModel = (file: File): Promise<THREE.Group> => {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     
@@ -51,11 +47,7 @@ export const loadGLBModel = (
         URL.revokeObjectURL(fileURL);
         resolve(gltf.scene);
       },
-      (xhr) => {
-        if (onProgress && xhr.lengthComputable) {
-          onProgress(xhr);
-        }
-      },
+      undefined,
       (error) => {
         URL.revokeObjectURL(fileURL);
         reject(error);
