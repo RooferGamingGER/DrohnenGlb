@@ -12,6 +12,7 @@ interface ViewerToolbarProps {
   onTakeScreenshot: () => void;
   onExportMeasurements: () => void;
   isMobile: boolean;
+  forceHideHeader?: boolean;
 }
 
 const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
@@ -24,20 +25,16 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
   onNewProject,
   onTakeScreenshot,
   onExportMeasurements,
-  isMobile
+  isMobile,
+  forceHideHeader = false
 }) => {
+  // If header is forced to be hidden, don't render anything
+  if (forceHideHeader) return null;
+  
   return (
-    <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? 'fixed top-0 left-0 right-0' : ''}`}>
+    <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? (isMobile ? 'fixed top-0 left-0 right-0' : 'fixed top-0 left-0 right-0') : ''}`}>
       <div>
-        {loadedModel && showMeasurementTools && isMobile && (
-          <button
-            className="bg-background/70 backdrop-blur-sm flex items-center gap-1 px-3 py-2 rounded-md text-sm"
-            onClick={toggleMeasurementTools}
-          >
-            <span className="sr-only">Messwerkzeuge schließen</span>
-            ✕ Messwerkzeuge
-          </button>
-        )}
+        {/* Empty left section */}
       </div>
       
       <ViewerControls

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'none';
+export type MeasurementType = 'length' | 'height' | 'area' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -74,6 +74,52 @@ export const createMeasurementId = (): string => {
   return Math.random().toString(36).substring(2, 10);
 };
 
+// Create or remove a temporary point visual representation
+export const createTempPointVisual = (point: MeasurementPoint, index: number): THREE.Mesh => {
+  const pointGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+  const pointMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xff0000,
+    opacity: 0.9,
+    transparent: true 
+  });
+  
+  const pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
+  pointMesh.position.copy(point.position);
+  pointMesh.name = `temp-point-${index}`;
+  
+  // Add userData to identify as temporary point
+  pointMesh.userData = {
+    isTemporaryPoint: true,
+    pointIndex: index
+  };
+  
+  return pointMesh;
+};
+
+// Remove temporary point visual from scene
+export const removeTempPointVisual = (scene: THREE.Group, index: number): void => {
+  const pointName = `temp-point-${index}`;
+  
+  scene.traverse((object) => {
+    if (object.name === pointName) {
+      if (object.parent) {
+        object.parent.remove(object);
+      }
+      
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.material && Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        } else if (object.material) {
+          object.material.dispose();
+        }
+      }
+    }
+  });
+};
+
 // Create a text sprite for measurement labels
 export const createTextSprite = (text: string, position: THREE.Vector3, color: number = 0xffffff): THREE.Sprite => {
   // Create canvas for texture
@@ -86,30 +132,42 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   canvas.width = 512; 
   canvas.height = 128;
   
-  // Set a solid background with rounded corners
-  context.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  // Define gradients and colors
+  const bgGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+  bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.95)');
+  bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.95)');
+  
+  // Draw a rounded rectangle with gradient background
+  context.fillStyle = bgGradient;
   context.roundRect(0, 0, canvas.width, canvas.height, 16);
   context.fill();
   
-  // Add border for better visibility
-  context.strokeStyle = 'white';
-  context.lineWidth = 4;
+  // Add subtle border for better visibility
+  context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  context.lineWidth = 2;
   context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
   context.stroke();
+  
+  // Add a subtle inner glow
+  context.shadowColor = 'rgba(0, 148, 255, 0.3)';
+  context.shadowBlur = 8;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 0;
   
   // Use the Inter font which is used in the UI (from index.css)
   context.font = 'bold 48px Inter, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
-  // Add text shadow for better contrast
-  context.shadowColor = 'black';
-  context.shadowBlur = 4;
-  context.shadowOffsetX = 2;
-  context.shadowOffsetY = 2;
+  // Remove text shadow to make text cleaner
+  context.shadowColor = 'transparent';
   
-  // Draw text
-  context.fillStyle = 'white';
+  // Draw text with a light gradient fill for better legibility
+  const textGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  textGradient.addColorStop(0, '#ffffff');
+  textGradient.addColorStop(1, '#e0e0e0');
+  
+  context.fillStyle = textGradient;
   context.fillText(text, canvas.width / 2, canvas.height / 2);
   
   // Create sprite material with canvas texture

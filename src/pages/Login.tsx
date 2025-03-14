@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,22 +121,22 @@ const Login = () => {
   );
 
   return (
-    <div className="flex h-screen">
-            <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 md:bg-blue-500">
-                <div className="text-center flex flex-col items-center"> {/* Flexbox-Container für Logo und Text */}
-                    <img
-                        src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
-                        alt="Drohnenvermessung by RooferGaming"
-                        className="h-48 mb-2"
-                    />
-                    <span className="text-white text-lg font-semibold" style={{ color: '#003366' }}>
-                        DrohnenGLB by RooferGaming®
-                    </span>
-                </div>
-            </div>
+    <div className="flex h-screen bg-white">
+      <div className="hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-white">
+        <div className="text-center flex flex-col items-center">
+          <img
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+            alt="Drohnenvermessung by RooferGaming"
+            className="h-48 mb-2"
+          />
+          <span className="text-lg font-semibold" style={{ color: '#003366' }}>
+            DrohnenGLB by RooferGaming®
+          </span>
+        </div>
+      </div>
 
       {/* Rechte Seite (Login-Formular) oder Volle Breite auf Mobilgeräten */}
-      <div className="flex flex-col justify-center items-center md:w-1/2 w-full p-4">
+      <div className="flex flex-col justify-center items-center md:w-1/2 w-full p-4 bg-white">
         <Card className="w-full max-w-md space-y-6 p-8">
           <div className="text-center md:hidden"> {/* Nur auf Mobilgeräten anzeigen */}
             <img
