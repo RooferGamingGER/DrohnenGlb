@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -25,6 +26,11 @@ export interface Measurement {
   area?: number; // Flächeninhalt in Quadratmetern
   isComplete?: boolean; // Flag to indicate if the area measurement is complete
 }
+
+// Function to check if inclination is significant (i.e., worth displaying)
+export const isInclinationSignificant = (inclination: number): boolean => {
+  return inclination > 2.0; // More than 2 degrees is considered significant
+};
 
 // Calculate distance between two points in 3D space
 export const calculateDistance = (p1: THREE.Vector3, p2: THREE.Vector3): number => {
@@ -489,11 +495,11 @@ export const createAreaPolygon = (
   const geometry = new THREE.ShapeGeometry(shape);
   
   // Adjust the Y coordinates of all vertices to follow the roof shape
-  const positions = geometry.attributes.position.array;
-  for (let i = 0; i < geometry.attributes.position.count; i++) {
+  const positions = geometry.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
     const index = i * 3;
-    const x = positions[index];
-    const z = positions[index + 2];
+    const x = positions.getX(i);
+    const z = positions.getZ(i);
     
     // Find the average Y of the closest points
     let totalY = 0;
@@ -507,7 +513,7 @@ export const createAreaPolygon = (
     }
     
     // Apply the weighted average Y
-    positions[index + 1] = totalY / totalWeight;
+    positions.setY(i, totalY / totalWeight);
   }
   
   // Update geometry
@@ -790,3 +796,4 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
 };
+

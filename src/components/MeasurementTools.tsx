@@ -27,6 +27,7 @@ interface MeasurementToolsProps {
   onToggleAllMeasurementsVisibility?: () => void;
   allMeasurementsVisible?: boolean;
   onToggleEditMode?: (id: string) => void;
+  onCompleteAreaMeasurement?: (id: string) => void;
   screenshots?: { id: string, imageDataUrl: string, description: string }[];
   isMobile?: boolean;
   scrollThreshold?: number;

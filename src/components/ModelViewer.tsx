@@ -57,6 +57,44 @@ const ModelViewer: React.FC = () => {
   
   const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
 
+  const handleCompleteAreaMeasurement = useCallback((id: string) => {
+    const measurement = modelViewer.measurements.find(m => m.id === id);
+    if (!measurement || measurement.type !== 'area') return;
+    
+    // Mark as complete to prevent adding more points
+    modelViewer.updateMeasurement(id, { isComplete: true });
+    
+    // If we have 3 or more points, finalize the measurement
+    if (measurement.points.length >= 3) {
+      // Remove the last point if it's too close to the first point
+      // to avoid duplicate points
+      const firstPoint = measurement.points[0].position;
+      const lastPoint = measurement.points[measurement.points.length - 1].position;
+      
+      if (isPointCloseToFirst(firstPoint, lastPoint)) {
+        // Create updated points - use the first point instead of the last
+        const updatedPoints = [...measurement.points];
+        updatedPoints.pop(); // Remove the last point
+        
+        modelViewer.updateMeasurement(id, { points: updatedPoints });
+      }
+      
+      // Finalize the measurement
+      if (modelViewer.measurementGroupRef?.current) {
+        updateAreaMeasurementGeometry(measurement, modelViewer.measurementGroupRef.current);
+      }
+      
+      toast({
+        title: "Flächenmessung abgeschlossen",
+        description: `Die Fläche beträgt ${measurement.area?.toFixed(2)} m².`,
+        duration: 5000,
+      });
+      
+      // Reset the tool
+      modelViewer.setActiveTool('none');
+    }
+  }, [modelViewer, toast]);
+
   const handleFileSelected = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.glb')) {
       toast({
@@ -667,44 +705,6 @@ const ModelViewer: React.FC = () => {
     // da wir auf den nächsten Touch warten
     // Der Folge-Modus wird beim nächsten TouchStart beendet
   }, []);
-
-  const handleCompleteAreaMeasurement = useCallback((id: string) => {
-    const measurement = modelViewer.measurements.find(m => m.id === id);
-    if (!measurement || measurement.type !== 'area') return;
-    
-    // Mark as complete to prevent adding more points
-    modelViewer.updateMeasurement(id, { isComplete: true });
-    
-    // If we have 3 or more points, finalize the measurement
-    if (measurement.points.length >= 3) {
-      // Remove the last point if it's too close to the first point
-      // to avoid duplicate points
-      const firstPoint = measurement.points[0].position;
-      const lastPoint = measurement.points[measurement.points.length - 1].position;
-      
-      if (isPointCloseToFirst(firstPoint, lastPoint)) {
-        // Create updated points - use the first point instead of the last
-        const updatedPoints = [...measurement.points];
-        updatedPoints.pop(); // Remove the last point
-        
-        modelViewer.updateMeasurement(id, { points: updatedPoints });
-      }
-      
-      // Finalize the measurement
-      if (modelViewer.measurementGroupRef?.current) {
-        updateAreaMeasurementGeometry(measurement, modelViewer.measurementGroupRef.current);
-      }
-      
-      toast({
-        title: "Flächenmessung abgeschlossen",
-        description: `Die Fläche beträgt ${measurement.area?.toFixed(2)} m².`,
-        duration: 5000,
-      });
-      
-      // Reset the tool
-      modelViewer.setActiveTool('none');
-    }
-  }, [modelViewer, toast]);
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
