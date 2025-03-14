@@ -13,10 +13,10 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
+  updateMeasurementGeometry,
   updateRoofMeasurementGeometry,
   isPointNearPoint,
-  createDashedLine,
-  createMeasurementId
+  createDashedLine
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -353,7 +353,7 @@ const ModelViewer: React.FC = () => {
       
       document.body.style.cursor = 'grabbing';
       
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
@@ -372,16 +372,18 @@ const ModelViewer: React.FC = () => {
           };
           
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          
+          updateMeasurementGeometry(measurement);
         }
       }
     } 
     else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera,
+        modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current,
         0.2
@@ -403,7 +405,7 @@ const ModelViewer: React.FC = () => {
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
     if (modelViewer.activeTool === 'roof') {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
@@ -412,22 +414,7 @@ const ModelViewer: React.FC = () => {
         let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
         
         if (!activeMeasurement) {
-          const newMeasurementId = createMeasurementId();
-          modelViewer.setMeasurements(prev => [
-            ...prev,
-            {
-              id: newMeasurementId,
-              type: 'roof',
-              points: [],
-              value: 0,
-              unit: 'm²',
-              isActive: true,
-              visible: true,
-              closedShape: false,
-              lineObjects: [],
-              pointObjects: []
-            }
-          ]);
+          const newMeasurementId = modelViewer.addNewMeasurement('roof');
           activeMeasurement = modelViewer.measurements.find(m => m.id === newMeasurementId);
         }
         
@@ -436,16 +423,7 @@ const ModelViewer: React.FC = () => {
             const firstPoint = activeMeasurement.points[0].position;
             
             if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
-              modelViewer.setMeasurements(prev => prev.map(m => {
-                if (m.id === activeMeasurement?.id) {
-                  return {
-                    ...m,
-                    closedShape: true,
-                    isActive: false
-                  };
-                }
-                return m;
-              }));
+              modelViewer.finalizeMeasurement();
               
               if (previewLine && previewLine.parent) {
                 previewLine.parent.remove(previewLine);
@@ -457,6 +435,11 @@ const ModelViewer: React.FC = () => {
               }
               
               document.body.style.cursor = 'auto';
+              
+              modelViewer.updateMeasurement(activeMeasurement.id, { 
+                closedShape: true,
+                isActive: false
+              });
               
               const updatedMeasurement = modelViewer.measurements.find(m => m.id === activeMeasurement.id);
               if (updatedMeasurement) {
@@ -473,20 +456,7 @@ const ModelViewer: React.FC = () => {
             }
           }
           
-          const newPoint = {
-            position: pointPosition.clone(),
-            worldPosition: pointPosition.clone()
-          };
-          
-          modelViewer.setMeasurements(prev => prev.map(m => {
-            if (m.id === activeMeasurement?.id) {
-              return {
-                ...m,
-                points: [...m.points, newPoint]
-              };
-            }
-            return m;
-          }));
+          modelViewer.addPointToMeasurement(pointPosition, activeMeasurement.id);
           
           toast({
             title: "Punkt hinzugefügt",
@@ -498,12 +468,12 @@ const ModelViewer: React.FC = () => {
     }
     
     if (modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera);
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera,
+        modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current,
         0.2
@@ -583,22 +553,7 @@ const ModelViewer: React.FC = () => {
         let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
         
         if (!activeMeasurement) {
-          const newMeasurementId = createMeasurementId();
-          modelViewer.setMeasurements(prev => [
-            ...prev,
-            {
-              id: newMeasurementId,
-              type: 'roof',
-              points: [],
-              value: 0,
-              unit: 'm²',
-              isActive: true,
-              visible: true,
-              closedShape: false,
-              lineObjects: [],
-              pointObjects: []
-            }
-          ]);
+          const newMeasurementId = modelViewer.addNewMeasurement('roof');
           activeMeasurement = modelViewer.measurements.find(m => m.id === newMeasurementId);
         }
         
@@ -607,16 +562,7 @@ const ModelViewer: React.FC = () => {
             const firstPoint = activeMeasurement.points[0].position;
             
             if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
-              modelViewer.setMeasurements(prev => prev.map(m => {
-                if (m.id === activeMeasurement?.id) {
-                  return {
-                    ...m,
-                    closedShape: true,
-                    isActive: false
-                  };
-                }
-                return m;
-              }));
+              modelViewer.finalizeMeasurement();
               
               if (previewLine && previewLine.parent) {
                 previewLine.parent.remove(previewLine);
@@ -628,6 +574,11 @@ const ModelViewer: React.FC = () => {
               }
               
               document.body.style.cursor = 'auto';
+              
+              modelViewer.updateMeasurement(activeMeasurement.id, { 
+                closedShape: true,
+                isActive: false
+              });
               
               const updatedMeasurement = modelViewer.measurements.find(m => m.id === activeMeasurement.id);
               if (updatedMeasurement) {
@@ -644,20 +595,7 @@ const ModelViewer: React.FC = () => {
             }
           }
           
-          const newPoint = {
-            position: pointPosition.clone(),
-            worldPosition: pointPosition.clone()
-          };
-          
-          modelViewer.setMeasurements(prev => prev.map(m => {
-            if (m.id === activeMeasurement?.id) {
-              return {
-                ...m,
-                points: [...m.points, newPoint]
-              };
-            }
-            return m;
-          }));
+          modelViewer.addPointToMeasurement(pointPosition, activeMeasurement.id);
           
           toast({
             title: "Punkt hinzugefügt",
@@ -738,6 +676,8 @@ const ModelViewer: React.FC = () => {
           };
           
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          
+          updateMeasurementGeometry(measurement);
         }
       }
     }
