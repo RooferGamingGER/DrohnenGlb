@@ -13,7 +13,10 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
-  updateMeasurementGeometry
+  updateMeasurementGeometry,
+  updateRoofMeasurementGeometry,
+  isPointNearPoint,
+  createDashedLine
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -33,14 +36,14 @@ const ModelViewer: React.FC = () => {
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
   const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
   
-  // State für den verbesserten Drag-Mechanismus
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
+  const [previewLine, setPreviewLine] = useState<THREE.Line | null>(null);
+  const [roofPointsSnapRadius, setRoofPointsSnapRadius] = useState<number>(0.5);
   
-  // Referenz auf den eigenen Raycaster für die Punktmanipulation
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
   const modelViewer = useModelViewer({
@@ -246,7 +249,6 @@ const ModelViewer: React.FC = () => {
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (!measurement || !modelViewer.measurementGroupRef?.current) return;
 
-    // Deaktiviere den Editiermodus für alle anderen Messungen
     modelViewer.measurements.forEach(m => {
       if (m.id !== id && m.editMode) {
         highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
@@ -257,12 +259,10 @@ const ModelViewer: React.FC = () => {
     const newEditMode = !measurement.editMode;
     
     if (newEditMode) {
-      // Wenn ein Messwerkzeug aktiv ist, deaktiviere es
       if (modelViewer.activeTool !== 'none') {
         modelViewer.setActiveTool('none');
       }
       
-      // Hebe die Messpunkte hervor und vergrößere sie
       highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
       
       toast({
@@ -271,10 +271,8 @@ const ModelViewer: React.FC = () => {
         duration: 5000,
       });
     } else {
-      // Setze die Messpunkte zurück
       highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
       
-      // Beende jede aktive Drag-Operation
       if (isDragging || isFollowingMouse) {
         setIsDragging(false);
         setIsFollowingMouse(false);
@@ -295,133 +293,193 @@ const ModelViewer: React.FC = () => {
   }, [modelViewer, toast, isDragging, isFollowingMouse]);
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
-    // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
     if (!modelViewer.loadedModel || !containerRef.current) return;
     
-    // Berechne relative Mausposition im Viewer
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
-    // Aktualisiere Mausposition
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
-    // Im "Folgenden" Modus (nach dem ersten Klick)
+    if (modelViewer.activeTool === 'roof' && modelViewer.measurements.length > 0) {
+      const activeMeasurement = modelViewer.measurements.find(m => m.isActive);
+      
+      if (activeMeasurement && activeMeasurement.type === 'roof') {
+        raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+        
+        if (intersects.length > 0) {
+          const pointPosition = intersects[0].point.clone();
+          
+          let shouldSnapToFirstPoint = false;
+          if (activeMeasurement.points.length >= 3) {
+            const firstPoint = activeMeasurement.points[0].position;
+            shouldSnapToFirstPoint = isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius);
+          }
+          
+          if (modelViewer.measurementGroupRef?.current && activeMeasurement.points.length > 0) {
+            const lastPoint = activeMeasurement.points[activeMeasurement.points.length - 1].position;
+            const targetPoint = shouldSnapToFirstPoint ? 
+              activeMeasurement.points[0].position.clone() : 
+              pointPosition;
+            
+            const linePoints = [lastPoint.clone(), targetPoint];
+            
+            if (previewLine && previewLine.parent) {
+              previewLine.parent.remove(previewLine);
+              previewLine.geometry.dispose();
+              if (previewLine.material instanceof THREE.Material) {
+                previewLine.material.dispose();
+              }
+              setPreviewLine(null);
+            }
+            
+            const newPreviewLine = createDashedLine(linePoints);
+            modelViewer.measurementGroupRef.current.add(newPreviewLine);
+            setPreviewLine(newPreviewLine);
+            
+            if (shouldSnapToFirstPoint) {
+              document.body.style.cursor = 'pointer';
+            } else {
+              document.body.style.cursor = 'crosshair';
+            }
+          }
+        }
+      }
+    }
+    
     if (isFollowingMouse && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
       event.preventDefault();
       
-      // Cursor-Feedback während des Ziehens
       document.body.style.cursor = 'grabbing';
       
-      // Raycaster für Tiefenbestimmung
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
       
-      // Schneide mit dem Modell, um die Tiefe zu bestimmen
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
-        // Neue Position für den Punkt
         const newPosition = intersects[0].point.clone();
         
-        // Aktualisiere die Position des Punktes in der 3D-Szene
         draggedPoint.position.copy(newPosition);
         
-        // Finde die entsprechende Messung und aktualisiere sie
         const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
         
         if (measurement) {
-          // Aktualisiere die Messpunkte
           const updatedPoints = [...measurement.points];
           updatedPoints[selectedPointIndex] = {
             position: newPosition.clone(),
             worldPosition: newPosition.clone()
           };
           
-          // Aktualisiere die Messung im modelViewer
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
           
-          // Aktualisiere die Linien und Labels der Messung
           updateMeasurementGeometry(measurement);
         }
       }
     } 
-    // Wenn wir nicht ziehen, prüfe ob wir über einem bearbeitbaren Punkt sind
     else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
-      // Finde den nächsten editierbaren Punkt in der Nähe des Mauszeigers
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      
-      // Erhöhen Sie den Radius für die Erkennung
-      raycasterRef.current.params.Points = { threshold: 0.1 }; // Größerer Erkennungsradius
+      raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
         modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current,
-        0.2 // Erhöhter Schwellenwert für die Erkennung
+        0.2
       );
       
-      // Aktualisiere den Cursor basierend auf dem Ergebnis
       updateCursorForDraggablePoint(!!nearestPoint);
     }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
+  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging, previewLine, roofPointsSnapRadius]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
-    // Nur bei Linkklick reagieren
     if (event.button !== 0) return;
     
-    // Wenn kein Modell geladen ist oder kein Container existiert, nichts tun
     if (!modelViewer.loadedModel || !containerRef.current) return;
     
-    // Prüfe, ob ein editierbarer Punkt angeklickt wurde
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
-    // Suche nach einem editierbaren Punkt in der Nähe
+    if (modelViewer.activeTool === 'roof') {
+      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+      
+      if (intersects.length > 0) {
+        const pointPosition = intersects[0].point.clone();
+        
+        let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
+        
+        if (!activeMeasurement) {
+          const newMeasurementId = modelViewer.addNewMeasurement('roof');
+          activeMeasurement = modelViewer.measurements.find(m => m.id === newMeasurementId);
+        }
+        
+        if (activeMeasurement) {
+          if (activeMeasurement.points.length >= 3) {
+            const firstPoint = activeMeasurement.points[0].position;
+            
+            if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
+              modelViewer.finalizeMeasurement();
+              
+              if (previewLine && previewLine.parent) {
+                previewLine.parent.remove(previewLine);
+                previewLine.geometry.dispose();
+                if (previewLine.material instanceof THREE.Material) {
+                  previewLine.material.dispose();
+                }
+                setPreviewLine(null);
+              }
+              
+              document.body.style.cursor = 'auto';
+              
+              modelViewer.updateMeasurement(activeMeasurement.id, { 
+                closedShape: true,
+                isActive: false
+              });
+              
+              const updatedMeasurement = modelViewer.measurements.find(m => m.id === activeMeasurement.id);
+              if (updatedMeasurement) {
+                updateRoofMeasurementGeometry(updatedMeasurement);
+              }
+              
+              toast({
+                title: "Dachfläche erstellt",
+                description: `Dachfläche mit ${activeMeasurement.points.length} Punkten abgeschlossen.`,
+                duration: 3000,
+              });
+              
+              return;
+            }
+          }
+          
+          modelViewer.addPointToMeasurement(pointPosition, activeMeasurement.id);
+          
+          toast({
+            title: "Punkt hinzugefügt",
+            description: `Punkt ${activeMeasurement.points.length + 1} zur Dachfläche hinzugefügt.`,
+            duration: 1500,
+          });
+        }
+      }
+    }
+    
     if (modelViewer.measurementGroupRef?.current) {
       raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      raycasterRef.current.params.Points = { threshold: 0.1 }; // Größerer Erkennungsradius
+      raycasterRef.current.params.Points = { threshold: 0.1 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
         modelViewer.camera!,
         mousePosition,
         modelViewer.measurementGroupRef.current,
-        0.2 // Erhöhter Schwellenwert für die Erkennung
+        0.2
       );
       
-      // Wenn wir bereits im "Folge-Modus" sind und ein Punkt ist aktiviert
-      if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
-        // Zweiter Klick: Punkt an der aktuellen Position absetzen
-        console.log("Punkt wird an neuer Position abgesetzt");
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Position bestätigen und Folgemodus beenden
-        setIsFollowingMouse(false);
-        document.body.style.cursor = 'auto';
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
-          duration: 3000,
-        });
-        
-        // Halte die Punktreferenzen für den Fall, dass wir sie später brauchen
-        // Aber deaktiviere den Folgemodus
-        return;
-      }
-      
-      // Wenn ein Punkt gefunden wurde und wir nicht bereits im Folgemodus sind
-      if (nearestPoint && !isFollowingMouse) {
-        // Punkt gefunden, starte Folgemodus
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Extrahiere ID des Punkts und finde die Messung
+      if (nearestPoint) {
         const pointName = nearestPoint.name;
         const nameParts = pointName.split('-');
         
@@ -434,10 +492,8 @@ const ModelViewer: React.FC = () => {
           setSelectedMeasurementId(measurementId);
           setSelectedPointIndex(pointIndex);
           
-          // Visuelles Feedback - ändere Cursor
           document.body.style.cursor = 'grabbing';
           
-          // Log für Debugging
           console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
           
           toast({
@@ -448,17 +504,13 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, previewLine, roofPointsSnapRadius]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
-    // Bei normalen Drag-Operationen (für Rückwärtskompatibilität)
     if (isDragging && draggedPoint) {
-      // Beende Drag-Operation
       setIsDragging(false);
       
-      // Ermittle die finale Position des Punktes
       if (selectedMeasurementId && selectedPointIndex !== null) {
-        // Log für Debugging
         console.log(`Drag-Operation beendet für Messung: ${selectedMeasurementId}, Index: ${selectedPointIndex}`);
         
         toast({
@@ -468,21 +520,20 @@ const ModelViewer: React.FC = () => {
         });
       }
       
-      // Setze den Cursor zurück
       document.body.style.cursor = 'auto';
       
-      // Bereinige alle Drag-bezogenen Zustände
       setDraggedPoint(null);
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
     }
     
-    // Der Folge-Modus wird beim Klick beendet, nicht beim Loslassen
-    // Daher keine Änderung an isFollowingMouse hier
+    if (isFollowingMouse) {
+      setIsFollowingMouse(false);
+      document.body.style.cursor = 'auto';
+    }
   }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
-    // Bei Touch-Geräten prüfen, ob wir auf einem Punkt sind
     if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
     
     const touch = event.touches[0];
@@ -492,42 +543,82 @@ const ModelViewer: React.FC = () => {
     
     const touchPosition = new THREE.Vector2(touchX, touchY);
     
-    // Suche nach einem editierbaren Punkt in der Nähe
+    if (modelViewer.activeTool === 'roof') {
+      raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+      
+      if (intersects.length > 0) {
+        const pointPosition = intersects[0].point.clone();
+        
+        let activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
+        
+        if (!activeMeasurement) {
+          const newMeasurementId = modelViewer.addNewMeasurement('roof');
+          activeMeasurement = modelViewer.measurements.find(m => m.id === newMeasurementId);
+        }
+        
+        if (activeMeasurement) {
+          if (activeMeasurement.points.length >= 3) {
+            const firstPoint = activeMeasurement.points[0].position;
+            
+            if (isPointNearPoint(pointPosition, firstPoint, roofPointsSnapRadius)) {
+              modelViewer.finalizeMeasurement();
+              
+              if (previewLine && previewLine.parent) {
+                previewLine.parent.remove(previewLine);
+                previewLine.geometry.dispose();
+                if (previewLine.material instanceof THREE.Material) {
+                  previewLine.material.dispose();
+                }
+                setPreviewLine(null);
+              }
+              
+              document.body.style.cursor = 'auto';
+              
+              modelViewer.updateMeasurement(activeMeasurement.id, { 
+                closedShape: true,
+                isActive: false
+              });
+              
+              const updatedMeasurement = modelViewer.measurements.find(m => m.id === activeMeasurement.id);
+              if (updatedMeasurement) {
+                updateRoofMeasurementGeometry(updatedMeasurement);
+              }
+              
+              toast({
+                title: "Dachfläche erstellt",
+                description: `Dachfläche mit ${activeMeasurement.points.length} Punkten abgeschlossen.`,
+                duration: 3000,
+              });
+              
+              return;
+            }
+          }
+          
+          modelViewer.addPointToMeasurement(pointPosition, activeMeasurement.id);
+          
+          toast({
+            title: "Punkt hinzugefügt",
+            description: `Punkt ${activeMeasurement.points.length + 1} zur Dachfläche hinzugefügt.`,
+            duration: 1500,
+          });
+        }
+      }
+    }
+    
     if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
       raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
-      raycasterRef.current.params.Points = { threshold: 0.2 }; // Noch größerer Radius für Touch
+      raycasterRef.current.params.Points = { threshold: 0.2 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
         modelViewer.camera,
         touchPosition,
         modelViewer.measurementGroupRef.current,
-        0.3 // Erhöhter Schwellenwert für Touch
+        0.3
       );
       
-      // Wenn wir bereits im "Folge-Modus" sind und ein Punkt ist aktiviert
-      if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
-        // Zweiter Touch: Punkt an der aktuellen Position absetzen
-        event.preventDefault();
-        
-        // Position bestätigen und Folgemodus beenden
-        setIsFollowingMouse(false);
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
-          duration: 3000,
-        });
-        
-        return;
-      }
-      
-      // Wenn ein Punkt gefunden wurde und wir nicht bereits im Folgemodus sind
-      if (nearestPoint && !isFollowingMouse) {
-        // Punkt gefunden, starte Folgemodus
-        event.preventDefault();
-        
-        // Extrahiere ID des Punkts und finde die Messung
+      if (nearestPoint) {
         const pointName = nearestPoint.name;
         const nameParts = pointName.split('-');
         
@@ -540,7 +631,6 @@ const ModelViewer: React.FC = () => {
           setSelectedMeasurementId(measurementId);
           setSelectedPointIndex(pointIndex);
           
-          // Log für Debugging
           console.log(`Punkt per Touch ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
           
           toast({
@@ -551,10 +641,9 @@ const ModelViewer: React.FC = () => {
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, previewLine, roofPointsSnapRadius]);
 
   const handleTouchMove = useCallback((event: TouchEvent) => {
-    // Touch-Bewegung nur verarbeiten, wenn wir im Folgemodus sind
     if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
     if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
     
@@ -570,31 +659,24 @@ const ModelViewer: React.FC = () => {
     if (modelViewer.camera) {
       raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
       
-      // Schneide mit dem Modell, um die Tiefe zu bestimmen
       const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
       
       if (intersects.length > 0) {
-        // Neue Position für den Punkt
         const newPosition = intersects[0].point.clone();
         
-        // Aktualisiere die Position des Punktes in der 3D-Szene
         draggedPoint.position.copy(newPosition);
         
-        // Finde die entsprechende Messung und aktualisiere sie
         const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
         
         if (measurement) {
-          // Aktualisiere die Messpunkte
           const updatedPoints = [...measurement.points];
           updatedPoints[selectedPointIndex] = {
             position: newPosition.clone(),
             worldPosition: newPosition.clone()
           };
           
-          // Aktualisiere die Messung im modelViewer
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
           
-          // Aktualisiere die Linien und Labels der Messung
           updateMeasurementGeometry(measurement);
         }
       }
@@ -602,9 +684,6 @@ const ModelViewer: React.FC = () => {
   }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
 
   const handleTouchEnd = useCallback((event: TouchEvent) => {
-    // Bei Touch-Geräten beenden wir den Folgemodus nicht automatisch,
-    // da wir auf den nächsten Touch warten
-    // Der Folge-Modus wird beim nächsten TouchStart beendet
   }, []);
 
   useEffect(() => {
@@ -635,7 +714,21 @@ const ModelViewer: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        // Bei Escape-Taste den Drag-Modus oder Folge-Modus abbrechen
+        if (previewLine && previewLine.parent) {
+          previewLine.parent.remove(previewLine);
+          previewLine.geometry.dispose();
+          if (previewLine.material instanceof THREE.Material) {
+            previewLine.material.dispose();
+          }
+          setPreviewLine(null);
+        }
+        
+        const activeMeasurement = modelViewer.measurements.find(m => m.isActive && m.type === 'roof');
+        if (activeMeasurement && !activeMeasurement.closedShape) {
+          modelViewer.deleteMeasurement(activeMeasurement.id);
+          document.body.style.cursor = 'auto';
+        }
+        
         if (isDragging || isFollowingMouse) {
           setIsDragging(false);
           setIsFollowingMouse(false);
@@ -651,7 +744,6 @@ const ModelViewer: React.FC = () => {
           });
         }
         
-        // Wenn ein Werkzeug aktiv ist, deaktiviere es
         if (modelViewer.activeTool !== 'none') {
           modelViewer.setActiveTool('none');
         }
@@ -662,7 +754,7 @@ const ModelViewer: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isDragging, isFollowingMouse, modelViewer, toast]);
+  }, [isDragging, isFollowingMouse, modelViewer, toast, previewLine]);
 
   return (
     <div className="relative h-full w-full flex flex-col">
