@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -822,4 +823,767 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     sceneRef.current = scene;
 
     const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-    const camera = new THREE.Perspect
+    const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controlsRef.current = controls;
+
+    // Set up lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 10, 5);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+
+    lightsRef.current = {
+      ambient: ambientLight,
+      directional: directionalLight
+    };
+
+    // Create a group for measurements
+    const measurementGroup = new THREE.Group();
+    measurementGroup.name = 'measurementGroup';
+    scene.add(measurementGroup);
+    measurementGroupRef.current = measurementGroup;
+
+    // Add event listeners
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+
+    const handleResize = () => {
+      if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
+      
+      const newAspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      cameraRef.current.aspect = newAspect;
+      cameraRef.current.updateProjectionMatrix();
+      
+      rendererRef.current.setSize(
+        containerRef.current.clientWidth, 
+        containerRef.current.clientHeight
+      );
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Animation loop
+    const animate = () => {
+      requestRef.current = requestAnimationFrame(animate);
+      
+      if (controlsRef.current) controlsRef.current.update();
+      
+      // Update label scales if camera or measurement objects exist
+      if (cameraRef.current && measurementGroupRef.current) {
+        measurementGroupRef.current.children.forEach(child => {
+          if (child instanceof THREE.Sprite && child.userData && child.userData.isLabel) {
+            updateLabelScale(child, cameraRef.current!);
+          }
+        });
+      }
+      
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    };
+
+    animate();
+
+    // Apply initial background
+    setBackgroundTexture(background);
+
+    return () => {
+      if (rendererRef.current && containerRef.current) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+      }
+      
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      
+      window.removeEventListener('resize', handleResize);
+      
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+      }
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+      }
+      
+      // Clean up Three.js objects
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+      
+      if (sceneRef.current) {
+        sceneRef.current.traverse(object => {
+          if (object instanceof THREE.Mesh) {
+            object.geometry.dispose();
+            
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else if (object.material) {
+              object.material.dispose();
+            }
+          }
+        });
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setCanUndo(temporaryPoints.length > 0);
+  }, [temporaryPoints]);
+
+  const loadModel = async (file: File) => {
+    if (!sceneRef.current) return null;
+    
+    try {
+      setState({
+        isLoading: true,
+        progress: 0,
+        error: null,
+        loadedModel: null
+      });
+      
+      processingStartTimeRef.current = Date.now();
+      uploadProgressRef.current = 0;
+      
+      // Start a fake progress timer for processing time
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+      }
+      
+      processingIntervalRef.current = window.setInterval(() => {
+        const elapsed = Date.now() - (processingStartTimeRef.current || 0);
+        const estimatedTotal = 5000; // 5 seconds estimated total time
+        
+        let newProgress = Math.min((elapsed / estimatedTotal) * 100, 95);
+        
+        // If upload progress is significant, blend them
+        if (uploadProgressRef.current > 0) {
+          newProgress = (uploadProgressRef.current * 0.7) + (newProgress * 0.3);
+        }
+        
+        setProgress(newProgress);
+      }, 100);
+      
+      // Remove any existing model from the scene
+      if (modelRef.current && sceneRef.current) {
+        sceneRef.current.remove(modelRef.current);
+        modelRef.current = null;
+      }
+      
+      // Clear measurements when loading a new model
+      setMeasurements([]);
+      setTemporaryPoints([]);
+      
+      if (measurementGroupRef.current) {
+        // Remove all children from measurement group
+        while (measurementGroupRef.current.children.length > 0) {
+          const child = measurementGroupRef.current.children[0];
+          
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            
+            if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose());
+            } else {
+              child.material.dispose();
+            }
+          } else if (child instanceof THREE.Line) {
+            child.geometry.dispose();
+            
+            if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose());
+            } else {
+              child.material.dispose();
+            }
+          } else if (child instanceof THREE.Sprite) {
+            if (child.material instanceof THREE.SpriteMaterial && child.material.map) {
+              child.material.map.dispose();
+            }
+            child.material.dispose();
+          }
+          
+          measurementGroupRef.current.remove(child);
+        }
+      }
+      
+      const model = await loadGLBModel(file, (progress) => {
+        uploadProgressRef.current = progress * 100;
+      });
+      
+      if (!model) throw new Error("Failed to load model");
+      
+      if (model && sceneRef.current) {
+        centerModel(model);
+        sceneRef.current.add(model);
+        modelRef.current = model;
+        setState(prev => ({ ...prev, loadedModel: model }));
+        
+        // Focus camera on the model
+        if (controlsRef.current) {
+          const boundingBox = new THREE.Box3().setFromObject(model);
+          const center = new THREE.Vector3();
+          boundingBox.getCenter(center);
+          
+          const size = new THREE.Vector3();
+          boundingBox.getSize(size);
+          
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const fov = cameraRef.current?.fov || 75;
+          const cameraDistance = maxDim / (2 * Math.tan(fov * Math.PI / 360));
+          
+          cameraRef.current?.position.set(
+            center.x, 
+            center.y + maxDim * 0.5, 
+            center.z + cameraDistance * 1.2
+          );
+          
+          controlsRef.current.target.copy(center);
+          controlsRef.current.update();
+        }
+      }
+      
+      setState(prev => ({ ...prev, isLoading: false, progress: 100 }));
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+      
+      if (onLoadComplete) {
+        onLoadComplete();
+      }
+      
+      return model;
+    } catch (error) {
+      console.error("Error loading model:", error);
+      
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: error instanceof Error ? error.message : "Unknown error loading model" 
+      }));
+      
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
+      
+      return null;
+    }
+  };
+
+  const setBackgroundTexture = async (option: BackgroundOption) => {
+    if (!sceneRef.current) return;
+    
+    setBackground(option);
+    
+    if (option.type === 'color') {
+      sceneRef.current.background = new THREE.Color(option.value);
+      return;
+    }
+    
+    if (option.type === 'texture' && option.value) {
+      try {
+        const texture = await loadTexture(option.value);
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        sceneRef.current.background = texture;
+      } catch (error) {
+        console.error("Error loading background texture:", error);
+        sceneRef.current.background = new THREE.Color(0x000000);
+      }
+    }
+  };
+
+  const clearMeasurements = () => {
+    if (measurementGroupRef.current) {
+      // Remove all objects from the measurement group
+      while (measurementGroupRef.current.children.length > 0) {
+        const child = measurementGroupRef.current.children[0];
+        
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          
+          if (Array.isArray(child.material)) {
+            child.material.forEach(material => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        } else if (child instanceof THREE.Line) {
+          child.geometry.dispose();
+          
+          if (Array.isArray(child.material)) {
+            child.material.forEach(material => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        } else if (child instanceof THREE.Sprite) {
+          if (child.material instanceof THREE.SpriteMaterial && child.material.map) {
+            child.material.map.dispose();
+          }
+          child.material.dispose();
+        }
+        
+        measurementGroupRef.current.remove(child);
+      }
+    }
+    
+    setMeasurements([]);
+    setTemporaryPoints([]);
+    currentMeasurementRef.current = null;
+  };
+
+  const toggleMeasurementVisibility = (id: string, visible: boolean) => {
+    setMeasurements(prev => 
+      prev.map(measurement => {
+        if (measurement.id === id) {
+          if (measurement.pointObjects) {
+            measurement.pointObjects.forEach(point => {
+              point.visible = visible;
+            });
+          }
+          
+          if (measurement.lineObjects) {
+            measurement.lineObjects.forEach(line => {
+              line.visible = visible;
+            });
+          }
+          
+          if (measurement.labelObject) {
+            measurement.labelObject.visible = visible;
+          }
+          
+          if (measurement.polygonObject) {
+            measurement.polygonObject.visible = visible;
+          }
+          
+          return { ...measurement, visible };
+        }
+        return measurement;
+      })
+    );
+  };
+
+  const toggleMeasurementEditMode = (id: string, editMode: boolean) => {
+    setMeasurements(prev => 
+      prev.map(measurement => {
+        if (measurement.id === id) {
+          if (measurement.pointObjects) {
+            measurement.pointObjects.forEach(point => {
+              if (point instanceof THREE.Mesh) {
+                point.material = editMode 
+                  ? createEditablePointMaterial(false) 
+                  : createDraggablePointMaterial(false);
+              }
+            });
+          }
+          
+          return { ...measurement, editMode };
+        }
+        return measurement;
+      })
+    );
+  };
+
+  const handleClick = (event: MouseEvent) => {
+    if (isDraggingPoint) return;
+    
+    if (activeTool !== 'none' && sceneRef.current && cameraRef.current && modelRef.current) {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+      
+      if (intersects.length > 0) {
+        const hitPoint = intersects[0].point.clone();
+        
+        // Create measurement point
+        const pointId = `temp-${temporaryPoints.length}`;
+        const point: MeasurementPoint = {
+          id: pointId,
+          position: hitPoint.clone(),
+          worldPosition: hitPoint.clone()
+        };
+        
+        // Add to temporary points
+        setTemporaryPoints(prev => [...prev, point]);
+        
+        // Create visual representation
+        if (measurementGroupRef.current) {
+          const pointMesh = createDraggablePoint(
+            hitPoint, 
+            `point-temp-${temporaryPoints.length}`,
+            0xffcc00
+          );
+          
+          measurementGroupRef.current.add(pointMesh);
+          
+          // Initialize the current measurement ref if needed
+          if (!currentMeasurementRef.current) {
+            currentMeasurementRef.current = {
+              points: [],
+              lines: [],
+              labels: [],
+              meshes: []
+            };
+          }
+          
+          currentMeasurementRef.current.points.push(hitPoint);
+          currentMeasurementRef.current.meshes.push(pointMesh);
+          
+          // If we have at least two points, create a line between them
+          if (temporaryPoints.length > 0) {
+            const lastPoint = temporaryPoints[temporaryPoints.length - 1].position;
+            
+            let line;
+            
+            if (activeTool === 'height') {
+              // For height measurement, we need an L-shaped line
+              const verticalPoint = new THREE.Vector3(
+                lastPoint.x,
+                hitPoint.y,
+                lastPoint.z
+              );
+              
+              line = createMeasurementLine(
+                [lastPoint, verticalPoint, hitPoint],
+                `line-temp-${temporaryPoints.length - 1}`,
+                0x0000ff
+              );
+            } else {
+              // For length or area measurement, it's a straight line
+              line = createMeasurementLine(
+                [lastPoint, hitPoint],
+                `line-temp-${temporaryPoints.length - 1}`,
+                activeTool === 'length' ? 0x00ff00 : 0x1E88E5
+              );
+            }
+            
+            measurementGroupRef.current.add(line);
+            currentMeasurementRef.current.lines.push(line);
+            
+            // For length and height measurements, we finish after 2 points
+            if (activeTool === 'length' || activeTool === 'height') {
+              if (temporaryPoints.length === 1) {
+                let value: number;
+                let inclination: number | undefined;
+                
+                if (activeTool === 'length') {
+                  value = calculateDistance(lastPoint, hitPoint);
+                  inclination = calculateInclination(lastPoint, hitPoint);
+                } else {
+                  value = calculateHeight(lastPoint, hitPoint);
+                }
+                
+                const measurementId = createMeasurementId();
+                
+                // Create the measurement label
+                let labelPosition: THREE.Vector3;
+                
+                if (activeTool === 'length') {
+                  labelPosition = new THREE.Vector3().addVectors(lastPoint, hitPoint).multiplyScalar(0.5);
+                  labelPosition.y += 0.1;
+                } else {
+                  // For height, place label at the midpoint of the height line
+                  const midHeight = (lastPoint.y + hitPoint.y) / 2;
+                  labelPosition = new THREE.Vector3(lastPoint.x, midHeight, lastPoint.z);
+                  labelPosition.x += 0.1;
+                }
+                
+                let labelText: string;
+                
+                if (activeTool === 'length') {
+                  labelText = formatMeasurementWithInclination(value, inclination);
+                } else {
+                  labelText = `${value.toFixed(2)} m`;
+                }
+                
+                const labelSprite = createTextSprite(
+                  labelText,
+                  labelPosition,
+                  activeTool === 'length' ? 0x00ff00 : 0x0000ff
+                );
+                
+                labelSprite.userData = {
+                  ...labelSprite.userData,
+                  isLabel: true,
+                  baseScale: { x: 0.8, y: 0.4, z: 1 }
+                };
+                
+                updateLabelScale(labelSprite, cameraRef.current);
+                
+                measurementGroupRef.current.add(labelSprite);
+                
+                // Update point names to include the measurement ID
+                const pointObjects: THREE.Mesh[] = [];
+                currentMeasurementRef.current.meshes.forEach((mesh, index) => {
+                  mesh.name = `point-${measurementId}-${index}`;
+                  pointObjects.push(mesh);
+                });
+                
+                // Create the measurement object
+                const newMeasurement: Measurement = {
+                  id: measurementId,
+                  type: activeTool,
+                  points: [...temporaryPoints, point],
+                  value: value,
+                  inclination: activeTool === 'length' ? inclination : undefined,
+                  unit: 'm',
+                  pointObjects: pointObjects,
+                  lineObjects: currentMeasurementRef.current.lines,
+                  labelObject: labelSprite,
+                  visible: true
+                };
+                
+                setMeasurements(prev => [...prev, newMeasurement]);
+                setTemporaryPoints([]);
+                
+                currentMeasurementRef.current = null;
+                
+                toast({
+                  title: `${activeTool === 'length' ? 'Längen' : 'Höhen'}messung erstellt`,
+                  description: `Die ${activeTool === 'length' ? 'Länge' : 'Höhe'} beträgt ${value.toFixed(2)} m`,
+                  duration: 3000,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const handleMeasurementTap = (event: TouchEvent) => {
+    if (isDraggingPoint) return;
+    
+    if (activeTool !== 'none' && sceneRef.current && cameraRef.current && modelRef.current) {
+      if (!containerRef.current || event.touches.length > 0) return;
+      
+      const touch = event.changedTouches[0];
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      const intersects = raycasterRef.current.intersectObject(modelRef.current, true);
+      
+      if (intersects.length > 0) {
+        const hitPoint = intersects[0].point.clone();
+        
+        // Create measurement point
+        const pointId = `temp-${temporaryPoints.length}`;
+        const point: MeasurementPoint = {
+          id: pointId,
+          position: hitPoint.clone(),
+          worldPosition: hitPoint.clone()
+        };
+        
+        // Add to temporary points
+        setTemporaryPoints(prev => [...prev, point]);
+        
+        // Create visual representation
+        if (measurementGroupRef.current) {
+          const pointMesh = createDraggablePoint(
+            hitPoint, 
+            `point-temp-${temporaryPoints.length}`,
+            0xffcc00
+          );
+          
+          measurementGroupRef.current.add(pointMesh);
+          
+          // Initialize the current measurement ref if needed
+          if (!currentMeasurementRef.current) {
+            currentMeasurementRef.current = {
+              points: [],
+              lines: [],
+              labels: [],
+              meshes: []
+            };
+          }
+          
+          currentMeasurementRef.current.points.push(hitPoint);
+          currentMeasurementRef.current.meshes.push(pointMesh);
+          
+          // If we have at least two points, create a line between them
+          if (temporaryPoints.length > 0) {
+            const lastPoint = temporaryPoints[temporaryPoints.length - 1].position;
+            
+            let line;
+            
+            if (activeTool === 'height') {
+              // For height measurement, we need an L-shaped line
+              const verticalPoint = new THREE.Vector3(
+                lastPoint.x,
+                hitPoint.y,
+                lastPoint.z
+              );
+              
+              line = createMeasurementLine(
+                [lastPoint, verticalPoint, hitPoint],
+                `line-temp-${temporaryPoints.length - 1}`,
+                0x0000ff
+              );
+            } else {
+              // For length or area measurement, it's a straight line
+              line = createMeasurementLine(
+                [lastPoint, hitPoint],
+                `line-temp-${temporaryPoints.length - 1}`,
+                activeTool === 'length' ? 0x00ff00 : 0x1E88E5
+              );
+            }
+            
+            measurementGroupRef.current.add(line);
+            currentMeasurementRef.current.lines.push(line);
+            
+            // For length and height measurements, we finish after 2 points
+            if (activeTool === 'length' || activeTool === 'height') {
+              if (temporaryPoints.length === 1) {
+                let value: number;
+                let inclination: number | undefined;
+                
+                if (activeTool === 'length') {
+                  value = calculateDistance(lastPoint, hitPoint);
+                  inclination = calculateInclination(lastPoint, hitPoint);
+                } else {
+                  value = calculateHeight(lastPoint, hitPoint);
+                }
+                
+                const measurementId = createMeasurementId();
+                
+                // Create the measurement label
+                let labelPosition: THREE.Vector3;
+                
+                if (activeTool === 'length') {
+                  labelPosition = new THREE.Vector3().addVectors(lastPoint, hitPoint).multiplyScalar(0.5);
+                  labelPosition.y += 0.1;
+                } else {
+                  // For height, place label at the midpoint of the height line
+                  const midHeight = (lastPoint.y + hitPoint.y) / 2;
+                  labelPosition = new THREE.Vector3(lastPoint.x, midHeight, lastPoint.z);
+                  labelPosition.x += 0.1;
+                }
+                
+                let labelText: string;
+                
+                if (activeTool === 'length') {
+                  labelText = formatMeasurementWithInclination(value, inclination);
+                } else {
+                  labelText = `${value.toFixed(2)} m`;
+                }
+                
+                const labelSprite = createTextSprite(
+                  labelText,
+                  labelPosition,
+                  activeTool === 'length' ? 0x00ff00 : 0x0000ff
+                );
+                
+                labelSprite.userData = {
+                  ...labelSprite.userData,
+                  isLabel: true,
+                  baseScale: { x: 0.8, y: 0.4, z: 1 }
+                };
+                
+                updateLabelScale(labelSprite, cameraRef.current);
+                
+                measurementGroupRef.current.add(labelSprite);
+                
+                // Update point names to include the measurement ID
+                const pointObjects: THREE.Mesh[] = [];
+                currentMeasurementRef.current.meshes.forEach((mesh, index) => {
+                  mesh.name = `point-${measurementId}-${index}`;
+                  pointObjects.push(mesh);
+                });
+                
+                // Create the measurement object
+                const newMeasurement: Measurement = {
+                  id: measurementId,
+                  type: activeTool,
+                  points: [...temporaryPoints, point],
+                  value: value,
+                  inclination: activeTool === 'length' ? inclination : undefined,
+                  unit: 'm',
+                  pointObjects: pointObjects,
+                  lineObjects: currentMeasurementRef.current.lines,
+                  labelObject: labelSprite,
+                  visible: true
+                };
+                
+                setMeasurements(prev => [...prev, newMeasurement]);
+                setTemporaryPoints([]);
+                
+                currentMeasurementRef.current = null;
+                
+                toast({
+                  title: `${activeTool === 'length' ? 'Längen' : 'Höhen'}messung erstellt`,
+                  description: `Die ${activeTool === 'length' ? 'Länge' : 'Höhe'} beträgt ${value.toFixed(2)} m`,
+                  duration: 3000,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('click', handleClick);
+    
+    return () => {
+      document.removeEventListener('click', handleClick);
+    };
+  }, [activeTool, temporaryPoints, isDraggingPoint]);
+
+  return {
+    loadModel,
+    background,
+    setBackground: setBackgroundTexture,
+    activeTool,
+    setActiveTool,
+    measurements,
+    clearMeasurements,
+    toggleMeasurementVisibility,
+    toggleMeasurementEditMode,
+    temporaryPoints,
+    setTemporaryPoints,
+    undoLastPoint,
+    canUndo,
+    hoverPoint,
+    deleteMeasurement,
+    deleteTempPoint,
+    createMeasurementFromPoints,
+    ...state
+  };
+};
