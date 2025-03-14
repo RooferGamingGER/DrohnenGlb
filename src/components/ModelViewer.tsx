@@ -12,7 +12,8 @@ import {
 import { 
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
-  findNearestEditablePoint
+  findNearestEditablePoint,
+  updateMeasurementGeometry
 } from '@/utils/measurementUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -338,6 +339,9 @@ const ModelViewer: React.FC = () => {
           
           // Aktualisiere die Messung im modelViewer
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          
+          // Aktualisiere die Linien und Labels der Messung
+          updateMeasurementGeometry(measurement);
         }
       }
     } 
@@ -589,6 +593,9 @@ const ModelViewer: React.FC = () => {
           
           // Aktualisiere die Messung im modelViewer
           modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          
+          // Aktualisiere die Linien und Labels der Messung
+          updateMeasurementGeometry(measurement);
         }
       }
     }

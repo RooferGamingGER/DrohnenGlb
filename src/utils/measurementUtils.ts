@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'none';
@@ -216,6 +217,15 @@ export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0
   return new THREE.Line(lineGeometry, lineMaterial);
 };
 
+// Update a measurement line with new points
+export const updateMeasurementLine = (line: THREE.Line, points: THREE.Vector3[]): void => {
+  if (line && line.geometry) {
+    // Update the line geometry with new points
+    line.geometry.dispose(); // Clean up old geometry
+    line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  }
+};
+
 // Helper to check if an interaction is a double-click/tap
 export const isDoubleClick = (currentTime: number, lastClickTime: number): boolean => {
   const doubleClickThreshold = 500; // 500ms for better touch response
@@ -388,3 +398,51 @@ export const findNearestEditablePoint = (
   
   return null;
 };
+
+// Update the measurement lines and label
+export const updateMeasurementGeometry = (measurement: Measurement): void => {
+  if (!measurement.points || measurement.points.length < 2) return;
+  
+  // Update lines if they exist
+  if (measurement.lineObjects && measurement.lineObjects.length > 0) {
+    // For a simple line between two points (length measurement)
+    if (measurement.type === 'length' && measurement.points.length === 2) {
+      const linePoints = [
+        measurement.points[0].position.clone(),
+        measurement.points[1].position.clone()
+      ];
+      updateMeasurementLine(measurement.lineObjects[0], linePoints);
+    }
+    // For more complex measurements with multiple lines
+    else if (measurement.lineObjects.length === measurement.points.length - 1) {
+      for (let i = 0; i < measurement.points.length - 1; i++) {
+        const linePoints = [
+          measurement.points[i].position.clone(), 
+          measurement.points[i+1].position.clone()
+        ];
+        updateMeasurementLine(measurement.lineObjects[i], linePoints);
+      }
+    }
+  }
+  
+  // Update label position if it exists
+  if (measurement.labelObject) {
+    // For two-point measurements, place label in the middle
+    if (measurement.points.length === 2) {
+      const midpoint = new THREE.Vector3().addVectors(
+        measurement.points[0].position,
+        measurement.points[1].position
+      ).multiplyScalar(0.5);
+      
+      // Add a small offset above the line for better visibility
+      midpoint.y += 0.1;
+      measurement.labelObject.position.copy(midpoint);
+    }
+    // For multi-point measurements, place near the last point
+    else if (measurement.points.length > 2) {
+      const lastPoint = measurement.points[measurement.points.length - 1].position;
+      const offsetPosition = lastPoint.clone().add(new THREE.Vector3(0, 0.1, 0));
+      measurement.labelObject.position.copy(offsetPosition);
+    }
+  }
+}
