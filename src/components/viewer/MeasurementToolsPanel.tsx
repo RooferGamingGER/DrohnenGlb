@@ -1,6 +1,6 @@
 
 import MeasurementTools from '@/components/MeasurementTools';
-import { Measurement, MeasurementType } from '@/utils/measurementUtils';
+import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { FileDown, Home, RefreshCcw, Camera } from "lucide-react";
