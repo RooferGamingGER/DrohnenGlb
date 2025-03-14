@@ -1,8 +1,9 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileDown, Home, RefreshCcw, Camera } from "lucide-react";
+import { FileDown, Home, RefreshCcw, Camera, X } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -94,6 +95,32 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
+  // Render temporary points section
+  const renderTempPoints = () => {
+    if (!tempPoints || tempPoints.length === 0) return null;
+    
+    return (
+      <div className="mt-4">
+        <h3 className="text-sm font-medium mb-2">Temporäre Messpunkte</h3>
+        <div className="space-y-2">
+          {tempPoints.map((point, index) => (
+            <div key={`temp-point-${index}`} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+              <span className="text-sm">Punkt {index + 1}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDeleteTempPoint(index)}
+                className="h-6 w-6"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Mobile view in portrait mode
   if (isMobile && isFullscreen) {
     return (
@@ -145,6 +172,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               Speichern
             </Button>
           </div>
+          
+          {renderTempPoints()}
           
           <MeasurementTools
             activeTool={activeTool}
@@ -218,6 +247,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               Zurück zur Hauptseite
             </Button>
           </div>
+          
+          {renderTempPoints()}
           
           <ScrollArea className="h-[calc(100vh-380px)]">
             <MeasurementTools

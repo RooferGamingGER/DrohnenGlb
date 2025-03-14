@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -1479,6 +1480,7 @@ const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerProps) =
     camera: cameraRef.current,
     setProgress,
     tempPoints: temporaryPoints,
+    temporaryPoints, // Make sure both property names are available
     deleteTempPoint
   };
 };

@@ -662,7 +662,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false }) =>
           isFullscreen={isFullscreen}
           onNewProject={handleNewProject}
           onTakeScreenshot={handleTakeScreenshot}
-          tempPoints={modelViewer.tempPoints || []}
+          tempPoints={modelViewer.temporaryPoints || []}
           onDeleteTempPoint={handleDeleteTempPoint}
         />
       )}
