@@ -44,27 +44,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
     const [isFollowingMouse, setIsFollowingMouse] = useState(false);
 
-    // Determine if header should be shown based on sidebar visibility and orientation
     const shouldShowHeader = useCallback(() => {
         if (forceHideHeader) return false;
 
-        // In portrait mode (mobile), start with header visible
         if (isPortrait) return !showMeasurementTools;
 
-        // In landscape mode (desktop), start with sidebar, hide header
         return !showMeasurementTools;
     }, [forceHideHeader, isPortrait, showMeasurementTools]);
 
     const [showHeader, setShowHeader] = useState(shouldShowHeader());
 
-    // Update header visibility whenever dependencies change
     useEffect(() => {
         setShowHeader(shouldShowHeader());
     }, [shouldShowHeader, showMeasurementTools, isPortrait]);
 
-    // Initialize showMeasurementTools based on device orientation
     useEffect(() => {
-        // On first load, in landscape (desktop) start with sidebar visible
         if (!isPortrait) {
             setShowMeasurementTools(true);
         }
@@ -83,7 +77,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
     const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
 
-    // Load the initial file if provided
     useEffect(() => {
         if (initialFile) {
             handleFileSelected(initialFile);
@@ -120,11 +113,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         const files = event.dataTransfer.files;
         if (!files || files.length === 0) return;
 
-        handleFileSelected(files[0]);c
+        handleFileSelected(files[0]);
     }, [handleFileSelected]);
 
     const handleResetView = useCallback(() => {
-        modelViewer.resetView();c
+        modelViewer.resetView();
     }, [modelViewer]);
 
     const handleToolChange = useCallback((tool: any) => {
@@ -140,7 +133,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                         description: "Ein unvollständiger Messpunkt wurde entfernt.",
                         duration: 3000,
                     });
-                    // Aktualisiere die Geometrie nach dem Löschen
                     if (modelViewer.measurementGroupRef?.current) {
                         modelViewer.measurementGroupRef.current.children.forEach(child => {
                             if (child.name.startsWith(`measurement-${measurement.id}`)) {
@@ -159,7 +151,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         if (measurement) {
             const updatedPoints = measurement.points.filter((_, index) => index !== pointIndex);
             modelViewer.updateMeasurement(measurementId, { points: updatedPoints });
-            updateMeasurementGeometry(measurement); // Aktualisiere die Geometrie
+            updateMeasurementGeometry(measurement);
         }
     }, [modelViewer]);
 
@@ -225,440 +217,473 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         });
     }, [toast]);
 
-  const handleExportMeasurements = useCallback(async () => {
-    if (modelViewer.measurements.length === 0 && savedScreenshots.length === 0) {
-      toast({
-        title: "Keine Daten vorhanden",
-        description: "Es sind weder Messungen noch Screenshots zum Exportieren vorhanden.",
-        variant: "destructive"
-      });
-      return;
-    }
+    const handleExportMeasurements = useCallback(async () => {
+        if (modelViewer.measurements.length === 0 && savedScreenshots.length === 0) {
+            toast({
+                title: "Keine Daten vorhanden",
+                description: "Es sind weder Messungen noch Screenshots zum Exportieren vorhanden.",
+                variant: "destructive"
+            });
+            return;
+        }
 
-    try {
-      toast({
-        title: "Export wird vorbereitet",
-        description: "Bitte warten Sie, während der Export vorbereitet wird...",
-      });
-      
-      try {
-        await exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
-        toast({
-          title: "Export erfolgreich",
-          description: "Die Daten wurden als PDF-Datei exportiert.",
-        });
-      } catch (pdfError) {
-        console.error('Error exporting to PDF:', pdfError);
+        try {
+            toast({
+                title: "Export wird vorbereitet",
+                description: "Bitte warten Sie, während der Export vorbereitet wird...",
+            });
+            
+            try {
+                await exportMeasurementsToPDF(modelViewer.measurements, savedScreenshots);
+                toast({
+                    title: "Export erfolgreich",
+                    description: "Die Daten wurden als PDF-Datei exportiert.",
+                });
+            } catch (pdfError) {
+                console.error('Error exporting to PDF:', pdfError);
+                
+                exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
+                toast({
+                    title: "Export als Fallback erfolgreich",
+                    description: "PDF-Export fehlgeschlagen. Die Daten wurden als HTML-Datei exportiert (in Word öffnen).",
+                });
+            }
+        } catch (error) {
+            console.error('Error exporting measurements:', error);
+            toast({
+                title: "Fehler beim Export",
+                description: "Die Daten konnten nicht exportiert werden.",
+                variant: "destructive"
+            });
+        }
+    }, [modelViewer.measurements, savedScreenshots, toast]);
+
+    const toggleMeasurementTools = useCallback(() => {
+        setShowMeasurementTools(prev => !prev);
+    }, []);
+
+    const toggleMeasurementsVisibility = useCallback(() => {
+        setMeasurementsVisible(prev => !prev);
         
-        exportMeasurementsToWord(modelViewer.measurements, savedScreenshots);
-        toast({
-          title: "Export als Fallback erfolgreich",
-          description: "PDF-Export fehlgeschlagen. Die Daten wurden als HTML-Datei exportiert (in Word öffnen).",
-        });
-      }
-    } catch (error) {
-      console.error('Error exporting measurements:', error);
-      toast({
-        title: "Fehler beim Export",
-        description: "Die Daten konnten nicht exportiert werden.",
-        variant: "destructive"
-      });
-    }
-  }, [modelViewer.measurements, savedScreenshots, toast]);
+        if (modelViewer.measurementGroupRef?.current) {
+            modelViewer.toggleMeasurementsVisibility(!measurementsVisible);
+            
+            toast({
+                title: measurementsVisible ? "Messungen ausgeblendet" : "Messungen eingeblendet",
+                description: measurementsVisible ? 
+                  "Messungen wurden für Screenshots ausgeblendet." : 
+                  "Messungen wurden wieder eingeblendet.",
+                duration: 5000,
+            });
+        }
+    }, [measurementsVisible, modelViewer, toast]);
 
-  const toggleMeasurementTools = useCallback(() => {
-    setShowMeasurementTools(prev => !prev);
-  }, []);
-
-  const toggleMeasurementsVisibility = useCallback(() => {
-    setMeasurementsVisible(prev => !prev);
-    
-    if (modelViewer.measurementGroupRef?.current) {
-      modelViewer.toggleMeasurementsVisibility(!measurementsVisible);
-      
-      toast({
-        title: measurementsVisible ? "Messungen ausgeblendet" : "Messungen eingeblendet",
-        description: measurementsVisible ? 
-          "Messungen wurden für Screenshots ausgeblendet." : 
-          "Messungen wurden wieder eingeblendet.",
-        duration: 5000,
-      });
-    }
-  }, [measurementsVisible, modelViewer, toast]);
-
-  const toggleSingleMeasurementVisibility = useCallback((id: string) => {
-    const measurement = modelViewer.measurements.find(m => m.id === id);
-    if (measurement) {
-      const newVisibility = !measurement.visible;
-      modelViewer.updateMeasurement(id, { visible: newVisibility });
-      
-      toast({
-        title: newVisibility ? "Messung eingeblendet" : "Messung ausgeblendet",
-        description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`,
-        duration: 3000,
-      });
-    }
-  }, [modelViewer, toast]);
-
-  const toggleEditMode = useCallback((id: string) => {
-    const measurement = modelViewer.measurements.find(m => m.id === id);
-    if (!measurement || !modelViewer.measurementGroupRef?.current) return;
-
-    modelViewer.measurements.forEach(m => {
-      if (m.id !== id && m.editMode) {
-        highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
-        modelViewer.updateMeasurement(m.id, { editMode: false });
-      }
-    });
-
-    const newEditMode = !measurement.editMode;
-    
-    if (newEditMode) {
-      if (modelViewer.activeTool !== 'none') {
-        modelViewer.setActiveTool('none');
-      }
-      
-      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
-      
-      toast({
-        title: "Bearbeitungsmodus aktiviert",
-        description: "Klicken Sie auf einen Messpunkt, um ihn zu markieren und zu verschieben. Klicken Sie erneut, um ihn abzusetzen.",
-        duration: 5000,
-      });
-    } else {
-      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
-      
-      if (isDragging || isFollowingMouse) {
-        setIsDragging(false);
-        setIsFollowingMouse(false);
-        setDraggedPoint(null);
-        setSelectedMeasurementId(null);
-        setSelectedPointIndex(null);
-        document.body.style.cursor = 'auto';
-      }
-      
-      toast({
-        title: "Bearbeitungsmodus deaktiviert",
-        description: "Die Messung kann nicht mehr bearbeitet werden.",
-        duration: 3000,
-      });
-    }
-    
-    modelViewer.updateMeasurement(id, { editMode: newEditMode });
-  }, [modelViewer, toast, isDragging, isFollowingMouse]);
-
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!modelViewer.loadedModel || !containerRef.current) return;
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const mousePosition = new THREE.Vector2(mouseX, mouseY);
-    
-    if (isFollowingMouse && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
-      event.preventDefault();
-      
-      document.body.style.cursor = 'grabbing';
-      
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      
-      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
-      
-      if (intersects.length > 0) {
-        const newPosition = intersects[0].point.clone();
-        
-        draggedPoint.position.copy(newPosition);
-        
-        const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
-        
+    const toggleSingleMeasurementVisibility = useCallback((id: string) => {
+        const measurement = modelViewer.measurements.find(m => m.id === id);
         if (measurement) {
-          const updatedPoints = [...measurement.points];
-          updatedPoints[selectedPointIndex] = {
-            position: newPosition.clone(),
-            worldPosition: newPosition.clone()
-          };
-          
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
-          
-          updateMeasurementGeometry(measurement);
+            const newVisibility = !measurement.visible;
+            modelViewer.updateMeasurement(id, { visible: newVisibility });
+            
+            toast({
+                title: newVisibility ? "Messung eingeblendet" : "Messung ausgeblendet",
+                description: `Die Messung wurde ${newVisibility ? 'ein' : 'aus'}geblendet.`,
+                duration: 3000,
+            });
         }
-      }
-    } else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      raycasterRef.current.params.Points = { threshold: 0.1 };
-      
-      const nearestPoint = findNearestEditablePoint(
-        raycasterRef.current,
-        modelViewer.camera!,
-        mousePosition,
-        modelViewer.measurementGroupRef.current,
-        0.2
-      );
-      
-      updateCursorForDraggablePoint(!!nearestPoint);
-    }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
+    }, [modelViewer, toast]);
 
-  const handleMouseDown = useCallback((event: MouseEvent) => {
-    if (event.button !== 0) return;
-    
-    if (!modelViewer.loadedModel || !containerRef.current) return;
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const mousePosition = new THREE.Vector2(mouseX, mouseY);
-    
-    if (modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      raycasterRef.current.params.Points = { threshold: 0.1 };
-      
-      const nearestPoint = findNearestEditablePoint(
-        raycasterRef.current,
-        modelViewer.camera!,
-        mousePosition,
-        modelViewer.measurementGroupRef.current,
-        0.2
-      );
-      
-      if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
-        event.preventDefault();
-        
-        setIsFollowingMouse(false);
-        document.body.style.cursor = 'auto';
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
-          duration: 3000,
+    const toggleEditMode = useCallback((id: string) => {
+        const measurement = modelViewer.measurements.find(m => m.id === id);
+        if (!measurement || !modelViewer.measurementGroupRef?.current) return;
+
+        modelViewer.measurements.forEach(m => {
+            if (m.id !== id && m.editMode) {
+                highlightMeasurementPoints(m, modelViewer.measurementGroupRef.current!, false);
+                modelViewer.updateMeasurement(m.id, { editMode: false });
+            }
         });
+
+        const newEditMode = !measurement.editMode;
         
-        return;
-      }
-      
-      if (nearestPoint && !isFollowingMouse) {
+        if (newEditMode) {
+            if (modelViewer.activeTool !== 'none') {
+                modelViewer.setActiveTool('none');
+            }
+            
+            highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
+            
+            toast({
+                title: "Bearbeitungsmodus aktiviert",
+                description: "Klicken Sie auf einen Messpunkt, um ihn zu markieren und zu verschieben. Klicken Sie erneut, um ihn abzusetzen.",
+                duration: 5000,
+            });
+        } else {
+            highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, false);
+            
+            if (isDragging || isFollowingMouse) {
+                setIsDragging(false);
+                setIsFollowingMouse(false);
+                setDraggedPoint(null);
+                setSelectedMeasurementId(null);
+                setSelectedPointIndex(null);
+                document.body.style.cursor = 'auto';
+            }
+            
+            toast({
+                title: "Bearbeitungsmodus deaktiviert",
+                description: "Die Messung kann nicht mehr bearbeitet werden.",
+                duration: 3000,
+            });
+        }
+        
+        modelViewer.updateMeasurement(id, { editMode: newEditMode });
+    }, [modelViewer, toast, isDragging, isFollowingMouse]);
+
+    const handleMouseMove = useCallback((event: MouseEvent) => {
+        if (!modelViewer.loadedModel || !containerRef.current) return;
+        
+        const rect = containerRef.current.getBoundingClientRect();
+        const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        const mousePosition = new THREE.Vector2(mouseX, mouseY);
+        
+        if (isFollowingMouse && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
+            event.preventDefault();
+            
+            document.body.style.cursor = 'grabbing';
+            
+            raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+            
+            const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+            
+            if (intersects.length > 0) {
+                const newPosition = intersects[0].point.clone();
+                
+                draggedPoint.position.copy(newPosition);
+                
+                const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
+                
+                if (measurement) {
+                    const updatedPoints = [...measurement.points];
+                    updatedPoints[selectedPointIndex] = {
+                        position: newPosition.clone(),
+                        worldPosition: newPosition.clone()
+                    };
+                    
+                    modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+                    
+                    updateMeasurementGeometry(measurement);
+                }
+            }
+        } else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
+            raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+            raycasterRef.current.params.Points = { threshold: 0.1 };
+            
+            const nearestPoint = findNearestEditablePoint(
+                raycasterRef.current,
+                modelViewer.camera!,
+                mousePosition,
+                modelViewer.measurementGroupRef.current,
+                0.2
+            );
+            
+            updateCursorForDraggablePoint(!!nearestPoint);
+        }
+    }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
+
+    const handleMouseDown = useCallback((event: MouseEvent) => {
+        if (event.button !== 0) return;
+        
+        if (!modelViewer.loadedModel || !containerRef.current) return;
+        
+        const rect = containerRef.current.getBoundingClientRect();
+        const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        const mousePosition = new THREE.Vector2(mouseX, mouseY);
+        
+        if (modelViewer.measurementGroupRef?.current) {
+            raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+            raycasterRef.current.params.Points = { threshold: 0.1 };
+            
+            const nearestPoint = findNearestEditablePoint(
+                raycasterRef.current,
+                modelViewer.camera!,
+                mousePosition,
+                modelViewer.measurementGroupRef.current,
+                0.2
+            );
+            
+            if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
+                event.preventDefault();
+                
+                setIsFollowingMouse(false);
+                document.body.style.cursor = 'auto';
+                
+                toast({
+                    title: "Position aktualisiert",
+                    description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
+                    duration: 3000,
+                });
+                
+                return;
+            }
+            
+            if (nearestPoint && !isFollowingMouse) {
+                event.preventDefault();
+                
+                const pointName = nearestPoint.name;
+                const nameParts = pointName.split('-');
+                
+                if (nameParts.length >= 3) {
+                    const measurementId = nameParts[1];
+                    const pointIndex = parseInt(nameParts[2], 10);
+                    
+                    setIsFollowingMouse(true);
+                    setDraggedPoint(nearestPoint);
+                    setSelectedMeasurementId(measurementId);
+                    setSelectedPointIndex(pointIndex);
+                    
+                    document.body.style.cursor = 'grabbing';
+                    
+                    console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+                    
+                    toast({
+                        title: "Punkt aktiviert",
+                        description: "Bewegen Sie die Maus und klicken Sie erneut, um den Punkt zu platzieren.",
+                        duration: 3000,
+                    });
+                }
+            }
+        }
+    }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+
+    const handleMouseUp = useCallback((event: MouseEvent) => {
+        if (isDragging && draggedPoint) {
+            setIsDragging(false);
+            
+            if (selectedMeasurementId && selectedPointIndex !== null) {
+                console.log(`Drag-Operation beendet für Messung: ${selectedMeasurementId}, Index: ${selectedPointIndex}`);
+                
+                toast({
+                    title: "Position aktualisiert",
+                    description: "Der Messpunkt wurde an die neue Position verschoben.",
+                    duration: 3000,
+                });
+            }
+            
+            document.body.style.cursor = 'auto';
+            
+            setDraggedPoint(null);
+            setSelectedMeasurementId(null);
+            setSelectedPointIndex(null);
+        }
+    }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
+
+    const handleTouchStart = useCallback((event: TouchEvent) => {
+        if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        const rect = containerRef.current.getBoundingClientRect();
+        const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        const touchPosition = new THREE.Vector2(touchX, touchY);
+        
+        if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
+            raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+            raycasterRef.current.params.Points = { threshold: 0.2 };
+            
+            const nearestPoint = findNearestEditablePoint(
+                raycasterRef.current,
+                modelViewer.camera,
+                touchPosition,
+                modelViewer.measurementGroupRef.current,
+                0.3
+            );
+            
+            if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
+                event.preventDefault();
+                
+                setIsFollowingMouse(false);
+                
+                toast({
+                    title: "Position aktualisiert",
+                    description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
+                    duration: 3000,
+                });
+                
+                return;
+            }
+            
+            if (nearestPoint && !isFollowingMouse) {
+                event.preventDefault();
+                
+                const pointName = nearestPoint.name;
+                const nameParts = pointName.split('-');
+                
+                if (nameParts.length >= 3) {
+                    const measurementId = nameParts[1];
+                    const pointIndex = parseInt(nameParts[2], 10);
+                    
+                    setIsFollowingMouse(true);
+                    setDraggedPoint(nearestPoint);
+                    setSelectedMeasurementId(measurementId);
+                    setSelectedPointIndex(pointIndex);
+                    
+                    console.log(`Punkt per Touch ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+                    
+                    toast({
+                        title: "Punkt aktiviert",
+                        description: "Bewegen Sie den Finger und tippen Sie erneut, um den Punkt zu platzieren.",
+                        duration: 3000,
+                    });
+                }
+            }
+        }
+    }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+
+    const handleTouchMove = useCallback((event: TouchEvent) => {
+        if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
+        if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
+        
         event.preventDefault();
         
-        const pointName = nearestPoint.name;
-        const nameParts = pointName.split('-');
+        const touch = event.touches[0];
+        const rect = containerRef.current.getBoundingClientRect();
+        const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
         
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
-          
-          setIsFollowingMouse(true);
-          setDraggedPoint(nearestPoint);
-          setSelectedMeasurementId(measurementId);
-          setSelectedPointIndex(pointIndex);
-          
-          document.body.style.cursor = 'grabbing';
-          
-          console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
-          
-          toast({
-            title: "Punkt aktiviert",
-            description: "Bewegen Sie die Maus und klicken Sie erneut, um den Punkt zu platzieren.",
-            duration: 3000,
-          });
+        const touchPosition = new THREE.Vector2(touchX, touchY);
+        
+        if (modelViewer.camera) {
+            raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+            
+            const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+            
+            if (intersects.length > 0) {
+                const newPosition = intersects[0].point.clone();
+                
+                draggedPoint.position.copy(newPosition);
+                
+                const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
+                
+                if (measurement) {
+                    const updatedPoints = [...measurement.points];
+                    updatedPoints[selectedPointIndex] = {
+                        position: newPosition.clone(),
+                        worldPosition: newPosition.clone()
+                    };
+                    
+                    modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+                    
+                    updateMeasurementGeometry(measurement);
+                }
+            }
         }
-      }
-    }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+    }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
 
-  const handleMouseUp = useCallback((event: MouseEvent) => {
-    if (isDragging && draggedPoint) {
-      setIsDragging(false);
-      
-      if (selectedMeasurementId && selectedPointIndex !== null) {
-        console.log(`Drag-Operation beendet für Messung: ${selectedMeasurementId}, Index: ${selectedPointIndex}`);
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an die neue Position verschoben.",
-          duration: 3000,
-        });
-      }
-      
-      document.body.style.cursor = 'auto';
-      
-      setDraggedPoint(null);
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
-    }
-  }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
+    const handleTouchEnd = useCallback((event: TouchEvent) => {
+    }, []);
 
-  const handleTouchStart = useCallback((event: TouchEvent) => {
-    if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
-    
-    const touch = event.touches[0];
-    const rect = containerRef.current.getBoundingClientRect();
-    const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-    const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const touchPosition = new THREE.Vector2(touchX, touchY);
-    
-    if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
-      raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
-      raycasterRef.current.params.Points = { threshold: 0.2 };
-      
-      const nearestPoint = findNearestEditablePoint(
-        raycasterRef.current,
-        modelViewer.camera,
-        touchPosition,
-        modelViewer.measurementGroupRef.current,
-        0.3
-      );
-      
-      if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
-        event.preventDefault();
-        
-        setIsFollowingMouse(false);
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
-          duration: 3000,
-        });
-        
-        return;
-      }
-      
-      if (nearestPoint && !isFollowingMouse) {
-        event.preventDefault();
-        
-        const pointName = nearestPoint.name;
-        const nameParts = pointName.split('-');
-        
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
-          
-          setIsFollowingMouse(true);
-          setDraggedPoint(nearestPoint);
-          setSelectedMeasurementId(measurementId);
-          setSelectedPointIndex(pointIndex);
-          
-          console.log(`Punkt per Touch ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
-          
-          toast({
-            title: "Punkt aktiviert",
-            description: "Bewegen Sie den Finger und tippen Sie erneut, um den Punkt zu platzieren.",
-            duration: 3000,
-          });
+    useEffect(() => {
+        if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
+            setShowMeasurementTools(true);
         }
-      }
-    }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+    }, [isMobile, isPortrait, modelViewer.loadedModel, showMeasurementTools]);
 
-  const handleTouchMove = useCallback((event: TouchEvent) => {
-    if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
-    if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
-    
-    event.preventDefault();
-    
-    const touch = event.touches[0];
-    const rect = containerRef.current.getBoundingClientRect();
-    const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-    const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const touchPosition = new THREE.Vector2(touchX, touchY);
-    
-    if (modelViewer.camera) {
-      raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
-      
-      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
-      
-      if (intersects.length > 0) {
-        const newPosition = intersects[0].point.clone();
+    useEffect(() => {
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousedown', handleMouseDown);
+        window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd);
         
-        draggedPoint.position.copy(newPosition);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mousedown', handleMouseDown);
+            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [
+        handleMouseMove, 
+        handleMouseDown, 
+        handleMouseUp, 
+        handleTouchStart, 
+        handleTouchMove, 
+        handleTouchEnd
+    ]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                if (isDragging || isFollowingMouse) {
+                    setIsDragging(false);
+                    setIsFollowingMouse(false);
+                    setDraggedPoint(null);
+                    setSelectedMeasurementId(null);
+                    setSelectedPointIndex(null);
+                    document.body.style.cursor = 'auto';
+                    
+                    toast({
+                        title: "Bearbeitung abgebrochen",
+                        description: "Die Punktmanipulation wurde abgebrochen.",
+                        duration: 3000,
+                    });
+                }
+                
+                if (modelViewer.activeTool !== 'none') {
+                    modelViewer.setActiveTool('none');
+                }
+            }
+        };
         
-        const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
-        
-        if (measurement) {
-          const updatedPoints = [...measurement.points];
-          updatedPoints[selectedPointIndex] = {
-            position: newPosition.clone(),
-            worldPosition: newPosition.clone()
-          };
-          
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
-          
-          updateMeasurementGeometry(measurement);
-        }
-      }
-    }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isDragging, isFollowingMouse, modelViewer, toast]);
 
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
-  }, []);
-
-  useEffect(() => {
-    if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
-      setShowMeasurementTools(true);
-    }
-  }, [isMobile, isPortrait, modelViewer.loadedModel, showMeasurementTools]);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-    
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [
-    handleMouseMove, 
-    handleMouseDown, 
-    handleMouseUp, 
-    handleTouchStart, 
-    handleTouchMove, 
-    handleTouchEnd
-  ]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (isDragging || isFollowingMouse) {
-          setIsDragging(false);
-          setIsFollowingMouse(false);
-          setDraggedPoint(null);
-          setSelectedMeasurementId(null);
-          setSelectedPointIndex(null);
-          document.body.style.cursor = 'auto';
-          
-          toast({
-            title: "Bearbeitung abgebrochen",
-            description: "Die Punktmanipulation wurde abgebrochen.",
-            duration: 3000,
-          });
-        }
-        
-        if (modelViewer.activeTool !== 'none') {
-          modelViewer.setActiveTool('none');
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isDragging, isFollowingMouse, modelViewer, toast]);
-
-   return (
+    return (
         <div className="relative h-full w-full flex flex-col">
-            {/* ... (ViewerToolbar, ViewerContainer, LoadingOverlay, DropZone, ScreenshotDialog bleiben gleich) */}
+            {modelViewer.loadedModel ? (
+                <>
+                    <ViewerToolbar
+                        showHeader={showHeader}
+                        isFullscreen={isFullscreen}
+                        toggleFullscreen={toggleFullscreen}
+                        resetView={handleResetView}
+                        toggleMeasurementTools={toggleMeasurementTools}
+                        measurementsVisible={measurementsVisible}
+                        toggleMeasurementsVisibility={toggleMeasurementsVisibility}
+                        takeScreenshot={handleTakeScreenshot}
+                        exportMeasurements={handleExportMeasurements}
+                        isPortrait={isPortrait}
+                        showMeasurementTools={showMeasurementTools}
+                        onNewProject={handleNewProject}
+                    />
+                    <ViewerContainer
+                        ref={containerRef}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                    >
+                        {modelViewer.progress < 100 && (
+                            <LoadingOverlay progress={modelViewer.progress} />
+                        )}
+                    </ViewerContainer>
+                </>
+            ) : (
+                <DropZone
+                    onFileSelected={handleFileSelected}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                />
+            )}
+            
             {modelViewer.loadedModel && showMeasurementTools && (
                 <MeasurementToolsPanel
                     measurements={modelViewer.measurements}
@@ -680,24 +705,24 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                     onTakeScreenshot={handleTakeScreenshot}
                     tempPoints={modelViewer.tempPoints || []}
                     onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
-                    onDeleteSinglePoint={handleDeleteSinglePoint} // Füge die neue Funktion hinzu
+                    onDeleteSinglePoint={handleDeleteSinglePoint}
                 />
             )}
-      
-      {modelViewer.error && (
-        <div className="absolute bottom-4 left-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md">
-          <p>{modelViewer.error}</p>
+            
+            {modelViewer.error && (
+                <div className="absolute bottom-4 left-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md">
+                    <p>{modelViewer.error}</p>
+                </div>
+            )}
+            
+            <ScreenshotDialog
+                imageDataUrl={screenshotData}
+                open={showScreenshotDialog}
+                onClose={() => setShowScreenshotDialog(false)}
+                onSave={handleSaveScreenshot}
+            />
         </div>
-      )}
-      
-      <ScreenshotDialog
-        imageDataUrl={screenshotData}
-        open={showScreenshotDialog}
-        onClose={() => setShowScreenshotDialog(false)}
-        onSave={handleSaveScreenshot}
-      />
-    </div>
-  );
+    );
 };
 
 export default ModelViewer;
