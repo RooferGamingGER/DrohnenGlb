@@ -1,3 +1,4 @@
+
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -27,7 +28,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   };
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen overflow-hidden`}>
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
 
       {/* Upload Area - Now on the left or top side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
@@ -46,7 +47,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               onDragOver={onDragOver}
               onDrop={onDrop}
             >
-              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" /> {/* animate-float entfernt */}
+              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" />
               <h3 className="font-semibold mb-2 md:mb-3 text-lg md:text-2xl text-foreground">GLB-Datei hochladen</h3>
               <p className="text-md md:text-lg text-muted-foreground mb-3 md:mb-4">
                 Ziehen Sie eine Datei hierher oder klicken
