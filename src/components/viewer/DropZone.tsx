@@ -67,19 +67,29 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Informativer Bereich (links/oben) */}
-      <div className={`w-1/4 bg-gradient-to-br from-blue-600 to-indigo-700 p-4 ${isPortrait ? 'w-full' : 'hidden md:block'}`}>
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-white mb-2">
+      <div className={`hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
+        <div className="text-center flex flex-col items-center max-w-md">
+          <h1 className="text-3xl font-bold text-white mb-4 text-balance">
             3D-Modell Viewer
           </h1>
-          <p className="text-blue-100 text-sm">
-            Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren.
+          <p className="text-blue-100 mb-8 text-balance">
+            Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren und zu exportieren.
           </p>
+          <div className="grid grid-cols-2 gap-4 w-full">
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <h3 className="font-semibold text-white mb-2">Einfacher Upload</h3>
+              <p className="text-blue-100 text-sm">Laden Sie Ihre GLB-Dateien schnell hoch.</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <h3 className="font-semibold text-white mb-2">Direkter Export</h3>
+              <p className="text-blue-100 text-sm">Exportieren Sie Ihre Modelle nach der Visualisierung.</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Interaktiver Bereich (rechts/unten) */}
-      <div className={`flex-1 flex flex-col justify-center items-center p-4 ${isPortrait ? 'w-full' : ''}`}>
+      <div className={`flex flex-col justify-center items-center w-full md:w-1/2 p-4 ${isPortrait ? 'w-full' : ''}`}>
         <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
             <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
