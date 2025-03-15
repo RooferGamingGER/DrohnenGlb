@@ -67,7 +67,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Informativer Bereich (links/oben) */}
-      <div className={`hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
+      <div className={`hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : 'md:flex'}`}> {/* Änderung hier */}
         <div className="text-center flex flex-col items-center max-w-md">
           <h1 className="text-3xl font-bold text-white mb-4 text-balance">
             3D-Modell Viewer
@@ -89,7 +89,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       </div>
 
       {/* Interaktiver Bereich (rechts/unten) */}
-      <div className={`flex flex-col justify-center items-center w-full md:flex-grow p-4 ${isPortrait ? 'w-full' : ''}`}> {/* Änderung hier */}
+      <div className={`flex flex-col justify-center items-center w-full md:flex-grow p-4 ${isPortrait ? 'w-full' : ''}`}>
         <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
             <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
