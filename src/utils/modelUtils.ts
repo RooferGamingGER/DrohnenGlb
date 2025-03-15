@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -16,38 +15,28 @@ export const backgroundOptions: BackgroundOption[] = [
   { id: 'gray', name: 'Grau', color: '#404040', texture: null },
 ];
 
-// Extract camera position from model for better initial view
 export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 => {
   const size = new THREE.Vector3();
   box.getSize(size);
   
-  // Calculate a good distance based on the model's size
   const maxDimension = Math.max(size.x, size.y, size.z);
-  const distance = maxDimension * 1.8; // Increased for better visibility
+  const distance = maxDimension * 1.8;
   
-  // Position the camera at an angle, adjusted for better initial view
   return new THREE.Vector3(distance, distance * 0.8, distance);
 };
 
-// Calculate zoom factor based on distance to model
 export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3, modelSize: number): number => {
-  // Get distance to target
   const cameraPosition = new THREE.Vector3().copy(camera.position);
   const distance = cameraPosition.distanceTo(target);
   
-  // Calculate minimum movement speed (20% of normal speed)
   const MIN_MOVEMENT_FACTOR = 0.2;
   
-  // Calculate a factor based on how close we are to the model
-  // The closer we are, the slower the movement should be
   const modelRadius = modelSize * 0.5;
   
-  // If we're very close to the model, use the minimum speed
   if (distance < modelRadius * 0.5) {
     return MIN_MOVEMENT_FACTOR;
   }
   
-  // Linear interpolation between 1.0 and MIN_MOVEMENT_FACTOR based on distance
   const factor = Math.max(
     MIN_MOVEMENT_FACTOR,
     Math.min(1.0, distance / (modelRadius * 3))
@@ -56,7 +45,6 @@ export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3,
   return factor;
 };
 
-// Camera movement function for right-click drag - MODIFIED to be slower
 export const moveCameraWithRightDrag = (
   camera: THREE.Camera,
   controls: any,
@@ -66,27 +54,20 @@ export const moveCameraWithRightDrag = (
 ): void => {
   if (!controls) return;
   
-  // Calculate adaptive movement speed based on model size and camera distance
-  // Further reduced the movement speed by changing 0.02 to 0.008 (60% slower)
-  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.008 * modelSize;
+  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.005 * modelSize;
   
-  // Get camera right and up vectors in world space
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   
-  // Calculate movement vectors - make vertical movement even slower (by 50%)
   const rightMovement = right.clone().multiplyScalar(-movementX * movementSpeed);
-  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed * 0.5);
+  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed * 0.3);
   
-  // Move both camera and controls target to maintain relative position
   camera.position.add(rightMovement).add(upMovement);
   controls.target.add(rightMovement).add(upMovement);
   
-  // Update controls
   controls.update();
 };
 
-// Improve zoom for mobile devices
 export const smoothZoomCamera = (
   camera: THREE.Camera,
   controls: any,
@@ -95,17 +76,13 @@ export const smoothZoomCamera = (
 ): void => {
   if (!controls) return;
   
-  // Get direction from camera to target
   const direction = new THREE.Vector3();
   direction.subVectors(camera.position, controls.target).normalize();
   
-  // Calculate adaptive zoom speed based on model size and current distance
   const adaptiveZoom = calculateZoomFactor(camera, controls.target, modelSize) * zoomFactor * modelSize * 0.05;
   
-  // Apply zoom by moving camera along view direction
   camera.position.addScaledVector(direction, adaptiveZoom);
   
-  // Ensure minimum distance to prevent zooming through the model
   const minDistance = modelSize * 0.2;
   const currentDistance = camera.position.distanceTo(controls.target);
   
@@ -115,16 +92,13 @@ export const smoothZoomCamera = (
     );
   }
   
-  // Update controls
   controls.update();
 };
 
-// Load GLB model
 export const loadGLBModel = (file: File): Promise<THREE.Group> => {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     
-    // Add DRACO loader support
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     dracoLoader.setDecoderConfig({ type: 'js' });
@@ -147,67 +121,53 @@ export const loadGLBModel = (file: File): Promise<THREE.Group> => {
   });
 };
 
-// Center model and adjust camera
 export const centerModel = (model: THREE.Object3D): THREE.Box3 => {
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   
-  // Adjust model position to be centered
   model.position.x = -center.x;
   model.position.y = -center.y;
   model.position.z = -center.z;
   
-  // Ensure model is properly positioned in all orientations
   model.updateMatrix();
   model.updateMatrixWorld(true);
   
   return box;
 };
 
-// Optimales Zentrieren des Models nach dem Laden oder Orientierungswechsel
 export const optimallyCenterModel = (
   model: THREE.Object3D, 
   camera: THREE.Camera, 
   controls: any
 ): void => {
-  // Berechne Bounding Box
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   const size = new THREE.Vector3();
   box.getSize(size);
   
-  // Zentriere das Modell an seinem Schwerpunkt
   model.position.x = -center.x;
   model.position.y = -center.y;
   model.position.z = -center.z;
   
-  // Berechne die optimale Kameraposition
   const maxDimension = Math.max(size.x, size.y, size.z);
-  const distance = maxDimension * 2.0; // Konsistenter Abstand für alle Ansichten
+  const distance = maxDimension * 2.0;
   
-  // Setze Kamera auf eine einheitliche Position mit gutem Überblick
   camera.position.set(distance, distance * 0.8, distance);
   
-  // Setze den Zielpunkt auf den Mittelpunkt des Modells
   if (controls) {
     controls.target.set(0, 0, 0);
     controls.update();
   }
   
-  // Aktualisiere die Matrizen
   model.updateMatrix();
   model.updateMatrixWorld(true);
   
-  // Stellen Sie sicher, dass sich die Kamera auf das gesamte Modell konzentriert
   if (camera instanceof THREE.PerspectiveCamera) {
     const aspect = camera.aspect;
     const fov = camera.fov * (Math.PI / 180);
     
-    // Berechne den erforderlichen Abstand um das gesamte Modell zu sehen
     const requiredDistance = (maxDimension / 2) / Math.tan(fov / 2);
     
-    // Setze die Kamera auf einen konsistenten Abstand für alle Ansichten
-    // Verwende einen festen Faktor (1.2) um etwas Abstand um das Modell herum zu haben
     const newPosition = camera.position.clone().normalize().multiplyScalar(requiredDistance * 1.2);
     camera.position.copy(newPosition);
     
@@ -217,7 +177,6 @@ export const optimallyCenterModel = (
   }
 };
 
-// Create a texture loader
 export const loadTexture = (url: string): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {
     const loader = new THREE.TextureLoader();
@@ -234,7 +193,6 @@ export const loadTexture = (url: string): Promise<THREE.Texture> => {
   });
 };
 
-// Format file size
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -243,14 +201,11 @@ export const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// File validation
 export const validateFile = (file: File): boolean => {
-  // Check file type
   if (!file.name.toLowerCase().endsWith('.glb')) {
     return false;
   }
   
-  // Max file size (100MB)
   const maxSize = 100 * 1024 * 1024;
   if (file.size > maxSize) {
     return false;
