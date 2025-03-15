@@ -1,26 +1,21 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { UploadCloud, FileUp } from 'lucide-react';
+import { Card } from "@/components/ui/card";
 import { useIsMobile } from '@/hooks/use-mobile';
 
-interface DropZoneProps {
-  onFileSelected: (file: File) => void;
-  onDragOver: (event: React.DragEvent) => void;
-  onDrop: (event: React.DragEvent) => void;
-}
-
-const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
+const UploadWithExplanations = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const { isPortrait } = useIsMobile();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    onFileSelected(file);
+    setSelectedFile(file);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -64,35 +59,57 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
     }
   }, []);
 
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    setSelectedFile(files[0]);
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
-      {/* Informativer Bereich (links/oben) */}
-      <div className={`md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}> {/* Änderung hier */}
+      {/* Informativer Bereich (links) */}
+      <div className={`md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
         <div className="text-center flex flex-col items-center max-w-md">
+          <img
+            src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+            alt="Drohnenvermessung by RooferGaming"
+            className="h-48 mb-4 filter drop-shadow-lg animate-float"
+          />
           <h1 className="text-3xl font-bold text-white mb-4 text-balance">
-            3D-Modell Viewer
+            DrohnenGLB by RooferGaming®
           </h1>
           <p className="text-blue-100 mb-8 text-balance">
-            Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren und zu exportieren.
+            Die präzise Lösung für Ihre Dachvermessung. Nehmen Sie genaue Messungen vor und erstellen Sie detaillierte Berichte direkt auf Ihrem Gerät.
           </p>
           <div className="grid grid-cols-2 gap-4 w-full">
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
-              <h3 className="font-semibold text-white mb-2">Einfacher Upload</h3>
-              <p className="text-blue-100 text-sm">Laden Sie Ihre GLB-Dateien schnell hoch.</p>
+              <h3 className="font-semibold text-white mb-2">Präzise Messungen</h3>
+              <p className="text-blue-100 text-sm">Exakte Messergebnisse für Ihre Projekte</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
-              <h3 className="font-semibold text-white mb-2">Direkter Export</h3>
-              <p className="text-blue-100 text-sm">Exportieren Sie Ihre Modelle nach der Visualisierung.</p>
+              <h3 className="font-semibold text-white mb-2">Einfache Bedienung</h3>
+              <p className="text-blue-100 text-sm">Intuitive Tools für jeden Anwender</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Interaktiver Bereich (rechts/unten) */}
+      {/* Upload-Bereich (rechts) */}
       <div className={`flex flex-col justify-center items-center w-full md:flex-grow p-4 ${isPortrait ? 'w-full' : ''}`}>
         <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
-            <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
+            <img
+              src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
+              alt="Drohnenvermessung by RooferGaming"
+              className="h-32 mx-auto mb-4"
+            />
+            <h2 className="text-xl font-bold text-gray-800">DrohnenGLB</h2>
           </div>
 
           <div className="text-center mb-8">
@@ -104,8 +121,8 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
           <div
             className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
-            onDragOver={onDragOver}
-            onDrop={onDrop}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
           >
             <FileUp className="mb-3 md:mb-4 text-primary h-8 w-8 md:h-10 md:w-10" />
             <h3 className="font-semibold mb-2 text-base md:text-xl text-foreground">GLB-Datei hochladen</h3>
@@ -141,4 +158,4 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   );
 };
 
-export default DropZone;
+export default UploadWithExplanations;
