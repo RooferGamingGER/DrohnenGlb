@@ -15,6 +15,7 @@ import {
   findNearestEditablePoint,
   updateMeasurementGeometry
 } from '@/utils/measurementUtils';
+import { calculateZoomFactor } from '@/utils/modelUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
 import ViewerContainer from '@/components/viewer/ViewerContainer';
@@ -317,6 +318,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     modelViewer.updateMeasurement(id, { editMode: newEditMode });
   }, [modelViewer, toast, isDragging, isFollowingMouse]);
 
+  const modelSizeRef = useRef<number>(0);
+  
+  const touchStartRef = useRef<{x1: number, y1: number, x2?: number, y2?: number, distance?: number} | null>(null);
+  
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!modelViewer.loadedModel || !containerRef.current) return;
     
@@ -460,7 +465,33 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
-    if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
+    if (!modelViewer.loadedModel || !containerRef.current) return;
+    
+    if (event.touches.length === 2) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const x1 = touch1.clientX;
+      const y1 = touch1.clientY;
+      const x2 = touch2.clientX;
+      const y2 = touch2.clientY;
+      
+      const distance = Math.sqrt(
+        Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+      );
+      
+      touchStartRef.current = { x1, y1, x2, y2, distance };
+      
+      if (touchMode !== 'zoom') {
+        setTouchMode('zoom');
+      }
+      
+      return;
+    }
+    
+    touchStartRef.current = null;
+    
+    if (event.touches.length !== 1) return;
     
     const touch = event.touches[0];
     const rect = containerRef.current.getBoundingClientRect();
@@ -520,50 +551,105 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, touchMode]);
 
   const handleTouchMove = useCallback((event: TouchEvent) => {
-    if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
-    if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
+    if (!modelViewer.loadedModel || !containerRef.current) return;
     
-    event.preventDefault();
-    
-    const touch = event.touches[0];
-    const rect = containerRef.current.getBoundingClientRect();
-    const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-    const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const touchPosition = new THREE.Vector2(touchX, touchY);
-    
-    if (modelViewer.camera) {
-      raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+    if (event.touches.length === 2 && touchStartRef.current && 
+        touchStartRef.current.x2 !== undefined && 
+        touchStartRef.current.y2 !== undefined && 
+        touchStartRef.current.distance !== undefined) {
       
-      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+      event.preventDefault();
       
-      if (intersects.length > 0) {
-        const newPosition = intersects[0].point.clone();
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      
+      const x1 = touch1.clientX;
+      const y1 = touch1.clientY;
+      const x2 = touch2.clientX;
+      const y2 = touch2.clientY;
+      
+      const currentDistance = Math.sqrt(
+        Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+      );
+      
+      const initialDistance = touchStartRef.current.distance;
+      const zoomRatio = currentDistance / initialDistance;
+      
+      if (modelViewer.camera && modelViewer.controls) {
+        const zoomFactor = calculateZoomFactor(
+          modelViewer.camera,
+          modelViewer.controls.target,
+          modelSizeRef.current
+        );
         
-        draggedPoint.position.copy(newPosition);
+        const direction = new THREE.Vector3();
+        direction.subVectors(modelViewer.camera.position, modelViewer.controls.target).normalize();
         
-        const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
+        if (zoomRatio > 1.02) {
+          const scaledMovement = direction.multiplyScalar(0.5 * zoomFactor);
+          modelViewer.camera.position.sub(scaledMovement);
+        } else if (zoomRatio < 0.98) {
+          const scaledMovement = direction.multiplyScalar(0.5 * zoomFactor);
+          modelViewer.camera.position.add(scaledMovement);
+        }
         
-        if (measurement) {
-          const updatedPoints = [...measurement.points];
-          updatedPoints[selectedPointIndex] = {
-            position: newPosition.clone(),
-            worldPosition: newPosition.clone()
-          };
+        modelViewer.controls.update();
+      }
+      
+      touchStartRef.current = { x1, y1, x2, y2, distance: currentDistance };
+      return;
+    }
+    
+    if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
+      if (!containerRef.current || event.touches.length !== 1) return;
+      
+      event.preventDefault();
+      
+      const touch = event.touches[0];
+      const rect = containerRef.current.getBoundingClientRect();
+      const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+      const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      const touchPosition = new THREE.Vector2(touchX, touchY);
+      
+      if (modelViewer.camera) {
+        raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+        
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+        
+        if (intersects.length > 0) {
+          const newPosition = intersects[0].point.clone();
           
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          draggedPoint.position.copy(newPosition);
           
-          updateMeasurementGeometry(measurement);
+          const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
+          
+          if (measurement) {
+            const updatedPoints = [...measurement.points];
+            updatedPoints[selectedPointIndex] = {
+              position: newPosition.clone(),
+              worldPosition: newPosition.clone()
+            };
+            
+            modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+            
+            updateMeasurementGeometry(measurement);
+          }
         }
       }
     }
   }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
 
   const handleTouchEnd = useCallback((event: TouchEvent) => {
-  }, []);
+    touchStartRef.current = null;
+    
+    if (touchMode === 'zoom' && event.touches.length === 0) {
+      setTouchMode('none');
+    }
+  }, [touchMode]);
 
   const handleTouchModeChange = useCallback((mode: 'none' | 'pan' | 'rotate' | 'zoom') => {
     console.log(`Touch mode changed to: ${mode}`);
@@ -577,7 +663,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         const direction = new THREE.Vector3();
         direction.subVectors(camera.position, modelViewer.controls.target).normalize();
         
-        camera.position.sub(direction.multiplyScalar(2));
+        const adaptiveZoomFactor = calculateZoomFactor(
+          camera,
+          modelViewer.controls.target,
+          modelSizeRef.current
+        );
+        
+        camera.position.sub(direction.multiplyScalar(2 * adaptiveZoomFactor));
         
         if (modelViewer.controls) {
           modelViewer.controls.update();
@@ -621,10 +713,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN
       };
+      
+      if (modelViewer.loadedModel) {
+        const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        modelSizeRef.current = Math.max(size.x, size.y, size.z);
+      }
     }
     
     modelViewer.controls.update();
-  }, [touchMode, modelViewer.controls, isMobile]);
+  }, [touchMode, modelViewer.controls, modelViewer.loadedModel, isMobile]);
 
   useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
@@ -662,6 +761,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       if (modelViewer.loadedModel) {
         setTimeout(() => {
           modelViewer.resetView();
+          
+          const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          modelSizeRef.current = Math.max(size.x, size.y, size.z);
         }, 300);
       }
     };
@@ -702,6 +806,16 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isDragging, isFollowingMouse, modelViewer, toast]);
+
+  useEffect(() => {
+    if (modelViewer.loadedModel) {
+      const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      modelSizeRef.current = Math.max(size.x, size.y, size.z);
+      console.log("Model size calculated for adaptive zoom:", modelSizeRef.current);
+    }
+  }, [modelViewer.loadedModel]);
 
   return (
     <div className="relative h-full w-full flex flex-col">

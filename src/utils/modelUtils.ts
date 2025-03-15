@@ -29,6 +29,33 @@ export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 =
   return new THREE.Vector3(distance, distance * 0.8, distance);
 };
 
+// Calculate zoom factor based on distance to model
+export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3, modelSize: number): number => {
+  // Get distance to target
+  const cameraPosition = new THREE.Vector3().copy(camera.position);
+  const distance = cameraPosition.distanceTo(target);
+  
+  // Calculate minimum movement speed (20% of normal speed)
+  const MIN_MOVEMENT_FACTOR = 0.2;
+  
+  // Calculate a factor based on how close we are to the model
+  // The closer we are, the slower the movement should be
+  const modelRadius = modelSize * 0.5;
+  
+  // If we're very close to the model, use the minimum speed
+  if (distance < modelRadius * 0.5) {
+    return MIN_MOVEMENT_FACTOR;
+  }
+  
+  // Linear interpolation between 1.0 and MIN_MOVEMENT_FACTOR based on distance
+  const factor = Math.max(
+    MIN_MOVEMENT_FACTOR,
+    Math.min(1.0, distance / (modelRadius * 3))
+  );
+  
+  return factor;
+};
+
 // Load GLB model
 export const loadGLBModel = (file: File): Promise<THREE.Group> => {
   return new Promise((resolve, reject) => {
