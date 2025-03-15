@@ -6,8 +6,10 @@ const Index = () => {
   const { isPortrait } = useIsMobile();
   
   return (
-    <div className="h-full w-full overflow-hidden">
-      <ModelViewer forceHideHeader={false} />
+    <div className="h-full w-full flex items-center justify-center overflow-hidden">
+      <div className="h-full w-full">
+        <ModelViewer forceHideHeader={false} />
+      </div>
     </div>
   );
 };

@@ -42,3 +42,101 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Fix for mobile touch issues with file input */
+input[type="file"] {
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+/* Touch-specific CSS improvements */
+.touch-manipulation {
+  touch-action: manipulation !important;
+}
+
+.touch-target {
+  min-height: 44px !important;
+  min-width: 44px !important;
+}
+
+/* Make sure all containers respect viewport height */
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure buttons are easily tappable on touch devices */
+button {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* For portrait mode adjustments */
+@media (max-height: 500px) {
+  .portrait-mode {
+    transform: scale(0.9);
+  }
+}
+
+/* Specific styles for file upload interactions on touch devices */
+@media (hover: none) {
+  /* Apply only on touch devices */
+  .file-upload-zone {
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Increase tap target sizes */
+  button, 
+  [role="button"],
+  .clickable,
+  a {
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+  }
+}
+
+/* Fix for vertical centering in different views */
+.vertical-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Ensure content is properly displayed in portrait mode */
+@media (orientation: portrait) {
+  .portrait-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .portrait-section {
+    height: 50vh;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Ensure content is properly displayed in landscape mode */
+@media (orientation: landscape) {
+  .landscape-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .landscape-section {
+    height: 100%;
+    width: 50%;
+    overflow: hidden;
+  }
+}
