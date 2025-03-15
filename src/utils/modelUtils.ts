@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -55,14 +54,13 @@ export const moveCameraWithRightDrag = (
 ): void => {
   if (!controls) return;
   
-  // Further reduce movement speed, especially vertical movement
-  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.002 * modelSize;
+  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.005 * modelSize;
   
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   
   const rightMovement = right.clone().multiplyScalar(-movementX * movementSpeed);
-  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed * 0.15); // More significant reduction for vertical movement
+  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed * 0.3);
   
   camera.position.add(rightMovement).add(upMovement);
   controls.target.add(rightMovement).add(upMovement);
