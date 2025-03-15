@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+
+import { useState, useRef, useEffect } from 'react';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 import { formatFileSize, validateFile } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -42,6 +44,47 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
     }
   };
 
+  const triggerFileInput = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Add touch event handlers
+  useEffect(() => {
+    const uploadArea = uploadAreaRef.current;
+    if (!uploadArea) return;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      // We don't prevent default here to allow scrolling if needed
+    };
+    
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Only trigger if this is the target element (not children)
+      if (e.target === uploadArea || uploadArea.contains(e.target as Node)) {
+        e.preventDefault();
+        
+        // Use timeout to ensure the event completes properly
+        setTimeout(() => {
+          if (fileInputRef.current) {
+            fileInputRef.current.click();
+          }
+        }, 10);
+      }
+    };
+    
+    uploadArea.addEventListener('touchstart', handleTouchStart, { passive: true });
+    uploadArea.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    return () => {
+      uploadArea.removeEventListener('touchstart', handleTouchStart);
+      uploadArea.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   const processFile = (file: File) => {
     if (!validateFile(file)) {
       toast({
@@ -58,21 +101,22 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
 
   return (
     <div
-      className={`relative p-3 rounded-lg border-2 border-dashed transition-all duration-300 ${
-        isDragging
-          ? 'border-primary bg-primary/10'
-          : 'border-primary/30 hover:border-primary/70 hover:bg-white/5'
-      } ${selectedFile ? 'bg-primary/5' : ''} shadow-lg backdrop-blur-sm hover:shadow-primary/10`}
+      ref={uploadAreaRef}
+      className={`relative p-3 rounded-lg border-2 border-dashed transition-all duration-300 
+                  ${isDragging ? 'border-primary bg-primary/10' : 'border-primary/30 hover:border-primary/70 hover:bg-white/5'} 
+                  ${selectedFile ? 'bg-primary/5' : ''} 
+                  shadow-lg backdrop-blur-sm hover:shadow-primary/10 touch-manipulation`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={triggerFileInput}
     >
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileInput}
         accept=".glb"
-        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" // input nun über dem div
+        className="hidden"
       />
 
       <div className="flex items-center gap-3 py-2">

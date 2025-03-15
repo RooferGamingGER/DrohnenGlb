@@ -32,96 +32,106 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
     e.preventDefault();
     e.stopPropagation();
     
-    // Directly trigger file input click without any event bubbling
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Add specific touch event handlers for mobile devices
+  // Specific touch event handlers for mobile devices
   useEffect(() => {
     const uploadButton = uploadButtonRef.current;
     
     if (uploadButton) {
-      const handleTouchEnd = (e: TouchEvent) => {
+      const handleTouchStart = (e: TouchEvent) => {
+        // Prevent any default behavior that might interfere
         e.preventDefault();
-        if (fileInputRef.current) {
-          fileInputRef.current.click();
-        }
       };
       
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        
+        // Small delay to ensure the event is processed correctly
+        setTimeout(() => {
+          if (fileInputRef.current) {
+            fileInputRef.current.click();
+          }
+        }, 10);
+      };
+      
+      uploadButton.addEventListener('touchstart', handleTouchStart, { passive: false });
       uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
       
       return () => {
+        uploadButton.removeEventListener('touchstart', handleTouchStart);
         uploadButton.removeEventListener('touchend', handleTouchEnd);
       };
     }
   }, []);
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full`}>
+      {/* Upload Area - top in portrait mode, left in landscape */}
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2 h-full'} flex items-center justify-center bg-muted/30`}>
+        <Card className="w-[90%] max-w-xl bg-white/10 backdrop-blur-sm border border-muted shadow-xl p-4 md:p-6 m-4">
+          <div className="text-center mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-foreground">Modell hochladen</h2>
+            <p className="text-sm md:text-base text-muted-foreground mt-2">
+              Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
+            </p>
+          </div>
 
-      {/* Upload Area - Now on the left or top side */}
-      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
-        <div className="flex-grow flex items-center justify-center">
-          <Card className={`w-full max-w-2xl mx-4 p-4 md:p-6 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'my-2' : ''}`}>
-            <div className="text-center mb-3 md:mb-4">
-              <h2 className="text-xl md:text-3xl font-bold text-foreground">Modell hochladen</h2>
-              <p className="text-md md:text-lg text-muted-foreground mt-1 md:mt-2">
-                Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
-              </p>
-            </div>
-
-            <div
-              className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
-              onDragOver={onDragOver}
-              onDrop={onDrop}
+          <div
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all 
+                       w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 
+                       hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+          >
+            <FileUp className="mb-3 md:mb-4 text-primary h-8 w-8 md:h-10 md:w-10" />
+            <h3 className="font-semibold mb-2 text-base md:text-xl text-foreground">GLB-Datei hochladen</h3>
+            <p className="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+              Ziehen Sie eine Datei hierher oder klicken
+            </p>
+            <Button 
+              ref={uploadButtonRef}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm md:text-base py-2 px-4 h-auto 
+                         cursor-pointer touch-manipulation touch-target"
+              onClick={handleButtonClick}
+              type="button"
+              aria-label="Datei auswählen"
             >
-              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" />
-              <h3 className="font-semibold mb-2 md:mb-3 text-lg md:text-2xl text-foreground">GLB-Datei hochladen</h3>
-              <p className="text-md md:text-lg text-muted-foreground mb-3 md:mb-4">
-                Ziehen Sie eine Datei hierher oder klicken
-              </p>
-              <Button 
-                ref={uploadButtonRef}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto cursor-pointer touch-manipulation"
-                onClick={handleButtonClick}
-                type="button"
-                aria-label="Datei auswählen"
-              >
-                <UploadCloud className="mr-2 h-4 w-4" />
-                Datei auswählen
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".glb"
-                className="hidden"
-                onChange={handleFileChange}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </Card>
-        </div>
+              <UploadCloud className="mr-2 h-4 w-4" />
+              Datei auswählen
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".glb"
+              className="hidden"
+              onChange={handleFileChange}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </Card>
       </div>
 
-      {/* Information Panel - Now on the right or bottom side */}
-      <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col justify-center bg-primary/10 overflow-hidden`}>
-        <div className="max-w-2xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
-          <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
+      {/* Information Panel - bottom in portrait mode, right in landscape */}
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2 h-full'} flex items-center justify-center bg-primary/10`}>
+        <div className="w-[90%] max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer
           </h1>
 
           <div className="space-y-2 md:space-y-3">
             <div className="flex items-start">
               <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <ArrowDown className="text-primary h-4 w-4 md:h-5 md:w-5" />
+                <ArrowDown className="text-primary h-4 w-4" />
               </div>
               <div>
-                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                <h3 className="font-semibold text-sm md:text-base text-foreground">
                   Exportieren vom Server
                 </h3>
-                <p className="text-md md:text-lg text-muted-foreground leading-tight">
+                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
                   Exportieren Sie die Datei 'Textured Model (glTF)'
                 </p>
               </div>
@@ -129,13 +139,13 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
             <div className="flex items-start">
               <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <ArrowUpRight className="text-primary h-4 w-4 md:h-5 md:w-5" />
+                <ArrowUpRight className="text-primary h-4 w-4" />
               </div>
               <div>
-                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                <h3 className="font-semibold text-sm md:text-base text-foreground">
                   GLB-Datei hochladen
                 </h3>
-                <p className="text-md md:text-lg text-muted-foreground leading-tight">
+                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
                   Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.
                 </p>
               </div>
@@ -143,16 +153,16 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
             <div className="flex items-start">
               <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <Send className="text-primary h-4 w-4 md:h-5 md:w-5" />
+                <Send className="text-primary h-4 w-4" />
               </div>
               <div>
-                <h3 className="font-semibold text-md md:text-lg text-foreground">
+                <h3 className="font-semibold text-sm md:text-base text-foreground">
                   Testphase
                 </h3>
-                <p className="text-md md:text-lg text-muted-foreground leading-tight mb-1 md:mb-2">
+                <p className="text-xs md:text-sm text-muted-foreground leading-tight mb-1">
                   Die Software befindet sich aktuell in der Testphase.
                 </p>
-                <p className="text-md md:text-lg text-muted-foreground leading-tight">
+                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
                   Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
                   <a
                     href="mailto:info@drohnenvermessung-roofergaming.de"

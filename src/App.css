@@ -46,11 +46,17 @@
 /* Fix for mobile touch issues with file input */
 input[type="file"] {
   pointer-events: auto !important;
+  cursor: pointer;
 }
 
 /* Touch-specific CSS improvements */
 .touch-manipulation {
   touch-action: manipulation !important;
+}
+
+.touch-target {
+  min-height: 44px !important;
+  min-width: 44px !important;
 }
 
 /* Make sure all containers respect viewport height */
@@ -66,10 +72,30 @@ html, body {
 button {
   min-height: 44px;
   min-width: 44px;
+  touch-action: manipulation;
 }
 
+/* For portrait mode adjustments */
 @media (max-height: 500px) {
   .portrait-mode {
     transform: scale(0.9);
+  }
+}
+
+/* Specific styles for file upload interactions on touch devices */
+@media (hover: none) {
+  /* Apply only on touch devices */
+  .file-upload-zone {
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Increase tap target sizes */
+  button, 
+  [role="button"],
+  .clickable,
+  a {
+    cursor: pointer !important;
+    touch-action: manipulation !important;
   }
 }
