@@ -57,7 +57,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
     
-    if (isPortrait) return !showMeasurementTools;
+    if (isPortrait) return false; // Always hide header in portrait mode
     
     return !showMeasurementTools;
   }, [forceHideHeader, isPortrait, showMeasurementTools]);
@@ -830,6 +830,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [touchMode, modelViewer.controls, modelViewer.loadedModel, isMobile]);
 
   useEffect(() => {
+    if (isMobile && isPortrait) {
+      setShowMeasurementTools(false);
+    }
+  }, [isMobile, isPortrait]);
+
+  useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
     }
@@ -974,6 +980,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onReset={handleResetView}
+            onTakeScreenshot={isPortrait ? handleTakeScreenshot : undefined}
+            onNewProject={isPortrait ? handleNewProject : undefined}
+            onExportMeasurements={isPortrait ? handleExportMeasurements : undefined}
           />
         )}
       </ViewerContainer>

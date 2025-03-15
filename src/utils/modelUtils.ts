@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -55,7 +56,7 @@ export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3,
   return factor;
 };
 
-// Camera movement function for right-click drag
+// Camera movement function for right-click drag - MODIFIED to be slower
 export const moveCameraWithRightDrag = (
   camera: THREE.Camera,
   controls: any,
@@ -66,7 +67,8 @@ export const moveCameraWithRightDrag = (
   if (!controls) return;
   
   // Calculate adaptive movement speed based on model size and camera distance
-  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.05 * modelSize;
+  // Reduced the movement speed by changing 0.05 to 0.02 (60% slower)
+  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.02 * modelSize;
   
   // Get camera right and up vectors in world space
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);

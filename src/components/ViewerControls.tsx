@@ -30,6 +30,7 @@ interface ViewerControlsProps {
   showMeasurementTools: boolean;
   toggleMeasurementTools: () => void;
   showUpload?: boolean;
+  isPortrait?: boolean;
 }
 
 const ViewerControls: React.FC<ViewerControlsProps> = ({
@@ -41,11 +42,61 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   isFullscreen,
   showMeasurementTools,
   toggleMeasurementTools,
-  showUpload
+  showUpload,
+  isPortrait
 }) => {
   const mobileInfo = useIsMobile();
   const isMobile = mobileInfo.isMobile;
 
+  // In mobile portrait view, only show the minimal controls 
+  // as more controls will be in the TouchControlsPanel
+  if (isMobile && isPortrait) {
+    return (
+      <div className="flex items-center gap-2">
+        <TooltipProvider delayDuration={300}>
+          <div className="flex md:flex-row flex-wrap gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onReset} 
+                  className="h-10 w-10 bg-primary/90 rounded-full border border-primary/30 text-primary-foreground hover:bg-primary hover:scale-105 transition-all duration-200 shadow-md"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="bg-zinc-800/90 backdrop-blur-sm border border-zinc-700 rounded-md">
+                <p>Ansicht zurücksetzen</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onFullscreen} 
+                  className="h-10 w-10 bg-primary/90 rounded-full border border-primary/30 text-primary-foreground hover:bg-primary hover:scale-105 transition-all duration-200 shadow-md"
+                >
+                  {isFullscreen ? (
+                    <Minimize className="h-4 w-4" />
+                  ) : (
+                    <Maximize className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="bg-zinc-800/90 backdrop-blur-sm border border-zinc-700 rounded-md">
+                <p>{isFullscreen ? "Vollbild beenden" : "Vollbild anzeigen"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      </div>
+    );
+  }
+
+  // Regular desktop or landscape mode controls
   return (
     <div className="flex items-center gap-2">
       <TooltipProvider delayDuration={300}>
