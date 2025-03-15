@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -916,7 +917,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           };
         }
         return m;
-      });
+      })
     );
   };
 
