@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -476,7 +475,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera,
+        modelViewer.camera!,
         touchPosition,
         modelViewer.measurementGroupRef.current,
         0.3
@@ -571,11 +570,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     setTouchMode(mode);
 
     if (mode === 'zoom' && modelViewer.controls) {
-      // Instead of using a non-existent zoom method, let's adjust the camera position
-      const zoomSpeed = 0.5;
+      const zoomFactor = 0.8;
       const camera = modelViewer.camera;
+      
       if (camera) {
-        camera.position.z -= zoomSpeed * 2; // Move camera closer to zoom in
+        const direction = new THREE.Vector3();
+        direction.subVectors(camera.position, modelViewer.controls.target).normalize();
+        
+        camera.position.sub(direction.multiplyScalar(2));
+        
         if (modelViewer.controls) {
           modelViewer.controls.update();
         }
@@ -613,6 +616,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         break;
     }
     
+    if (modelViewer.controls.enabled) {
+      modelViewer.controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN
+      };
+    }
+    
     modelViewer.controls.update();
   }, [touchMode, modelViewer.controls, isMobile]);
 
@@ -646,6 +656,22 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     handleTouchMove, 
     handleTouchEnd
   ]);
+
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      if (modelViewer.loadedModel) {
+        setTimeout(() => {
+          modelViewer.resetView();
+        }, 300);
+      }
+    };
+    
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [modelViewer]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

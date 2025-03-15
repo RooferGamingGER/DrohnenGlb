@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -22,9 +23,9 @@ export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 =
   
   // Calculate a good distance based on the model's size
   const maxDimension = Math.max(size.x, size.y, size.z);
-  const distance = maxDimension * 1.5;
+  const distance = maxDimension * 1.8; // Increased for better visibility
   
-  // Position the camera at an angle
+  // Position the camera at an angle, adjusted for better initial view
   return new THREE.Vector3(distance, distance * 0.8, distance);
 };
 
@@ -61,9 +62,14 @@ export const centerModel = (model: THREE.Object3D): THREE.Box3 => {
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   
+  // Adjust model position to be centered
   model.position.x = -center.x;
   model.position.y = -center.y;
   model.position.z = -center.z;
+  
+  // Ensure model is properly positioned in all orientations
+  model.updateMatrix();
+  model.updateMatrixWorld(true);
   
   return box;
 };
