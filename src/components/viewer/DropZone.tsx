@@ -1,5 +1,5 @@
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,7 @@ interface DropZoneProps {
 
 const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const { isPortrait } = useIsMobile();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,6 +37,26 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       fileInputRef.current.click();
     }
   };
+
+  // Add specific touch event handlers for mobile devices
+  useEffect(() => {
+    const uploadButton = uploadButtonRef.current;
+    
+    if (uploadButton) {
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+      };
+      
+      uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      return () => {
+        uploadButton.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, []);
 
   return (
     <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
@@ -62,9 +83,11 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 Ziehen Sie eine Datei hierher oder klicken
               </p>
               <Button 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto cursor-pointer"
+                ref={uploadButtonRef}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto cursor-pointer touch-manipulation"
                 onClick={handleButtonClick}
                 type="button"
+                aria-label="Datei auswählen"
               >
                 <UploadCloud className="mr-2 h-4 w-4" />
                 Datei auswählen

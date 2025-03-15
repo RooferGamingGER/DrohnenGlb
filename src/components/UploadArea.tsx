@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 import { formatFileSize, validateFile } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
@@ -58,7 +58,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
     onFileSelected(file);
   };
 
-  const triggerFileInput = (e: React.MouseEvent) => {
+  const triggerFileInput = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -66,6 +66,26 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
       fileInputRef.current.click();
     }
   };
+
+  // Add specific touch event handlers
+  useEffect(() => {
+    const uploadButton = document.getElementById('upload-button-area');
+    
+    if (uploadButton) {
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+      };
+      
+      uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      return () => {
+        uploadButton.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, []);
 
   return (
     <div 
@@ -88,8 +108,10 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
       />
 
       <div 
+        id="upload-button-area"
         className="flex items-center gap-3 py-2 cursor-pointer" 
         onClick={triggerFileInput}
+        onTouchEnd={triggerFileInput}
       >
         <div className={`rounded-full p-3 ${isDragging ? 'bg-primary/20 text-primary' : 'bg-primary/10'}`}>
           <UploadCloud 

@@ -48,6 +48,11 @@ input[type="file"] {
   pointer-events: auto !important;
 }
 
+/* Touch-specific CSS improvements */
+.touch-manipulation {
+  touch-action: manipulation !important;
+}
+
 /* Make sure all containers respect viewport height */
 html, body {
   height: 100%;
@@ -55,4 +60,16 @@ html, body {
   overflow: hidden;
   position: fixed;
   touch-action: manipulation;
+}
+
+/* Ensure buttons are easily tappable on touch devices */
+button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (max-height: 500px) {
+  .portrait-mode {
+    transform: scale(0.9);
+  }
 }
