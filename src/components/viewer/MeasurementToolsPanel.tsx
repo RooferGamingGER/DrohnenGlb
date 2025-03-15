@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -59,10 +60,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   const totalLengthCount = measurements
     .filter(m => m.type === 'length' && m.visible)
     .length;
-
-  const handleToolChange = (tool: MeasurementType) => {
-    onToolChange(tool);
-  };
 
   const handleDownloadReport = async () => {
     if (measurements.length === 0 && screenshots.length === 0) {
@@ -141,7 +138,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           
           <MeasurementTools
             activeTool={activeTool}
-            onToolChange={handleToolChange}
+            onToolChange={onToolChange}
             onClearMeasurements={onClearMeasurements}
             onDeleteMeasurement={onDeleteMeasurement}
             onUndoLastPoint={onUndoLastPoint}
@@ -208,7 +205,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           <ScrollArea className="h-[calc(100vh-380px)]">
             <MeasurementTools
               activeTool={activeTool}
-              onToolChange={handleToolChange}
+              onToolChange={onToolChange}
               onClearMeasurements={onClearMeasurements}
               onDeleteMeasurement={onDeleteMeasurement}
               onUndoLastPoint={onUndoLastPoint}
