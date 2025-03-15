@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -14,7 +13,6 @@ interface DropZoneProps {
 const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
   const { isPortrait } = useIsMobile();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,51 +26,49 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       fileInputRef.current.value = '';
     }
   };
-  
+
   const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Enhanced touch event handling for the entire drop zone
   useEffect(() => {
-    const dropZoneElement = dropZoneRef.current;
     const uploadButton = uploadButtonRef.current;
-    
-    if (dropZoneElement) {
-      const handleTouchEnd = (e: TouchEvent) => {
-        // Only trigger if this is part of the drop zone
-        if (e.target && dropZoneElement.contains(e.target as Node)) {
-          e.preventDefault();
-          
-          // If the touch is on the button, trigger the file input click
-          if (uploadButton && (e.target === uploadButton || uploadButton.contains(e.target as Node))) {
-            setTimeout(() => {
-              if (fileInputRef.current) {
-                fileInputRef.current.click();
-              }
-            }, 10);
-          }
-        }
+
+    if (uploadButton) {
+      const handleTouchStart = (e: TouchEvent) => {
+        e.preventDefault();
       };
-      
-      dropZoneElement.addEventListener('touchend', handleTouchEnd, { passive: false });
-      
+
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+
+        setTimeout(() => {
+          if (fileInputRef.current) {
+            fileInputRef.current.click();
+          }
+        }, 10);
+      };
+
+      uploadButton.addEventListener('touchstart', handleTouchStart, { passive: false });
+      uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
+
       return () => {
-        dropZoneElement.removeEventListener('touchend', handleTouchEnd);
+        uploadButton.removeEventListener('touchstart', handleTouchStart);
+        uploadButton.removeEventListener('touchend', handleTouchEnd);
       };
     }
   }, []);
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} h-full w-full`}>
-      {/* Upload Area - top in portrait mode, left in landscape */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center`}>
-        <Card className="w-[90%] max-w-xl bg-white/10 backdrop-blur-sm border border-muted shadow-xl p-4 md:p-6 m-4">
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen`}>
+      {/* Upload Area */}
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-muted/30 p-4`}>
+        <Card className="w-full max-w-xl bg-white/10 backdrop-blur-sm border border-muted shadow-xl p-4 md:p-6">
           <div className="text-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold text-foreground">Modell hochladen</h2>
             <p className="text-sm md:text-base text-muted-foreground mt-2">
@@ -81,11 +77,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
 
           <div
-            ref={dropZoneRef}
-            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all 
-                       w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 
-                       hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center
-                       touch-manipulation"
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
             onDragOver={onDragOver}
             onDrop={onDrop}
           >
@@ -94,10 +86,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             <p className="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
               Ziehen Sie eine Datei hierher oder klicken
             </p>
-            <Button 
+            <Button
               ref={uploadButtonRef}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm md:text-base py-2 px-4 h-auto 
-                         cursor-pointer touch-manipulation touch-target"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm md:text-base py-2 px-4 h-auto cursor-pointer touch-manipulation touch-target"
               onClick={handleButtonClick}
               type="button"
               aria-label="Datei auswählen"
@@ -117,9 +108,9 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
         </Card>
       </div>
 
-      {/* Information Panel - bottom in portrait mode, right in landscape */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-primary/5`}>
-        <div className="w-[90%] max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
+      {/* Information Panel */}
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-primary/10 p-4`}>
+        <div className="w-full max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer
           </h1>
