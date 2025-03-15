@@ -980,9 +980,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onReset={handleResetView}
-            onTakeScreenshot={isPortrait ? handleTakeScreenshot : undefined}
-            onNewProject={isPortrait ? handleNewProject : undefined}
-            onExportMeasurements={isPortrait ? handleExportMeasurements : undefined}
           />
         )}
       </ViewerContainer>

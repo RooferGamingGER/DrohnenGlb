@@ -67,16 +67,16 @@ export const moveCameraWithRightDrag = (
   if (!controls) return;
   
   // Calculate adaptive movement speed based on model size and camera distance
-  // Reduced the movement speed by changing 0.05 to 0.02 (60% slower)
-  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.02 * modelSize;
+  // Further reduced the movement speed by changing 0.02 to 0.008 (60% slower)
+  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.008 * modelSize;
   
   // Get camera right and up vectors in world space
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   
-  // Calculate movement vectors
+  // Calculate movement vectors - make vertical movement even slower (by 50%)
   const rightMovement = right.clone().multiplyScalar(-movementX * movementSpeed);
-  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed);
+  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed * 0.5);
   
   // Move both camera and controls target to maintain relative position
   camera.position.add(rightMovement).add(upMovement);
