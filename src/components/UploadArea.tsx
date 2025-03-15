@@ -58,8 +58,13 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
     onFileSelected(file);
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
+  const triggerFileInput = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   return (

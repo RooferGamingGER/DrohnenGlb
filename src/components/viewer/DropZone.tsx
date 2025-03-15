@@ -1,3 +1,4 @@
+
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -25,9 +26,19 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       fileInputRef.current.value = '';
     }
   };
+  
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Directly trigger file input click
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen overflow-hidden`}>
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full overflow-hidden`}>
 
       {/* Upload Area - Now on the left or top side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
@@ -42,16 +53,19 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
             <div
               className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
-              onClick={() => fileInputRef.current?.click()}
               onDragOver={onDragOver}
               onDrop={onDrop}
             >
-              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" /> {/* animate-float entfernt */}
+              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" />
               <h3 className="font-semibold mb-2 md:mb-3 text-lg md:text-2xl text-foreground">GLB-Datei hochladen</h3>
               <p className="text-md md:text-lg text-muted-foreground mb-3 md:mb-4">
                 Ziehen Sie eine Datei hierher oder klicken
               </p>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto">
+              <Button 
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto"
+                onClick={handleButtonClick}
+                type="button"
+              >
                 <UploadCloud className="mr-2 h-4 w-4" />
                 Datei auswählen
               </Button>
