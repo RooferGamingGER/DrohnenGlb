@@ -147,11 +147,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [handleFileSelected]);
 
   const handleResetView = useCallback(() => {
+    setModelCentered(false);
+    
     modelViewer.resetView();
     
     if (modelViewer.loadedModel && modelViewer.camera && modelViewer.controls) {
+      console.log("Zentrieren nach Reset View wie beim ersten Laden");
       setTimeout(() => {
-        console.log("Zentrieren nach Reset View mit optimallyCenterModel");
         optimallyCenterModel(
           modelViewer.loadedModel,
           modelViewer.camera,
@@ -162,6 +164,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         const size = new THREE.Vector3();
         box.getSize(size);
         modelSizeRef.current = Math.max(size.x, size.y, size.z);
+        
+        setModelCentered(true);
       }, 100);
     }
   }, [modelViewer]);
@@ -179,17 +183,27 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
   const handleNewProject = useCallback(() => {
     if (modelViewer.loadedModel) {
+      setModelCentered(false);
+      
       modelViewer.resetView();
       modelViewer.clearMeasurements();
       setSavedScreenshots([]);
       
       if (modelViewer.camera && modelViewer.controls) {
+        console.log("Zentrieren nach New Project wie beim ersten Laden");
         setTimeout(() => {
           optimallyCenterModel(
             modelViewer.loadedModel,
             modelViewer.camera,
             modelViewer.controls
           );
+          
+          const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          modelSizeRef.current = Math.max(size.x, size.y, size.z);
+          
+          setModelCentered(true);
         }, 100);
       }
       

@@ -120,9 +120,9 @@ export const optimallyCenterModel = (
   
   // Berechne die optimale Kameraposition
   const maxDimension = Math.max(size.x, size.y, size.z);
-  const distance = maxDimension * 2.0; // Größerer Abstand für bessere Übersicht
+  const distance = maxDimension * 2.0; // Konsistenter Abstand für alle Ansichten
   
-  // Setze Kamera auf eine Position mit besserem Überblick
+  // Setze Kamera auf eine einheitliche Position mit gutem Überblick
   camera.position.set(distance, distance * 0.8, distance);
   
   // Setze den Zielpunkt auf den Mittelpunkt des Modells
@@ -140,14 +140,16 @@ export const optimallyCenterModel = (
     const aspect = camera.aspect;
     const fov = camera.fov * (Math.PI / 180);
     
+    // Berechne den erforderlichen Abstand um das gesamte Modell zu sehen
     const requiredDistance = (maxDimension / 2) / Math.tan(fov / 2);
     
-    if (requiredDistance > distance) {
-      const newPosition = camera.position.clone().normalize().multiplyScalar(requiredDistance * 1.2);
-      camera.position.copy(newPosition);
-      if (controls) {
-        controls.update();
-      }
+    // Setze die Kamera auf einen konsistenten Abstand für alle Ansichten
+    // Verwende einen festen Faktor (1.2) um etwas Abstand um das Modell herum zu haben
+    const newPosition = camera.position.clone().normalize().multiplyScalar(requiredDistance * 1.2);
+    camera.position.copy(newPosition);
+    
+    if (controls) {
+      controls.update();
     }
   }
 };
