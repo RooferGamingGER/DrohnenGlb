@@ -791,18 +791,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       modelViewer.clearMeasurements();
       modelViewer.resetView();
       
-      if (typeof modelViewer.unloadModel === 'function') {
-        modelViewer.unloadModel();
-      } else {
-        setModelCentered(false);
-        
-        if (modelViewer.scene) {
-          while(modelViewer.scene.children.length > 0) { 
-            modelViewer.scene.remove(modelViewer.scene.children[0]); 
-          }
-          
-          modelViewer.loadedModel = null;
+      setModelCentered(false);
+      
+      if (modelViewer.scene) {
+        while(modelViewer.scene.children.length > 0) { 
+          modelViewer.scene.remove(modelViewer.scene.children[0]); 
         }
+        
+        modelViewer.loadedModel = null;
       }
       
       toast({
