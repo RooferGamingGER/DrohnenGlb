@@ -1,5 +1,7 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { Measurement, MeasurementPoint, MeasurementType } from '@/types/measurement';
 
 interface UseModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -10,7 +12,7 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [loadedModel, setLoadedModel] = useState<THREE.Group | null>(null);
-  const [activeTool, setActiveTool] = useState<'none' | 'length' | 'height'>('none');
+  const [activeTool, setActiveTool] = useState<MeasurementType>('none');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,74 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
   const redoHistoryRef = useRef<Measurement[][]>([]);
 
   let controls: any = controlsRef.current;
+
+  // Pre-define saveStateToHistory to avoid block-scoped variable errors
+  const saveStateToHistory = useCallback((newMeasurements: Measurement[]) => {
+    undoHistoryRef.current.push(measurements);
+    redoHistoryRef.current = [];
+    setCanUndo(undoHistoryRef.current.length > 0);
+    setMeasurements(newMeasurements);
+  }, [measurements]);
+
+  // Pre-define fitCameraToModel to avoid block-scoped variable errors
+  const fitCameraToModel = useCallback((resetRotation: boolean = false) => {
+    if (!loadedModel || !controls || !camera) return;
+    
+    // Save current rotation if not resetting
+    const currentRotation = !resetRotation ? new THREE.Quaternion().copy(loadedModel.quaternion) : null;
+    
+    // Get the bounding box
+    const box = new THREE.Box3().setFromObject(loadedModel);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    
+    // Calculate the distance based on the size and aspect ratio
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    // Adjust distance based on aspect ratio and device
+    const aspect = camera.aspect;
+    const isMobile = window.innerWidth < 768;
+    
+    // Calculate a better fitting distance for mobile devices
+    let distance = maxDim * 1.5;
+    
+    // For portrait mobile, we need more distance to fit height
+    if (isMobile && window.innerHeight > window.innerWidth) {
+      distance = maxDim * 2.2;
+    }
+    
+    // Calculate better camera positions
+    const fov = camera.fov * (Math.PI / 180);
+    const fovh = 2 * Math.atan(Math.tan(fov / 2) * aspect);
+    const distanceX = (size.x / 2) / Math.tan(fovh / 2);
+    const distanceY = (size.y / 2) / Math.tan(fov / 2);
+    const finalDistance = Math.max(distance, distanceX, distanceY);
+    
+    // Position the camera
+    camera.position.set(center.x, center.y, center.z + finalDistance);
+    camera.lookAt(center);
+    
+    // Update controls target
+    controls.target.copy(center);
+    
+    // Reset or restore rotation
+    if (resetRotation) {
+      loadedModel.rotation.set(0, 0, 0);
+      loadedModel.quaternion.set(0, 0, 0, 1);
+    } else if (currentRotation) {
+      loadedModel.quaternion.copy(currentRotation);
+    }
+    
+    // Force update
+    loadedModel.updateMatrix();
+    loadedModel.updateMatrixWorld(true);
+    controls.update();
+    
+    // Force a render
+    if (renderer) {
+      renderer.render(scene!, camera);
+    }
+  }, [loadedModel, controls, camera, renderer, scene]);
 
   useEffect(() => {
     const init = async () => {
@@ -153,7 +223,7 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
     }
   }, [loadedModel, fitCameraToModel]);
 
-  const setActiveToolAndRecord = useCallback((tool: 'none' | 'length' | 'height') => {
+  const setActiveToolAndRecord = useCallback((tool: MeasurementType) => {
     setActiveTool(tool);
   }, []);
 
@@ -208,13 +278,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
     saveStateToHistory([]);
   }, [scene, saveStateToHistory]);
 
-  const saveStateToHistory = useCallback((newMeasurements: Measurement[]) => {
-    undoHistoryRef.current.push(measurements);
-    redoHistoryRef.current = [];
-    setCanUndo(undoHistoryRef.current.length > 0);
-    setMeasurements(newMeasurements);
-  }, [measurements]);
-
   const undoLastPoint = useCallback(() => {
     if (undoHistoryRef.current.length === 0) return;
 
@@ -263,66 +326,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
     }
   }, []);
 
-  // Improved fitCameraToModel function that respects current model orientation
-  const fitCameraToModel = useCallback((resetRotation: boolean = false) => {
-    if (!loadedModel || !controls || !camera) return;
-    
-    // Save current rotation if not resetting
-    const currentRotation = !resetRotation ? new THREE.Quaternion().copy(loadedModel.quaternion) : null;
-    
-    // Get the bounding box
-    const box = new THREE.Box3().setFromObject(loadedModel);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    
-    // Calculate the distance based on the size and aspect ratio
-    const maxDim = Math.max(size.x, size.y, size.z);
-    
-    // Adjust distance based on aspect ratio and device
-    const aspect = camera.aspect;
-    const isMobile = window.innerWidth < 768;
-    
-    // Calculate a better fitting distance for mobile devices
-    let distance = maxDim * 1.5;
-    
-    // For portrait mobile, we need more distance to fit height
-    if (isMobile && window.innerHeight > window.innerWidth) {
-      distance = maxDim * 2.2;
-    }
-    
-    // Calculate better camera positions
-    const fov = camera.fov * (Math.PI / 180);
-    const fovh = 2 * Math.atan(Math.tan(fov / 2) * aspect);
-    const distanceX = (size.x / 2) / Math.tan(fovh / 2);
-    const distanceY = (size.y / 2) / Math.tan(fov / 2);
-    const finalDistance = Math.max(distance, distanceX, distanceY);
-    
-    // Position the camera
-    camera.position.set(center.x, center.y, center.z + finalDistance);
-    camera.lookAt(center);
-    
-    // Update controls target
-    controls.target.copy(center);
-    
-    // Reset or restore rotation
-    if (resetRotation) {
-      loadedModel.rotation.set(0, 0, 0);
-      loadedModel.quaternion.set(0, 0, 0, 1);
-    } else if (currentRotation) {
-      loadedModel.quaternion.copy(currentRotation);
-    }
-    
-    // Force update
-    loadedModel.updateMatrix();
-    loadedModel.updateMatrixWorld(true);
-    controls.update();
-    
-    // Force a render
-    if (renderer) {
-      renderer.render(scene, camera);
-    }
-  }, [loadedModel, controls, camera, renderer, scene]);
-  
   // Enhanced clearTempPoints function to safely handle temp points
   const clearTempPoints = useCallback(() => {
     if (tempPointsRef.current && tempPointsRef.current.length > 0) {
@@ -350,8 +353,10 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
     measurements,
     isLoading,
     progress,
+    setProgress,
     loadedModel,
     resetView,
+    loadModel,
     error,
     undoLastPoint,
     canUndo,
@@ -362,7 +367,10 @@ export function useModelViewer({ containerRef, onLoadComplete }: UseModelViewerP
     deleteSinglePoint,
     toggleMeasurementsVisibility,
     clearTempPoints,
-    controls,
+    controls: controlsRef.current,
     fitCameraToModel,
+    scene,
+    camera,
+    renderer
   };
 }

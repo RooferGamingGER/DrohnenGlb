@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import type { Measurement, MeasurementPoint } from '@/hooks/useModelViewer';
+import { Measurement, MeasurementPoint } from '@/types/measurement';
 
 export function highlightMeasurementPoints(measurement: Measurement, parentGroup: THREE.Group, highlight: boolean): void {
   measurement.points.forEach((point, index) => {

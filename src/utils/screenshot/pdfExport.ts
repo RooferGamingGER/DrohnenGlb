@@ -1,8 +1,6 @@
-import { jsPDF as JsPDFModule } from "jspdf";
-import autoTable from 'jspdf-autotable';
-import { Measurement, isInclinationSignificant, MeasurementType } from '../measurementUtils';
+import jsPDF from 'jspdf';
+import { Measurement, isInclinationSignificant, MeasurementType } from '@/types/measurement';
 import { Screenshot } from './types';
-import { optimizeImageData } from './captureUtils';
 
 /**
  * Exports measurements and screenshots to PDF format (DIN A4)
@@ -21,7 +19,7 @@ export const exportMeasurementsToPDF = async (
         }
 
         // 🔹 PDF im DIN A4 Format (210mm x 297mm)
-        const doc = new JsPDFModule({
+        const doc = new jsPDF({
             orientation: "portrait",
             unit: "mm",
             format: "a4",
