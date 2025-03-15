@@ -78,19 +78,26 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             className="h-48 mb-6 filter drop-shadow-lg animate-float"
           />
           <h1 className="text-3xl font-bold text-white mb-6 text-balance">
-            DrohnenGLB by RooferGaming®
+            3D-Modell Viewer
           </h1>
-          <p className="text-blue-100 mb-8 text-balance">
-            Die präzise Lösung für Ihre Dachvermessung. Nehmen Sie genaue Messungen vor und erstellen Sie detaillierte Berichte direkt auf Ihrem Gerät.
-          </p>
-          <div className="grid grid-cols-2 gap-6 w-full max-w-md">
+          <div className="space-y-6 text-left w-full">
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
-              <h3 className="font-semibold text-white mb-2">Präzise Messungen</h3>
-              <p className="text-blue-100 text-sm">Exakte Messergebnisse für Ihre Projekte</p>
+              <h3 className="font-semibold text-white mb-2">Exportieren vom Server</h3>
+              <p className="text-blue-100 text-sm">Exportieren Sie die Datei 'Textured Model (glTF)'</p>
             </div>
+            
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
-              <h3 className="font-semibold text-white mb-2">Einfache Bedienung</h3>
-              <p className="text-blue-100 text-sm">Intuitive Tools für jeden Anwender</p>
+              <h3 className="font-semibold text-white mb-2">GLB-Datei hochladen</h3>
+              <p className="text-blue-100 text-sm">Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <h3 className="font-semibold text-white mb-2">Testphase</h3>
+              <p className="text-blue-100 text-sm">Die Software befindet sich aktuell in der Testphase.</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <p className="text-blue-100 text-sm">Sollten Ihnen Fehler auffallen, senden Sie diese bitte an info@drohnenvermessung-roofergaming.de</p>
             </div>
           </div>
         </div>
@@ -105,7 +112,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               alt="Drohnenvermessung by RooferGaming"
               className="h-32 mx-auto mb-4"
             />
-            <h2 className="text-xl font-bold text-gray-800">DrohnenGLB</h2>
+            <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
           </div>
 
           <div className="text-center mb-8">
