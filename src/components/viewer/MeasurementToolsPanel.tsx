@@ -7,6 +7,7 @@ import { FileDown, Home, RefreshCcw, Camera, Trash2 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MeasurementToolsPanelProps {
   measurements: Measurement[];
@@ -53,6 +54,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onDeleteTempPoint,
   onDeleteSinglePoint
 }) => {
+  const { isPortrait, isTablet } = useIsMobile();
+  
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
@@ -87,8 +90,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Mobile portrait layout (bottom panel)
-  if (isMobile && window.innerHeight > window.innerWidth) {
+  // Mobile or tablet portrait layout (bottom panel)
+  if ((isMobile || isTablet) && isPortrait) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
         <div className="flex flex-col space-y-2">
@@ -102,7 +105,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={onTakeScreenshot}
-              className="text-xs py-1 h-auto"
+              className="text-xs py-1 h-auto touch-manipulation"
             >
               <Camera className="mr-1 h-3 w-3" />
               Screenshot
@@ -111,7 +114,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={onNewProject}
-              className="text-xs py-1 h-auto"
+              className="text-xs py-1 h-auto touch-manipulation"
             >
               <RefreshCcw className="mr-1 h-3 w-3" />
               Neu laden
@@ -120,7 +123,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={() => window.location.href = '/'}
-              className="text-xs py-1 h-auto"
+              className="text-xs py-1 h-auto touch-manipulation"
             >
               <Home className="mr-1 h-3 w-3" />
               Zurück
@@ -129,7 +132,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={handleDownloadReport}
-              className="text-xs py-1 h-auto ml-auto"
+              className="text-xs py-1 h-auto ml-auto touch-manipulation"
             >
               <FileDown className="mr-1 h-3 w-3" />
               Speichern
@@ -174,7 +177,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={onTakeScreenshot}
-              className="w-full justify-start"
+              className="w-full justify-start touch-manipulation"
               title="Erstellen Sie einen Screenshot des aktuellen Modells"
             >
               <Camera className="mr-2 h-4 w-4" />
@@ -184,7 +187,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={onNewProject}
-              className="w-full justify-start"
+              className="w-full justify-start touch-manipulation"
               title="Laden Sie die aktuelle Ansicht neu"
             >
               <RefreshCcw className="mr-2 h-4 w-4" />
@@ -194,7 +197,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={() => window.location.href = '/'}
-              className="w-full justify-start"
+              className="w-full justify-start touch-manipulation"
               title="Zurück zur Startseite"
             >
               <Home className="mr-2 h-4 w-4" />
@@ -229,7 +232,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         <SidebarFooter className="p-4 border-t border-zinc-200 mt-auto">
           <div className="space-y-2">
             <Button 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white touch-manipulation" 
               onClick={handleDownloadReport}
               title="Speichern Sie alle Messungen und Screenshots als PDF-Bericht"
             >

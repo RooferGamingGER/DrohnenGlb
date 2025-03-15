@@ -44,3 +44,9 @@ export const useIsMobile = (): UseMobileReturn => {
 
   return { isMobile, isTablet, isPortrait };
 };
+
+// Add a new function that returns just a boolean for mobile detection
+export const useIsMobileBoolean = (): boolean => {
+  const { isMobile } = useIsMobile();
+  return isMobile;
+};
