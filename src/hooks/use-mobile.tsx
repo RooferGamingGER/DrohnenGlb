@@ -2,13 +2,16 @@
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const TABLET_BREAKPOINT = 1024
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isTablet, setIsTablet] = React.useState<boolean | undefined>(undefined)
   const [isPortrait, setIsPortrait] = React.useState<boolean | undefined>(undefined)
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const mobileMql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const tabletMql = window.matchMedia(`(max-width: ${TABLET_BREAKPOINT - 1}px)`)
     
     const checkOrientation = () => {
       setIsPortrait(window.innerHeight > window.innerWidth)
@@ -16,18 +19,22 @@ export function useIsMobile() {
     
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+      setIsTablet(window.innerWidth < TABLET_BREAKPOINT && window.innerWidth >= MOBILE_BREAKPOINT)
       checkOrientation()
     }
     
-    mql.addEventListener("change", onChange)
+    mobileMql.addEventListener("change", onChange)
+    tabletMql.addEventListener("change", onChange)
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    setIsTablet(window.innerWidth < TABLET_BREAKPOINT && window.innerWidth >= MOBILE_BREAKPOINT)
     checkOrientation()
     
     window.addEventListener("resize", checkOrientation)
     window.addEventListener("orientationchange", checkOrientation)
     
     return () => {
-      mql.removeEventListener("change", onChange)
+      mobileMql.removeEventListener("change", onChange)
+      tabletMql.removeEventListener("change", onChange)
       window.removeEventListener("resize", checkOrientation)
       window.removeEventListener("orientationchange", checkOrientation)
     }
@@ -36,6 +43,7 @@ export function useIsMobile() {
   // Return both the object with properties and a boolean for backward compatibility
   return {
     isMobile: !!isMobile,
+    isTablet: !!isTablet,
     isPortrait: !!isPortrait,
     // For backward compatibility with code expecting a boolean directly
     [Symbol.toPrimitive](hint: string) {
