@@ -491,17 +491,44 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
     // Modell drehen/verschieben durch Touch
     else if (isTouchMoveRef.current && controlsRef.current && touchStartPositionRef.current && activeTool === 'none' && !isPinchingRef.current) {
-      // OrbitControls hat bereits Touch-Unterstützung, aber wir können sie hier anpassen
-      // Normalisieren der Touch-Bewegung
-      const deltaX = (touch.clientX - touchStartPositionRef.current.x) * 0.005;
-      const deltaY = (touch.clientY - touchStartPositionRef.current.y) * 0.005;
-      
+      // Manuelle Rotation durch Berechnung der Winkel statt direkter Methoden
       if (controlsRef.current) {
-        // Rotation um Y-Achse für horizontale Bewegung
-        controlsRef.current.rotateLeft(deltaX);
-        // Rotation um X-Achse für vertikale Bewegung
-        controlsRef.current.rotateUp(deltaY);
-        controlsRef.current.update();
+        // Berechnen der Deltas für die Rotation
+        const deltaX = (touch.clientX - touchStartPositionRef.current.x) * 0.005;
+        const deltaY = (touch.clientY - touchStartPositionRef.current.y) * 0.005;
+        
+        // Rotieren des Modells durch Ändern der Kameraposition auf dem Orbit
+        // Dies ersetzt rotateLeft und rotateUp, die nicht existieren
+        if (cameraRef.current) {
+          // Aktuelle Kameraposition in Kugelkoordinaten umrechnen
+          const radius = cameraRef.current.position.distanceTo(controlsRef.current.target);
+          
+          // Anwenden der Rotation auf die Orbit Controls
+          // Wir aktualisieren den Zustand direkt
+          controlsRef.current.update();
+          
+          // Kamera um die X-Achse rotieren (hoch/runter)
+          cameraRef.current.position.y += deltaY * radius;
+          
+          // Kamera um die Y-Achse rotieren (links/rechts)
+          const theta = Math.atan2(
+            cameraRef.current.position.x - controlsRef.current.target.x,
+            cameraRef.current.position.z - controlsRef.current.target.z
+          );
+          
+          const newTheta = theta - deltaX;
+          const x = controlsRef.current.target.x + radius * Math.sin(newTheta);
+          const z = controlsRef.current.target.z + radius * Math.cos(newTheta);
+          
+          cameraRef.current.position.x = x;
+          cameraRef.current.position.z = z;
+          
+          // Sicherstellen, dass die Kamera zum Ziel schaut
+          cameraRef.current.lookAt(controlsRef.current.target);
+          
+          // Update der Controls erzwingen
+          controlsRef.current.update();
+        }
       }
       
       // Update der Startposition
