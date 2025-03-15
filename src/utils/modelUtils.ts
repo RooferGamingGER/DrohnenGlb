@@ -56,6 +56,27 @@ export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3,
   return factor;
 };
 
+// Calculate camera pan speed factor based on distance to model
+export const calculatePanSpeedFactor = (camera: THREE.Camera, target: THREE.Vector3, modelSize: number): number => {
+  // Get distance to target
+  const cameraPosition = new THREE.Vector3().copy(camera.position);
+  const distance = cameraPosition.distanceTo(target);
+  
+  // Base speed factor - make it slow for precise control
+  const BASE_SPEED = 0.001;
+  
+  // Calculate a factor based on model size and distance
+  // The larger the model or greater the distance, the faster we can pan
+  const modelRadius = modelSize * 0.5;
+  const distanceFactor = distance / modelRadius;
+  
+  // Calculate final pan speed with limits
+  // Slower when close to model, faster when further away
+  const speedFactor = BASE_SPEED * Math.min(Math.max(distanceFactor, 0.5), 2.0);
+  
+  return speedFactor;
+};
+
 // Load GLB model
 export const loadGLBModel = (file: File): Promise<THREE.Group> => {
   return new Promise((resolve, reject) => {

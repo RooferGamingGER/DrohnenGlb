@@ -17,6 +17,7 @@ import {
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
+  calculatePanSpeedFactor,
   optimallyCenterModel 
 } from '@/utils/modelUtils';
 
@@ -36,7 +37,7 @@ interface ModelViewerProps {
 const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isMobile, isPortrait } = useIsMobile();
+  const { isMobile, isTablet, isPortrait } = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -50,6 +51,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
   const [modelCentered, setModelCentered] = useState(false);
+  
+  const [isRightMouseDown, setIsRightMouseDown] = useState(false);
+  const rightMousePreviousPosition = useRef<{x: number, y: number} | null>(null);
   
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
@@ -806,6 +810,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
     
+    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('mousedown', handleRightMouseDown);
+    window.addEventListener('mousemove', handleRightMouseMove);
+    window.addEventListener('mouseup', handleRightMouseUp);
+    
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mousedown', handleMouseDown);
@@ -813,6 +822,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      
+      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('mousedown', handleRightMouseDown);
+      window.removeEventListener('mousemove', handleRightMouseMove);
+      window.removeEventListener('mouseup', handleRightMouseUp);
     };
   }, [
     handleMouseMove, 
@@ -820,7 +834,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     handleMouseUp, 
     handleTouchStart, 
     handleTouchMove, 
-    handleTouchEnd
+    handleTouchEnd,
+    handleContextMenu,
+    handleRightMouseDown,
+    handleRightMouseMove,
+    handleRightMouseUp
   ]);
 
   useEffect(() => {
