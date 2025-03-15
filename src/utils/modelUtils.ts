@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -22,10 +23,37 @@ export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 =
   
   // Calculate a good distance based on the model's size
   const maxDimension = Math.max(size.x, size.y, size.z);
-  const distance = maxDimension * 1.5;
+  const distance = maxDimension * 1.8; // Increased for better visibility
   
-  // Position the camera at an angle
+  // Position the camera at an angle, adjusted for better initial view
   return new THREE.Vector3(distance, distance * 0.8, distance);
+};
+
+// Calculate zoom factor based on distance to model
+export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3, modelSize: number): number => {
+  // Get distance to target
+  const cameraPosition = new THREE.Vector3().copy(camera.position);
+  const distance = cameraPosition.distanceTo(target);
+  
+  // Calculate minimum movement speed (20% of normal speed)
+  const MIN_MOVEMENT_FACTOR = 0.2;
+  
+  // Calculate a factor based on how close we are to the model
+  // The closer we are, the slower the movement should be
+  const modelRadius = modelSize * 0.5;
+  
+  // If we're very close to the model, use the minimum speed
+  if (distance < modelRadius * 0.5) {
+    return MIN_MOVEMENT_FACTOR;
+  }
+  
+  // Linear interpolation between 1.0 and MIN_MOVEMENT_FACTOR based on distance
+  const factor = Math.max(
+    MIN_MOVEMENT_FACTOR,
+    Math.min(1.0, distance / (modelRadius * 3))
+  );
+  
+  return factor;
 };
 
 // Load GLB model
@@ -61,11 +89,69 @@ export const centerModel = (model: THREE.Object3D): THREE.Box3 => {
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   
+  // Adjust model position to be centered
   model.position.x = -center.x;
   model.position.y = -center.y;
   model.position.z = -center.z;
   
+  // Ensure model is properly positioned in all orientations
+  model.updateMatrix();
+  model.updateMatrixWorld(true);
+  
   return box;
+};
+
+// Optimales Zentrieren des Models nach dem Laden oder Orientierungswechsel
+export const optimallyCenterModel = (
+  model: THREE.Object3D, 
+  camera: THREE.Camera, 
+  controls: any
+): void => {
+  // Berechne Bounding Box
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  
+  // Zentriere das Modell an seinem Schwerpunkt
+  model.position.x = -center.x;
+  model.position.y = -center.y;
+  model.position.z = -center.z;
+  
+  // Berechne die optimale Kameraposition
+  const maxDimension = Math.max(size.x, size.y, size.z);
+  const distance = maxDimension * 2.0; // Konsistenter Abstand für alle Ansichten
+  
+  // Setze Kamera auf eine einheitliche Position mit gutem Überblick
+  camera.position.set(distance, distance * 0.8, distance);
+  
+  // Setze den Zielpunkt auf den Mittelpunkt des Modells
+  if (controls) {
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }
+  
+  // Aktualisiere die Matrizen
+  model.updateMatrix();
+  model.updateMatrixWorld(true);
+  
+  // Stellen Sie sicher, dass sich die Kamera auf das gesamte Modell konzentriert
+  if (camera instanceof THREE.PerspectiveCamera) {
+    const aspect = camera.aspect;
+    const fov = camera.fov * (Math.PI / 180);
+    
+    // Berechne den erforderlichen Abstand um das gesamte Modell zu sehen
+    const requiredDistance = (maxDimension / 2) / Math.tan(fov / 2);
+    
+    // Setze die Kamera auf einen konsistenten Abstand für alle Ansichten
+    // Verwende einen festen Faktor (1.2) um etwas Abstand um das Modell herum zu haben
+    const newPosition = camera.position.clone().normalize().multiplyScalar(requiredDistance * 1.2);
+    camera.position.copy(newPosition);
+    
+    if (controls) {
+      controls.update();
+    }
+  }
 };
 
 // Create a texture loader
