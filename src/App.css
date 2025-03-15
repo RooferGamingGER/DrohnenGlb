@@ -154,6 +154,7 @@ button {
   border-radius: 50px;
   padding: 10px 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  touch-action: manipulation;
 }
 
 .touch-control-button {
@@ -169,6 +170,9 @@ button {
   color: #333;
   touch-action: manipulation;
   transition: transform 0.1s, background-color 0.3s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .touch-control-button:active {

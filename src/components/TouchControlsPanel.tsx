@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Move, RotateCw, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Move, RotateCw, ZoomIn, ZoomOut, Maximize, Upload } from 'lucide-react';
 
 interface TouchControlsPanelProps {
   activeMode: 'none' | 'pan' | 'rotate' | 'zoom';
@@ -8,6 +8,7 @@ interface TouchControlsPanelProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onReset: () => void;
+  onBackToUpload?: () => void;
   onTakeScreenshot?: () => void;
   onNewProject?: () => void;
   onExportMeasurements?: () => void;
@@ -18,7 +19,8 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
   onModeChange,
   onZoomIn,
   onZoomOut,
-  onReset
+  onReset,
+  onBackToUpload
 }) => {
   console.log("TouchControlsPanel rendered with activeMode:", activeMode);
 
@@ -33,6 +35,12 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
       console.log(`Setting mode to ${mode}`);
       onModeChange(mode);
     }
+  };
+
+  // Add touch-specific event handlers for better mobile response
+  const handleTouchStart = (event: React.TouchEvent, action: () => void) => {
+    event.preventDefault();
+    action();
   };
 
   // Enable Hammer.js or similar touch gesture library if available in the window object
@@ -52,6 +60,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className={`touch-control-button p-2 rounded-full ${activeMode === 'pan' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
           onClick={() => handleButtonClick('pan')}
+          onTouchStart={(e) => handleTouchStart(e, () => handleButtonClick('pan'))}
           aria-label="Verschieben"
         >
           <Move size={24} />
@@ -61,6 +70,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className={`touch-control-button p-2 rounded-full ${activeMode === 'rotate' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
           onClick={() => handleButtonClick('rotate')}
+          onTouchStart={(e) => handleTouchStart(e, () => handleButtonClick('rotate'))}
           aria-label="Drehen"
         >
           <RotateCw size={24} />
@@ -70,6 +80,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
           onClick={onZoomIn}
+          onTouchStart={(e) => handleTouchStart(e, onZoomIn)}
           aria-label="Heranzoomen"
         >
           <ZoomIn size={24} />
@@ -79,6 +90,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
           onClick={onZoomOut}
+          onTouchStart={(e) => handleTouchStart(e, onZoomOut)}
           aria-label="Herauszoomen"
         >
           <ZoomOut size={24} />
@@ -88,10 +100,23 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
           onClick={onReset}
+          onTouchStart={(e) => handleTouchStart(e, onReset)}
           aria-label="Ansicht zurücksetzen"
         >
           <Maximize size={24} />
         </button>
+        
+        {onBackToUpload && (
+          <button
+            type="button"
+            className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
+            onClick={onBackToUpload}
+            onTouchStart={(e) => handleTouchStart(e, onBackToUpload)}
+            aria-label="Zurück zum Upload"
+          >
+            <Upload size={24} />
+          </button>
+        )}
       </div>
     </div>
   );

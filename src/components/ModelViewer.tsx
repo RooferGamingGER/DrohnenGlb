@@ -786,6 +786,33 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     }
   }, []);
 
+  const handleBackToUpload = useCallback(() => {
+    if (modelViewer.loadedModel) {
+      modelViewer.clearMeasurements();
+      modelViewer.resetView();
+      
+      if (typeof modelViewer.unloadModel === 'function') {
+        modelViewer.unloadModel();
+      } else {
+        setModelCentered(false);
+        
+        if (modelViewer.scene) {
+          while(modelViewer.scene.children.length > 0) { 
+            modelViewer.scene.remove(modelViewer.scene.children[0]); 
+          }
+          
+          modelViewer.loadedModel = null;
+        }
+      }
+      
+      toast({
+        title: "Zurück zum Upload",
+        description: "Sie können jetzt eine neue Datei hochladen.",
+        duration: 3000,
+      });
+    }
+  }, [modelViewer, toast]);
+
   useEffect(() => {
     if (!modelViewer.controls) return;
     
@@ -980,6 +1007,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onReset={handleResetView}
+            onBackToUpload={handleBackToUpload}
           />
         )}
       </ViewerContainer>

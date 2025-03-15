@@ -56,7 +56,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           <DialogTitle>Aufnahme</DialogTitle>
           <DialogDescription>
             Geben Sie eine Beschreibung für die Aufnahme ein.
-            {isMobile && " (Aufnahme wurde automatisch im Querformat erstellt)"}
+            {isMobile.isPortrait && " (Aufnahme wurde automatisch im Querformat erstellt)"}
           </DialogDescription>
         </DialogHeader>
         
