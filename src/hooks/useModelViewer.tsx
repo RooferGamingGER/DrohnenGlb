@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { 
@@ -97,6 +98,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
   const touchStartPositionRef = useRef<{x: number, y: number} | null>(null);
   const isTouchMoveRef = useRef<boolean>(false);
+  const touchStartTimeRef = useRef<number>(0);
+  const touchIdentifierRef = useRef<number | null>(null);
+  const pinchDistanceStartRef = useRef<number | null>(null);
+  const isPinchingRef = useRef<boolean>(false);
 
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
@@ -311,108 +316,159 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  // Verbesserte Touch-Handling-Funktionen
   const handleTouchStart = (event: TouchEvent) => {
-    if (!containerRef.current || !measurementGroupRef.current || event.touches.length !== 1) return;
+    if (!containerRef.current) return;
+    
+    event.preventDefault(); // Verhindern das Standard-Touch-Verhalten
+    
+    // Prüfen auf Pinch-Zoom (2 Finger)
+    if (event.touches.length === 2) {
+      isPinchingRef.current = true;
+      
+      // Initialen Pinch-Abstand berechnen
+      const dx = event.touches[0].clientX - event.touches[1].clientX;
+      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      pinchDistanceStartRef.current = Math.sqrt(dx * dx + dy * dy);
+      
+      // OrbitControls deaktivieren während des Pinchens
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false;
+      }
+      
+      return;
+    }
+    
+    isPinchingRef.current = false;
+    
+    if (event.touches.length !== 1 || !measurementGroupRef.current || !cameraRef.current) return;
     
     const touch = event.touches[0];
     const rect = containerRef.current.getBoundingClientRect();
+    const now = Date.now();
     
+    // Speichern der Berührungsinformationen
     touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
+    touchIdentifierRef.current = touch.identifier;
     isTouchMoveRef.current = false;
+    touchStartTimeRef.current = now;
     
+    // Setzen der Mausposition entsprechend dem Touch
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
-    if (cameraRef.current) {
-      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+    // Prüfen, ob der Benutzer einen Messpunkt berührt hat
+    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+    
+    const pointObjects = measurementGroupRef.current.children.filter(
+      child => child instanceof THREE.Mesh && child.name.startsWith('point-')
+    );
+    
+    const intersects = raycasterRef.current.intersectObjects(pointObjects, false);
+    
+    if (intersects.length > 0) {
+      // Benutzer hat einen Messpunkt berührt
+      const pointMesh = intersects[0].object as THREE.Mesh;
+      const pointId = pointMesh.name;
+      setHoveredPointId(pointId);
       
-      const pointObjects = measurementGroupRef.current.children.filter(
-        child => child instanceof THREE.Mesh && child.name.startsWith('point-')
-      );
+      // Doppeltipp erkennen
+      const isDoubleTap = isDoubleClick(now, lastTouchTimeRef.current);
+      lastTouchTimeRef.current = now;
       
-      const intersects = raycasterRef.current.intersectObjects(pointObjects, false);
-      
-      if (intersects.length > 0) {
-        const currentTime = new Date().getTime();
-        const pointMesh = intersects[0].object as THREE.Mesh;
-        const pointId = pointMesh.name;
-        setHoveredPointId(pointId);
+      const nameParts = pointId.split('-');
+      if (nameParts.length >= 3) {
+        const measurementId = nameParts[1];
+        const pointIndex = parseInt(nameParts[2], 10);
+        const measurement = measurements.find(m => m.id === measurementId);
         
-        if (pointMesh.userData) {
-          const lastTouchTime = lastTouchTimeRef.current || 0;
+        if (measurement?.editMode || isDoubleTap) {
+          // Bei Doppeltipp oder im Bearbeitungsmodus den Punkt zum Ziehen aktivieren
+          setIsDraggingPoint(true);
+          draggedPointRef.current = pointMesh;
           
-          if (isDoubleClick(currentTime, lastTouchTime)) {
-            event.preventDefault();
-            
-            if (isPointSelected(pointMesh)) {
-              togglePointSelection(pointMesh);
-              
-              if (controlsRef.current && controlsRef.current.enabled === false) {
-                controlsRef.current.enabled = true;
-              }
-              
-              toast({
-                title: "Punkt deaktiviert",
-                description: "Der Messpunkt wurde deaktiviert.",
-                duration: 3000,
-              });
-              
-              setIsDraggingPoint(false);
-              draggedPointRef.current = null;
-              setSelectedMeasurementId(null);
-              setSelectedPointIndex(null);
-            } else {
-              setIsDraggingPoint(true);
-              draggedPointRef.current = pointMesh;
-              
-              togglePointSelection(pointMesh);
-              
-              const nameParts = pointId.split('-');
-              if (nameParts.length >= 3) {
-                const measurementId = nameParts[1];
-                const pointIndex = parseInt(nameParts[2], 10);
-                
-                setSelectedMeasurementId(measurementId);
-                setSelectedPointIndex(pointIndex);
-                
-                if (controlsRef.current) {
-                  controlsRef.current.enabled = false;
-                }
-                
-                pointMesh.userData.isBeingDragged = true;
-                
-                toast({
-                  title: "Punkt wird verschoben",
-                  description: "Bewegen Sie den Punkt an die gewünschte Position oder tippen Sie doppelt, um ihn zu deaktivieren.",
-                  duration: 3000,
-                });
-              }
-            }
+          setSelectedMeasurementId(measurementId);
+          setSelectedPointIndex(pointIndex);
+          
+          if (controlsRef.current) {
+            controlsRef.current.enabled = false;
           }
           
-          lastTouchTimeRef.current = currentTime;
+          pointMesh.userData.isBeingDragged = true;
+          
+          toast({
+            title: "Punkt wird verschoben",
+            description: "Bewegen Sie den Finger, um den Punkt zu verschieben, und tippen Sie dann, um ihn zu platzieren.",
+            duration: 3000,
+          });
         }
+      }
+    } else if (activeTool !== 'none' && modelRef.current) {
+      // Prüfen ob der Benutzer das Modell berührt hat für neue Messpunkte
+      const modelIntersects = raycasterRef.current.intersectObject(modelRef.current, true);
+      
+      if (modelIntersects.length > 0) {
+        // Lange Berührung (500ms) überwachen um festzustellen, ob der Benutzer messen möchte
+        const touchPoint = modelIntersects[0].point.clone();
+        setTimeout(() => {
+          // Nur ausführen, wenn keine Bewegung stattgefunden hat und es derselbe Touch ist
+          if (!isTouchMoveRef.current && 
+              touchIdentifierRef.current === touch.identifier && 
+              touchStartPositionRef.current && 
+              Math.abs(touchStartPositionRef.current.x - touch.clientX) < 10 && 
+              Math.abs(touchStartPositionRef.current.y - touch.clientY) < 10) {
+            addMeasurementPointTouch(touchPoint);
+          }
+        }, 500);
       }
     }
   };
 
   const handleTouchMove = (event: TouchEvent) => {
-    if (!containerRef.current || event.touches.length !== 1) return;
+    if (!containerRef.current) return;
+    
+    event.preventDefault();
+    
+    // Pinch-Zoom verarbeiten
+    if (isPinchingRef.current && event.touches.length === 2 && cameraRef.current && pinchDistanceStartRef.current) {
+      // Aktuellen Pinch-Abstand berechnen
+      const dx = event.touches[0].clientX - event.touches[1].clientX;
+      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      const pinchDistance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Zoom-Faktor berechnen
+      const zoomDelta = (pinchDistance - pinchDistanceStartRef.current) * 0.01;
+      
+      // Kamera-Zoom anpassen (positiver Wert = reinzoomen)
+      const newZoom = cameraRef.current.position.z - zoomDelta;
+      
+      // Begrenzung des Zooms auf sinnvolle Werte
+      cameraRef.current.position.z = Math.max(2, Math.min(20, newZoom));
+      
+      // Aktualisieren des Startwertes für den nächsten Move-Event
+      pinchDistanceStartRef.current = pinchDistance;
+      
+      return;
+    }
+    
+    // Ein-Finger-Gesten
+    if (event.touches.length !== 1) return;
     
     const touch = event.touches[0];
     
+    // Bewegung erkennen
     if (touchStartPositionRef.current) {
       const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
       const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
       
+      // Ab einer gewissen Schwelle als Bewegung interpretieren
       if (deltaX > 10 || deltaY > 10) {
         isTouchMoveRef.current = true;
       }
     }
     
-    if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current) {
-      event.preventDefault();
-      
+    // Punkt-Ziehen verarbeiten
+    if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
       mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
@@ -433,47 +489,37 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }
       }
     }
-  };
-
-  const handleMouseUp = (event: MouseEvent) => {
-    if (isDraggingPoint) {
-      setIsDraggingPoint(false);
-      
-      if (draggedPointRef.current?.userData) {
-        draggedPointRef.current.userData.isBeingDragged = false;
-      }
-      
-      draggedPointRef.current = null;
-      document.body.style.cursor = hoveredPointId ? 'pointer' : 'auto';
+    // Modell drehen/verschieben durch Touch
+    else if (isTouchMoveRef.current && controlsRef.current && touchStartPositionRef.current && activeTool === 'none' && !isPinchingRef.current) {
+      // OrbitControls hat bereits Touch-Unterstützung, aber wir können sie hier anpassen
+      // Normalisieren der Touch-Bewegung
+      const deltaX = (touch.clientX - touchStartPositionRef.current.x) * 0.005;
+      const deltaY = (touch.clientY - touchStartPositionRef.current.y) * 0.005;
       
       if (controlsRef.current) {
-        controlsRef.current.enabled = true;
+        // Rotation um Y-Achse für horizontale Bewegung
+        controlsRef.current.rotateLeft(deltaX);
+        // Rotation um X-Achse für vertikale Bewegung
+        controlsRef.current.rotateUp(deltaY);
+        controlsRef.current.update();
       }
       
-      if (selectedMeasurementId) {
-        const measurement = measurements.find(m => m.id === selectedMeasurementId);
-        if (measurement?.editMode) {
-          toast({
-            title: "Position aktualisiert",
-            description: "Die Messung wurde an die neue Position angepasst.",
-            duration: 3000,
-          });
-        } else {
-          toast({
-            title: "Position aktualisiert",
-            description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
-            duration: 3000,
-          });
-        }
-      }
-      
-      setIsDraggingPoint(false);
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
+      // Update der Startposition
+      touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     }
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
+    if (isPinchingRef.current) {
+      // End of pinch
+      isPinchingRef.current = false;
+      pinchDistanceStartRef.current = null;
+      
+      if (controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
+    }
+    
     if (isDraggingPoint) {
       setIsDraggingPoint(false);
       
@@ -489,17 +535,55 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       toast({
         title: "Position aktualisiert",
-        description: "Die Messung wurde an die neue Position angepasst. Doppeltippen Sie auf den Punkt, um ihn zu deaktivieren.",
+        description: "Die Messung wurde an die neue Position angepasst.",
         duration: 3000,
       });
       
       setIsDraggingPoint(false);
-    } else if (!isTouchMoveRef.current && activeTool !== 'none') {
-      handleMeasurementTap(event);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
+    } else if (!isTouchMoveRef.current && activeTool !== 'none' && modelRef.current && containerRef.current && event.changedTouches.length > 0) {
+      // Statischer Tipp (kein Drag) auf dem Modell für Messung
+      const touch = event.changedTouches[0];
+      // Nur verarbeiten, wenn es der ursprüngliche Touch ist
+      if (touchIdentifierRef.current === touch.identifier) {
+        handleMeasurementTap(touch);
+      }
     }
     
     touchStartPositionRef.current = null;
     isTouchMoveRef.current = false;
+    touchIdentifierRef.current = null;
+  };
+
+  // Neue Hilfsfunktion für Touch-basierte Messungen
+  const addMeasurementPointTouch = (point: THREE.Vector3) => {
+    if (activeTool === 'none') return;
+    
+    const worldPoint = point.clone();
+    
+    setTemporaryPoints(prev => [...prev, { 
+      position: point,
+      worldPosition: worldPoint
+    }]);
+    
+    addMeasurementPoint(point);
+    
+    if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
+      const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
+      finalizeMeasurement(newPoints);
+    }
+    
+    // Vibration für haptisches Feedback (falls vom Browser unterstützt)
+    if (window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(50);
+    }
+    
+    toast({
+      title: "Messpunkt gesetzt",
+      description: `Punkt ${temporaryPoints.length + 1} wurde platziert.`,
+      duration: 2000,
+    });
   };
 
   const updateMeasurementPointPosition = (
@@ -939,14 +1023,19 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls.enableZoom = true;
     controls.screenSpacePanning = true;
     
+    // Bessere Anpassung der Controlgeschwindigkeit an die Modellgröße
     const updateControlSpeed = () => {
       if (controlsRef.current && modelRef.current) {
         const box = new THREE.Box3().setFromObject(modelRef.current);
         const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(size.x, size.y, size.z);
         const distance = camera.position.distanceTo(center);
         
-        controlsRef.current.rotateSpeed = 0.5 * (distance / 5);
-        controlsRef.current.panSpeed = 0.6 * (distance / 5);
+        // Anpassung der Kontrollgeschwindigkeit basierend auf Modellgröße und Kameradistanz
+        controlsRef.current.rotateSpeed = 0.5 * (distance / maxDimension);
+        controlsRef.current.panSpeed = 0.6 * (distance / maxDimension);
+        controlsRef.current.zoomSpeed = 1.0 + (maxDimension / 10);
       }
     };
     
@@ -967,9 +1056,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
+            // Sprites immer zur Kamera orientieren
             child.quaternion.copy(cameraRef.current!.quaternion);
           
             if (child.userData && child.userData.isLabel) {
+              // Labels skalieren, damit sie bei Zoom immer gleich groß erscheinen
               updateLabelScale(child, cameraRef.current);
             }
           }
@@ -985,6 +1076,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     requestRef.current = requestAnimationFrame(animate);
 
+    // Verbesserte Größenanpassung, um die Modellansicht beim Wechsel der Bildschirmgröße zu optimieren
     const handleResize = () => {
       if (
         containerRef.current &&
@@ -998,6 +1090,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         cameraRef.current.updateProjectionMatrix();
 
         rendererRef.current.setSize(width, height);
+        rendererRef.current.setPixelRatio(window.devicePixelRatio);
+        
+        // Wenn ein Modell geladen ist, sicherstellen, dass es auch nach Resize korrekt zentriert ist
+        if (modelRef.current) {
+          adjustCameraToModelSize();
+        }
       }
     };
 
@@ -1035,6 +1133,74 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       rendererRef.current?.dispose();
     };
   }, []);
+
+  // Neue Funktion zur besseren Ausrichtung der Kamera an das Modell
+  const adjustCameraToModelSize = () => {
+    if (!modelRef.current || !cameraRef.current || !controlsRef.current) return;
+    
+    // Bounding-Box des Modells berechnen
+    const box = new THREE.Box3().setFromObject(modelRef.current);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    
+    // Maximale Dimension des Modells für optimalen Zoom ermitteln
+    const maxDimension = Math.max(size.x, size.y, size.z);
+    
+    // Optimaler Abstand basierend auf Modellgröße und Sichtfeld der Kamera
+    const fov = cameraRef.current.fov * (Math.PI / 180);
+    const optimalDistance = maxDimension / (2 * Math.tan(fov / 2));
+    
+    // Aktuelle Richtung der Kamera beibehalten, nur Abstand ändern
+    const direction = new THREE.Vector3();
+    direction.subVectors(cameraRef.current.position, center).normalize();
+    
+    // Neue Kameraposition berechnen
+    const newPosition = new THREE.Vector3();
+    newPosition.copy(center).add(direction.multiplyScalar(optimalDistance * 1.2)); // 1.2 für etwas Puffer
+    
+    // Kamera sanft an die neue Position bewegen
+    cameraRef.current.position.copy(newPosition);
+    controlsRef.current.target.copy(center);
+    controlsRef.current.update();
+  };
+
+  const handleMouseUp = (event: MouseEvent) => {
+    if (isDraggingPoint) {
+      setIsDraggingPoint(false);
+      
+      if (draggedPointRef.current?.userData) {
+        draggedPointRef.current.userData.isBeingDragged = false;
+      }
+      
+      draggedPointRef.current = null;
+      document.body.style.cursor = hoveredPointId ? 'pointer' : 'auto';
+      
+      if (controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
+      
+      if (selectedMeasurementId) {
+        const measurement = measurements.find(m => m.id === selectedMeasurementId);
+        if (measurement?.editMode) {
+          toast({
+            title: "Position aktualisiert",
+            description: "Die Messung wurde an die neue Position angepasst.",
+            duration: 3000,
+          });
+        } else {
+          toast({
+            title: "Position aktualisiert",
+            description: "Die Messung wurde an die neue Position angepasst. Doppelklicken Sie auf den Punkt, um ihn zu deaktivieren.",
+            duration: 3000,
+          });
+        }
+      }
+      
+      setIsDraggingPoint(false);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
+    }
+  };
 
   const handleMeasurementClick = (event: MouseEvent) => {
     if (isDraggingPoint) return;
@@ -1217,7 +1383,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       value,
       unit,
       inclination: activeTool === 'length' ? inclination : undefined,
-      ...measurementObjects
+      ...measurementObjects,
+      editMode: false,
+      visible: true
     };
     
     setMeasurements(prev => [...prev, newMeasurement]);
@@ -1226,19 +1394,14 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     currentMeasurementRef.current = null;
   };
   
-  const handleMeasurementTap = (event: TouchEvent) => {
-    if (isDraggingPoint || event.touches.length !== 1) return;
+  const handleMeasurementTap = (touch: Touch) => {
+    if (isDraggingPoint) return;
     
     if (activeTool === 'none' || !modelRef.current || !containerRef.current || 
         !sceneRef.current || !cameraRef.current) {
       return;
     }
     
-    if (isTouchMoveRef.current) {
-      return;
-    }
-    
-    const touch = event.changedTouches[0];
     const rect = containerRef.current.getBoundingClientRect();
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1261,6 +1424,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if ((activeTool === 'length' || activeTool === 'height') && temporaryPoints.length === 1) {
         const newPoints = [...temporaryPoints, { position: point, worldPosition: worldPoint }];
         finalizeMeasurement(newPoints);
+      }
+      
+      // Vibration als Feedback, falls vom Browser unterstützt
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
       }
     }
   };
@@ -1426,6 +1594,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       processingStartTimeRef.current = Date.now();
 
+      // Zentieren des Modells mithilfe der verbesserten Funktion
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
@@ -1462,9 +1631,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
       
+      // Anpassung der Kameraposition für optimale Sicht auf das Modell
       setTimeout(() => {
-        resetView();
-      }, 500);
+        adjustCameraToModelSize();
+      }, 300);
       
       if (onLoadComplete) {
         onLoadComplete();
@@ -1529,17 +1699,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
   const resetView = () => {
     if (controlsRef.current && modelRef.current && cameraRef.current) {
-      const box = new THREE.Box3().setFromObject(modelRef.current);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3()).length();
+      // Verbesserte Ansichtsrücksetzung mit sanfter Animation
+      adjustCameraToModelSize();
       
-      const distance = size * 1.5;
-      cameraRef.current.position.copy(center);
-      cameraRef.current.position.z += distance;
-      cameraRef.current.lookAt(center);
-      
-      controlsRef.current.target.copy(center);
-      controlsRef.current.update();
+      // Sicherstellen, dass Controls zurückgesetzt werden
+      controlsRef.current.reset();
     }
   };
 
@@ -1585,6 +1749,13 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     });
   };
 
+  // Hilfsfunktion, um die Modelviewer-Instanz zu aktualisieren
+  const updateModelViewer = () => {
+    if (rendererRef.current && sceneRef.current && cameraRef.current) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    }
+  };
+
   return {
     ...state,
     loadModel,
@@ -1609,6 +1780,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current,
-    loadedModel: modelRef.current
+    loadedModel: modelRef.current,
+    updateModelViewer, // Neue Funktion für manuelle Updates
+    adjustCameraToModelSize // Neue Funktion für bessere Kamerapositionierung
   };
 };
