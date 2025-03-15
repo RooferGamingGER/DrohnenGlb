@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
@@ -54,6 +53,68 @@ export const calculateZoomFactor = (camera: THREE.Camera, target: THREE.Vector3,
   );
   
   return factor;
+};
+
+// Camera movement function for right-click drag
+export const moveCameraWithRightDrag = (
+  camera: THREE.Camera,
+  controls: any,
+  movementX: number,
+  movementY: number,
+  modelSize: number
+): void => {
+  if (!controls) return;
+  
+  // Calculate adaptive movement speed based on model size and camera distance
+  const movementSpeed = calculateZoomFactor(camera, controls.target, modelSize) * 0.05 * modelSize;
+  
+  // Get camera right and up vectors in world space
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  
+  // Calculate movement vectors
+  const rightMovement = right.clone().multiplyScalar(-movementX * movementSpeed);
+  const upMovement = up.clone().multiplyScalar(movementY * movementSpeed);
+  
+  // Move both camera and controls target to maintain relative position
+  camera.position.add(rightMovement).add(upMovement);
+  controls.target.add(rightMovement).add(upMovement);
+  
+  // Update controls
+  controls.update();
+};
+
+// Improve zoom for mobile devices
+export const smoothZoomCamera = (
+  camera: THREE.Camera,
+  controls: any,
+  zoomFactor: number,
+  modelSize: number
+): void => {
+  if (!controls) return;
+  
+  // Get direction from camera to target
+  const direction = new THREE.Vector3();
+  direction.subVectors(camera.position, controls.target).normalize();
+  
+  // Calculate adaptive zoom speed based on model size and current distance
+  const adaptiveZoom = calculateZoomFactor(camera, controls.target, modelSize) * zoomFactor * modelSize * 0.05;
+  
+  // Apply zoom by moving camera along view direction
+  camera.position.addScaledVector(direction, adaptiveZoom);
+  
+  // Ensure minimum distance to prevent zooming through the model
+  const minDistance = modelSize * 0.2;
+  const currentDistance = camera.position.distanceTo(controls.target);
+  
+  if (currentDistance < minDistance) {
+    camera.position.copy(
+      controls.target.clone().add(direction.multiplyScalar(minDistance))
+    );
+  }
+  
+  // Update controls
+  controls.update();
 };
 
 // Load GLB model

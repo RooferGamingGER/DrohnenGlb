@@ -17,7 +17,9 @@ import {
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
-  optimallyCenterModel 
+  optimallyCenterModel,
+  moveCameraWithRightDrag,
+  smoothZoomCamera
 } from '@/utils/modelUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
@@ -50,6 +52,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
   const [modelCentered, setModelCentered] = useState(false);
+  const [isRightMouseDown, setIsRightMouseDown] = useState(false);
   
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
@@ -72,6 +75,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [isPortrait]);
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const lastMousePositionRef = useRef<{x: number, y: number}>({ x: 0, y: 0 });
   
   const modelViewer = useModelViewer({
     containerRef,
@@ -169,6 +173,28 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       }, 100);
     }
   }, [modelViewer]);
+
+  const handleZoomIn = useCallback(() => {
+    if (modelViewer.camera && modelViewer.controls) {
+      smoothZoomCamera(
+        modelViewer.camera,
+        modelViewer.controls,
+        -1.0, // Negative value for zoom in
+        modelSizeRef.current
+      );
+    }
+  }, [modelViewer.camera, modelViewer.controls]);
+
+  const handleZoomOut = useCallback(() => {
+    if (modelViewer.camera && modelViewer.controls) {
+      smoothZoomCamera(
+        modelViewer.camera,
+        modelViewer.controls,
+        1.0, // Positive value for zoom out
+        modelSizeRef.current
+      );
+    }
+  }, [modelViewer.camera, modelViewer.controls]);
 
   const handleToolChange = useCallback((tool: any) => {
     if (tool !== 'none') {
@@ -398,6 +424,22 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     
     const mousePosition = new THREE.Vector2(mouseX, mouseY);
     
+    if (isRightMouseDown && modelViewer.camera && modelViewer.controls) {
+      const movementX = event.movementX;
+      const movementY = event.movementY;
+      
+      moveCameraWithRightDrag(
+        modelViewer.camera,
+        modelViewer.controls,
+        movementX,
+        movementY,
+        modelSizeRef.current
+      );
+      
+      event.preventDefault();
+      return;
+    }
+    
     if (isFollowingMouse && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
       event.preventDefault();
       
@@ -440,96 +482,116 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       
       updateCursorForDraggablePoint(!!nearestPoint);
     }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging]);
+    
+    lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, isDragging, isRightMouseDown]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
-    if (event.button !== 0) return;
-    
-    if (!modelViewer.loadedModel || !containerRef.current) return;
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const mousePosition = new THREE.Vector2(mouseX, mouseY);
-    
-    if (modelViewer.measurementGroupRef?.current) {
-      raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
-      raycasterRef.current.params.Points = { threshold: 0.1 };
+    if (event.button === 0) {
+      if (!modelViewer.loadedModel || !containerRef.current) return;
       
-      const nearestPoint = findNearestEditablePoint(
-        raycasterRef.current,
-        modelViewer.camera!,
-        mousePosition,
-        modelViewer.measurementGroupRef.current,
-        0.2
-      );
+      const rect = containerRef.current.getBoundingClientRect();
+      const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       
-      if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
-        event.preventDefault();
-        
-        setIsFollowingMouse(false);
-        document.body.style.cursor = 'auto';
-        
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
-          duration: 3000,
-        });
-        
-        return;
-      }
+      const mousePosition = new THREE.Vector2(mouseX, mouseY);
       
-      if (nearestPoint && !isFollowingMouse) {
-        event.preventDefault();
+      if (modelViewer.measurementGroupRef?.current) {
+        raycasterRef.current.setFromCamera(mousePosition, modelViewer.camera!);
+        raycasterRef.current.params.Points = { threshold: 0.1 };
         
-        const pointName = nearestPoint.name;
-        const nameParts = pointName.split('-');
+        const nearestPoint = findNearestEditablePoint(
+          raycasterRef.current,
+          modelViewer.camera!,
+          mousePosition,
+          modelViewer.measurementGroupRef.current,
+          0.2
+        );
         
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
+        if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
+          event.preventDefault();
           
-          setIsFollowingMouse(true);
-          setDraggedPoint(nearestPoint);
-          setSelectedMeasurementId(measurementId);
-          setSelectedPointIndex(pointIndex);
-          
-          document.body.style.cursor = 'grabbing';
-          
-          console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+          setIsFollowingMouse(false);
+          document.body.style.cursor = 'auto';
           
           toast({
-            title: "Punkt aktiviert",
-            description: "Bewegen Sie die Maus und klicken Sie erneut, um den Punkt zu platzieren.",
+            title: "Position aktualisiert",
+            description: "Der Messpunkt wurde an der neuen Position abgesetzt.",
             duration: 3000,
           });
+          
+          return;
+        }
+        
+        if (nearestPoint && !isFollowingMouse) {
+          event.preventDefault();
+          
+          const pointName = nearestPoint.name;
+          const nameParts = pointName.split('-');
+          
+          if (nameParts.length >= 3) {
+            const measurementId = nameParts[1];
+            const pointIndex = parseInt(nameParts[2], 10);
+            
+            setIsFollowingMouse(true);
+            setDraggedPoint(nearestPoint);
+            setSelectedMeasurementId(measurementId);
+            setSelectedPointIndex(pointIndex);
+            
+            document.body.style.cursor = 'grabbing';
+            
+            console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+            
+            toast({
+              title: "Punkt aktiviert",
+              description: "Bewegen Sie die Maus und klicken Sie erneut, um den Punkt zu platzieren.",
+              duration: 3000,
+            });
+          }
         }
       }
+    } else if (event.button === 2) {
+      event.preventDefault();
+      setIsRightMouseDown(true);
+      
+      document.body.style.cursor = 'move';
+      
+      lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
     }
   }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
 
   const handleMouseUp = useCallback((event: MouseEvent) => {
-    if (isDragging && draggedPoint) {
-      setIsDragging(false);
-      
-      if (selectedMeasurementId && selectedPointIndex !== null) {
-        console.log(`Drag-Operation beendet für Messung: ${selectedMeasurementId}, Index: ${selectedPointIndex}`);
+    if (event.button === 0) {
+      if (isDragging && draggedPoint) {
+        setIsDragging(false);
         
-        toast({
-          title: "Position aktualisiert",
-          description: "Der Messpunkt wurde an die neue Position verschoben.",
-          duration: 3000,
-        });
+        if (selectedMeasurementId && selectedPointIndex !== null) {
+          console.log(`Drag-Operation beendet für Messung: ${selectedMeasurementId}, Index: ${selectedPointIndex}`);
+          
+          toast({
+            title: "Position aktualisiert",
+            description: "Der Messpunkt wurde an die neue Position verschoben.",
+            duration: 3000,
+          });
+        }
+        
+        document.body.style.cursor = 'auto';
+        
+        setDraggedPoint(null);
+        setSelectedMeasurementId(null);
+        setSelectedPointIndex(null);
       }
-      
+    } else if (event.button === 2) {
+      setIsRightMouseDown(false);
       document.body.style.cursor = 'auto';
-      
-      setDraggedPoint(null);
-      setSelectedMeasurementId(null);
-      setSelectedPointIndex(null);
     }
   }, [isDragging, draggedPoint, selectedMeasurementId, selectedPointIndex, toast]);
+
+  const handleContextMenu = useCallback((event: MouseEvent) => {
+    if (modelViewer.loadedModel) {
+      event.preventDefault();
+    }
+  }, [modelViewer.loadedModel]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
     if (!modelViewer.loadedModel || !containerRef.current) return;
@@ -646,24 +708,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       const zoomRatio = currentDistance / initialDistance;
       
       if (modelViewer.camera && modelViewer.controls) {
-        const zoomFactor = calculateZoomFactor(
-          modelViewer.camera,
-          modelViewer.controls.target,
-          modelSizeRef.current
-        );
-        
-        const direction = new THREE.Vector3();
-        direction.subVectors(modelViewer.camera.position, modelViewer.controls.target).normalize();
-        
         if (zoomRatio > 1.02) {
-          const scaledMovement = direction.multiplyScalar(0.5 * zoomFactor);
-          modelViewer.camera.position.sub(scaledMovement);
+          smoothZoomCamera(
+            modelViewer.camera,
+            modelViewer.controls,
+            0.5,
+            modelSizeRef.current
+          );
         } else if (zoomRatio < 0.98) {
-          const scaledMovement = direction.multiplyScalar(0.5 * zoomFactor);
-          modelViewer.camera.position.add(scaledMovement);
+          smoothZoomCamera(
+            modelViewer.camera,
+            modelViewer.controls,
+            -0.5,
+            modelSizeRef.current
+          );
         }
-        
-        modelViewer.controls.update();
       }
       
       touchStartRef.current = { x1, y1, x2, y2, distance: currentDistance };
@@ -722,32 +781,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     console.log(`Touch mode changed to: ${mode}`);
     setTouchMode(mode);
 
-    if (mode === 'zoom' && modelViewer.controls) {
-      const zoomFactor = 0.8;
-      const camera = modelViewer.camera;
-      
-      if (camera) {
-        const direction = new THREE.Vector3();
-        direction.subVectors(camera.position, modelViewer.controls.target).normalize();
-        
-        const adaptiveZoomFactor = calculateZoomFactor(
-          camera,
-          modelViewer.controls.target,
-          modelSizeRef.current
-        );
-        
-        camera.position.sub(direction.multiplyScalar(2 * adaptiveZoomFactor));
-        
-        if (modelViewer.controls) {
-          modelViewer.controls.update();
-        }
-      }
-      
-      setTimeout(() => {
-        setTouchMode('none');
-      }, 250);
+    if (mode === 'zoom') {
+      return;
     }
-  }, [modelViewer.controls, modelViewer.camera]);
+  }, []);
 
   useEffect(() => {
     if (!modelViewer.controls) return;
@@ -802,6 +839,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
@@ -810,6 +848,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
@@ -817,7 +856,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [
     handleMouseMove, 
     handleMouseDown, 
-    handleMouseUp, 
+    handleMouseUp,
+    handleContextMenu,
     handleTouchStart, 
     handleTouchMove, 
     handleTouchEnd
@@ -931,6 +971,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           <TouchControlsPanel 
             activeMode={touchMode}
             onModeChange={handleTouchModeChange}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onReset={handleResetView}
           />
         )}
       </ViewerContainer>
