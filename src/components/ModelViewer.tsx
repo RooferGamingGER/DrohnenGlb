@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -555,10 +556,41 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       const deltaY = touch.clientY - lastTouchRef.current.y;
       
       if (cameraControlMode === 'rotate') {
-        modelViewer.controls?.rotateY(deltaX * 0.01);
+        // Use the quaternion to rotate around y-axis
+        if (modelViewer.loadedModel && modelViewer.controls) {
+          // Create a rotation quaternion around Y axis
+          const rotationY = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            -deltaX * 0.01
+          );
+          
+          // Apply rotation to the model
+          modelViewer.loadedModel.quaternion.premultiply(rotationY);
+          modelViewer.loadedModel.updateMatrix();
+        }
       } else if (cameraControlMode === 'orbit') {
-        modelViewer.controls?.rotateLeft(deltaX * 0.005);
-        modelViewer.controls?.rotateUp(deltaY * 0.005);
+        if (modelViewer.controls) {
+          // For orbit mode, update the camera position around the target
+          // We need to manually change the camera position since rotateLeft/Up don't exist
+          const spherical = new THREE.Spherical().setFromVector3(
+            new THREE.Vector3().subVectors(
+              modelViewer.camera!.position,
+              modelViewer.controls.target
+            )
+          );
+          
+          // Adjust angles based on mouse movement (azimuth for left/right, phi for up/down)
+          spherical.theta -= deltaX * 0.005;
+          spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + deltaY * 0.005));
+          
+          // Convert back to Cartesian coordinates and set camera position
+          const newPosition = new THREE.Vector3().setFromSpherical(spherical).add(modelViewer.controls.target);
+          modelViewer.camera!.position.copy(newPosition);
+          modelViewer.camera!.lookAt(modelViewer.controls.target);
+          
+          // Update controls
+          modelViewer.controls.update();
+        }
       }
       
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
