@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { 
@@ -55,7 +55,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]
   );
   
-  const [activeTool, setActiveTool] = useState<MeasurementType>('none');
+  const [activeTool, setActiveToolState] = useState<MeasurementType>('none');
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [temporaryPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
 
@@ -1112,6 +1112,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         activeTool === 'length' ? 0x00ff00 : 0x0000ff
       );
       
+      line.name = `line-temp-${temporaryPoints.length}`;
+      
       measurementGroupRef.current.add(line);
       
       if (currentMeasurementRef.current) {
@@ -1584,6 +1586,47 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       child.visible = visible;
     });
   };
+
+  const setActiveTool = useCallback((tool: MeasurementType) => {
+    if (temporaryPoints.length > 0 && temporaryPoints.length < 2) {
+      if (measurementGroupRef.current) {
+        const tempPointObjects = measurementGroupRef.current.children.filter(
+          child => child instanceof THREE.Mesh && child.name.startsWith('point-temp-')
+        );
+        
+        tempPointObjects.forEach(point => {
+          if (point instanceof THREE.Mesh) {
+            point.geometry.dispose();
+            (point.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(point);
+          }
+        });
+        
+        const tempLines = measurementGroupRef.current.children.filter(
+          child => child instanceof THREE.Line && child.name.startsWith('line-temp-')
+        );
+        
+        tempLines.forEach(line => {
+          if (line instanceof THREE.Line) {
+            line.geometry.dispose();
+            (line.material as THREE.Material).dispose();
+            measurementGroupRef.current?.remove(line);
+          }
+        });
+      }
+      
+      setTemporaryPoints([]);
+      currentMeasurementRef.current = null;
+      
+      toast({
+        title: "Unvollständige Messung entfernt",
+        description: "Die unvollständige Messung wurde gelöscht, da nicht genügend Punkte gesetzt wurden.",
+        duration: 3000,
+      });
+    }
+    
+    setActiveToolState(tool);
+  }, [temporaryPoints, toast]);
 
   return {
     ...state,
