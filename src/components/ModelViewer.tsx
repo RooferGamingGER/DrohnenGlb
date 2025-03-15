@@ -933,4 +933,80 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   useEffect(() => {
     if (modelViewer.loadedModel) {
       const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
-      const size =
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      modelSizeRef.current = Math.max(size.x, size.y, size.z);
+    }
+  }, [modelViewer.loadedModel]);
+
+  return (
+    <ViewerContainer
+      ref={containerRef}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {modelViewer.loadedModel ? (
+        <>
+          {showHeader && <ViewerToolbar
+            onNewProject={handleNewProject}
+            onResetView={handleResetView}
+            onExportMeasurements={handleExportMeasurements}
+            onTakeScreenshot={handleTakeScreenshot}
+            onFullscreenToggle={toggleFullscreen}
+            isFullscreen={isFullscreen}
+            onToggleMeasurementTools={toggleMeasurementTools}
+            showMeasurementTools={showMeasurementTools}
+            onToggleMeasurementsVisibility={toggleMeasurementsVisibility}
+            measurementsVisible={measurementsVisible}
+          />}
+          
+          {showMeasurementTools && (
+            <MeasurementToolsPanel
+              activeTool={modelViewer.activeTool}
+              onToolChange={handleToolChange}
+              measurements={modelViewer.measurements}
+              onToggleVisibility={toggleSingleMeasurementVisibility}
+              onToggleEditMode={toggleEditMode}
+              onRemoveMeasurement={(id) => modelViewer.removeMeasurement(id)}
+            />
+          )}
+          
+          {isMobile && (
+            <TouchControlsPanel
+              activeMode={touchMode}
+              onModeChange={handleTouchModeChange}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onReset={handleResetView}
+              onTakeScreenshot={!isPortrait ? handleTakeScreenshot : undefined}
+              onNewProject={handleNewProject}
+              onExportMeasurements={handleExportMeasurements}
+              onBackToUpload={() => {
+                if (modelViewer.loadedModel) {
+                  modelViewer.unloadModel();
+                  setShowMeasurementTools(false);
+                }
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <DropZone onFileSelected={handleFileSelected} />
+      )}
+      
+      {modelViewer.progress < 100 && modelViewer.loadedModel && (
+        <LoadingOverlay progress={modelViewer.progress} />
+      )}
+      
+      {showScreenshotDialog && screenshotData && (
+        <ScreenshotDialog
+          screenshotData={screenshotData}
+          onClose={() => setShowScreenshotDialog(false)}
+          onSave={handleSaveScreenshot}
+        />
+      )}
+    </ViewerContainer>
+  );
+};
+
+export default ModelViewer;
