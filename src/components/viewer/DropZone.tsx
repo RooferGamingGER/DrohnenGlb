@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -65,13 +65,39 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   }, []);
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-screen`}>
-      {/* Upload Area */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-muted/30 p-4`}>
-        <Card className="w-full max-w-xl bg-white/10 backdrop-blur-sm border border-muted shadow-xl p-4 md:p-6">
-          <div className="text-center mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-foreground">Modell hochladen</h2>
-            <p className="text-sm md:text-base text-muted-foreground mt-2">
+    <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* Informativer Bereich (links/oben) */}
+      <div className={`hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
+        <div className="text-center flex flex-col items-center max-w-md">
+          <h1 className="text-3xl font-bold text-white mb-4 text-balance">
+            3D-Modell Viewer
+          </h1>
+          <p className="text-blue-100 mb-8 text-balance">
+            Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren und zu exportieren.
+          </p>
+          <div className="grid grid-cols-2 gap-4 w-full">
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <h3 className="font-semibold text-white mb-2">Einfacher Upload</h3>
+              <p className="text-blue-100 text-sm">Laden Sie Ihre GLB-Dateien schnell hoch.</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
+              <h3 className="font-semibold text-white mb-2">Direkter Export</h3>
+              <p className="text-blue-100 text-sm">Exportieren Sie Ihre Modelle nach der Visualisierung.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Interaktiver Bereich (rechts/unten) */}
+      <div className={`flex flex-col justify-center items-center w-full md:w-1/2 p-4 ${isPortrait ? 'w-full' : ''}`}>
+        <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
+          <div className="text-center md:hidden mb-8">
+            <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
+          </div>
+
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold mb-2">Modell hochladen</h1>
+            <p className="text-gray-500 text-sm">
               Laden Sie Ihre GLB-Datei hoch, um sie zu visualisieren
             </p>
           </div>
@@ -106,68 +132,10 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             />
           </div>
         </Card>
-      </div>
 
-      {/* Information Panel */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-primary/10 p-4`}>
-        <div className="w-full max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3 overflow-y-auto"> {/* overflow-y-auto hinzugefügt */}
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-            3D-Modell Viewer
-          </h1>
-
-          <div className="space-y-2 md:space-y-3">
-            <div className="flex items-start">
-              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <ArrowDown className="text-primary h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm md:text-base text-foreground">
-                  Exportieren vom Server
-                </h3>
-                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
-                  Exportieren Sie die Datei 'Textured Model (glTF)'
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <ArrowUpRight className="text-primary h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm md:text-base text-foreground">
-                  GLB-Datei hochladen
-                </h3>
-                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
-                  Die gespeicherte Datei vom Server kann nun direkt hochgeladen werden.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <div className="bg-primary/20 rounded-full p-2 mr-3 flex-shrink-0">
-                <Send className="text-primary h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm md:text-base text-foreground">
-                  Testphase
-                </h3>
-                <p className="text-xs md:text-sm text-muted-foreground leading-tight mb-1">
-                  Die Software befindet sich aktuell in der Testphase.
-                </p>
-                <p className="text-xs md:text-sm text-muted-foreground leading-tight">
-                  Sollten Ihnen Fehler auffallen, senden Sie diese bitte an{' '}
-                  <a
-                    href="mailto:info@drohnenvermessung-roofergaming.de"
-                    className="text-primary hover:text-primary/80 transition-colors underline"
-                  >
-                    info@drohnenvermessung-roofergaming.de
-                  </a>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <p className="text-xs text-gray-500 mt-8 text-center">
+          © 2023 RooferGaming® | Alle Rechte vorbehalten
+        </p>
       </div>
     </div>
   );
