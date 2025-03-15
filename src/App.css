@@ -42,3 +42,17 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Fix for mobile touch issues with file input */
+input[type="file"] {
+  pointer-events: auto !important;
+}
+
+/* Make sure all containers respect viewport height */
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  touch-action: manipulation;
+}

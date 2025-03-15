@@ -77,7 +77,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={triggerFileInput}
     >
       <input 
         type="file" 
@@ -85,9 +84,13 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
         onChange={handleFileInput}
         accept=".glb"
         className="hidden"
+        onClick={(e) => e.stopPropagation()}
       />
 
-      <div className="flex items-center gap-3 py-2">
+      <div 
+        className="flex items-center gap-3 py-2 cursor-pointer" 
+        onClick={triggerFileInput}
+      >
         <div className={`rounded-full p-3 ${isDragging ? 'bg-primary/20 text-primary' : 'bg-primary/10'}`}>
           <UploadCloud 
             className={`w-5 h-5 ${isDragging ? 'text-primary' : 'text-primary/80'} ${

@@ -31,7 +31,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
     e.preventDefault();
     e.stopPropagation();
     
-    // Directly trigger file input click
+    // Directly trigger file input click without any event bubbling
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -52,7 +52,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
             </div>
 
             <div
-              className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all cursor-pointer w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+              className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
               onDragOver={onDragOver}
               onDrop={onDrop}
             >
@@ -62,7 +62,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 Ziehen Sie eine Datei hierher oder klicken
               </p>
               <Button 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-md md:text-lg py-2 px-4 h-auto cursor-pointer"
                 onClick={handleButtonClick}
                 type="button"
               >
@@ -75,6 +75,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
                 accept=".glb"
                 className="hidden"
                 onChange={handleFileChange}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           </Card>
@@ -142,7 +143,6 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
         </div>
       </div>
-
     </div>
   );
 };
