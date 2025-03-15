@@ -779,7 +779,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         modelViewer.camera,
         modelViewer.controls.target,
         modelSizeRef.current
-      ) * 5.0;
+      ) * 7.5;
       
       const camera = modelViewer.camera;
       const controls = modelViewer.controls;
