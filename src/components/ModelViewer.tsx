@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -570,14 +571,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     setTouchMode(mode);
 
     if (mode === 'zoom' && modelViewer.controls) {
+      // Instead of using a non-existent zoom method, let's adjust the camera position
       const zoomSpeed = 0.5;
-      modelViewer.controls.zoom(zoomSpeed);
+      const camera = modelViewer.camera;
+      if (camera) {
+        camera.position.z -= zoomSpeed * 2; // Move camera closer to zoom in
+        if (modelViewer.controls) {
+          modelViewer.controls.update();
+        }
+      }
       
       setTimeout(() => {
         setTouchMode('none');
       }, 250);
     }
-  }, [modelViewer.controls]);
+  }, [modelViewer.controls, modelViewer.camera]);
 
   useEffect(() => {
     if (!modelViewer.controls) return;

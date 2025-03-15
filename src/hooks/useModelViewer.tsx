@@ -1721,29 +1721,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
-  const adjustCameraToModelSize = () => {
-    if (!modelRef.current || !cameraRef.current || !controlsRef.current) return;
-    
-    const box = new THREE.Box3().setFromObject(modelRef.current);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
-    
-    const maxDimension = Math.max(size.x, size.y, size.z);
-    
-    const fov = cameraRef.current.fov * (Math.PI / 180);
-    const optimalDistance = maxDimension / (2 * Math.tan(fov / 2));
-    
-    const direction = new THREE.Vector3();
-    direction.subVectors(cameraRef.current.position, center).normalize();
-    
-    const newPosition = new THREE.Vector3();
-    newPosition.copy(center).add(direction.multiplyScalar(optimalDistance * 1.2));
-    
-    cameraRef.current.position.copy(newPosition);
-    controlsRef.current.target.copy(center);
-    controlsRef.current.update();
-  };
-
   return {
     ...state,
     loadModel,
