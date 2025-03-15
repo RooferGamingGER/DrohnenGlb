@@ -5,7 +5,13 @@ import { UploadCloud, FileUp } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const UploadWithExplanations = () => {
+interface DropZoneProps {
+  onFileSelected: (file: File) => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent) => void;
+}
+
+const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const { isPortrait } = useIsMobile();
@@ -17,6 +23,7 @@ const UploadWithExplanations = () => {
 
     const file = files[0];
     setSelectedFile(file);
+    onFileSelected(file);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -59,18 +66,6 @@ const UploadWithExplanations = () => {
       };
     }
   }, []);
-
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-  };
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const files = event.dataTransfer.files;
-    if (!files || files.length === 0) return;
-
-    setSelectedFile(files[0]);
-  };
 
   return (
     <div className="flex h-full w-full bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -122,8 +117,8 @@ const UploadWithExplanations = () => {
 
           <div
             className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
           >
             <FileUp className="mb-4 text-primary h-10 w-10" />
             <h3 className="font-semibold mb-2 text-xl text-foreground">GLB-Datei hochladen</h3>
@@ -159,4 +154,4 @@ const UploadWithExplanations = () => {
   );
 };
 
-export default UploadWithExplanations;
+export default DropZone;
