@@ -1,5 +1,4 @@
-
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 import { formatFileSize, validateFile } from '@/utils/modelUtils';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +29,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (e.dataTransfer.files.length) {
       const file = e.dataTransfer.files[0];
       processFile(file);
@@ -58,66 +56,31 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onFileSelected, isLoading, prog
     onFileSelected(file);
   };
 
-  const triggerFileInput = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  // Add specific touch event handlers
-  useEffect(() => {
-    const uploadButton = document.getElementById('upload-button-area');
-    
-    if (uploadButton) {
-      const handleTouchEnd = (e: TouchEvent) => {
-        e.preventDefault();
-        if (fileInputRef.current) {
-          fileInputRef.current.click();
-        }
-      };
-      
-      uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
-      
-      return () => {
-        uploadButton.removeEventListener('touchend', handleTouchEnd);
-      };
-    }
-  }, []);
-
   return (
-    <div 
+    <div
       className={`relative p-3 rounded-lg border-2 border-dashed transition-all duration-300 ${
-        isDragging 
-          ? 'border-primary bg-primary/10' 
+        isDragging
+          ? 'border-primary bg-primary/10'
           : 'border-primary/30 hover:border-primary/70 hover:bg-white/5'
       } ${selectedFile ? 'bg-primary/5' : ''} shadow-lg backdrop-blur-sm hover:shadow-primary/10`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <input 
-        type="file" 
+      <input
+        type="file"
         ref={fileInputRef}
         onChange={handleFileInput}
         accept=".glb"
-        className="hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" // input nun über dem div
       />
 
-      <div 
-        id="upload-button-area"
-        className="flex items-center gap-3 py-2 cursor-pointer" 
-        onClick={triggerFileInput}
-        onTouchEnd={triggerFileInput}
-      >
+      <div className="flex items-center gap-3 py-2">
         <div className={`rounded-full p-3 ${isDragging ? 'bg-primary/20 text-primary' : 'bg-primary/10'}`}>
-          <UploadCloud 
+          <UploadCloud
             className={`w-5 h-5 ${isDragging ? 'text-primary' : 'text-primary/80'} ${
               isLoading ? 'animate-pulse' : 'animate-float'
-            }`} 
+            }`}
           />
         </div>
 
