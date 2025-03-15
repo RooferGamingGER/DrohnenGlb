@@ -120,8 +120,9 @@ export const exportMeasurementsToPDF = async (
                 return measurementRow;
             });
 
-            // Use autoTable from jspdf-autotable
-            doc.autoTable({
+            // Create table with jspdf-autotable
+            // @ts-ignore - Using type assertion to bypass TypeScript error
+            (doc as any).autoTable({
                 startY: tableStartY,
                 head: [['Beschreibung', 'Typ', 'Messwert', 'Dachneigung']],
                 body: tableData,
@@ -232,3 +233,4 @@ export const exportMeasurementsToPDF = async (
         throw error;
     }
 };
+
