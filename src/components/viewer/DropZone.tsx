@@ -97,7 +97,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       </div>
 
       {/* Upload-Bereich (rechts) */}
-      <div className={`flex flex-col justify-center items-center p-8 ${isPortrait ? 'w-full' : 'flex-1'}`}>
+      <div className={`flex flex-col justify-center items-center p-8 ${isPortrait ? 'w-full' : 'w-[500px]'}`}>
         <Card className="w-full max-w-lg p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
             <img

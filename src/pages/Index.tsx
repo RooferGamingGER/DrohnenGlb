@@ -7,7 +7,7 @@ const Index = () => {
   
   return (
     <div className="h-full w-full flex items-center justify-center overflow-hidden">
-      <div className={`${isPortrait ? 'h-full w-full' : 'h-[90%] w-[90%] max-w-7xl'}`}>
+      <div className="h-full w-full">
         <ModelViewer forceHideHeader={false} />
       </div>
     </div>
