@@ -151,12 +151,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     
     if (modelViewer.loadedModel && modelViewer.camera && modelViewer.controls) {
       setTimeout(() => {
-        console.log("Zentrieren nach Reset View");
+        console.log("Zentrieren nach Reset View mit optimallyCenterModel");
         optimallyCenterModel(
           modelViewer.loadedModel,
           modelViewer.camera,
           modelViewer.controls
         );
+        
+        const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        modelSizeRef.current = Math.max(size.x, size.y, size.z);
       }, 100);
     }
   }, [modelViewer]);
@@ -177,6 +182,16 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       modelViewer.resetView();
       modelViewer.clearMeasurements();
       setSavedScreenshots([]);
+      
+      if (modelViewer.camera && modelViewer.controls) {
+        setTimeout(() => {
+          optimallyCenterModel(
+            modelViewer.loadedModel,
+            modelViewer.camera,
+            modelViewer.controls
+          );
+        }, 100);
+      }
       
       toast({
         title: "Ansicht zurückgesetzt",
