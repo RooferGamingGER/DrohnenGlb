@@ -73,6 +73,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
 
     try {
       await exportMeasurementsToPDF(measurements, screenshots, false);
+      // Provide haptic feedback on mobile devices after successful download
+      if (navigator.vibrate && isMobile) {
+        navigator.vibrate([100, 50, 100]); // Vibration pattern for success
+      }
       toast({
         title: "Bericht gespeichert",
         description: "Der Bericht wurde als PDF heruntergeladen.",

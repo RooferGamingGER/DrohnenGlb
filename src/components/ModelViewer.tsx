@@ -22,6 +22,7 @@ import LoadingOverlay from '@/components/viewer/LoadingOverlay';
 import DropZone from '@/components/viewer/DropZone';
 import MeasurementToolsPanel from '@/components/viewer/MeasurementToolsPanel';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
+import CameraControls from '@/components/viewer/CameraControls';
 
 interface ModelViewerProps {
   forceHideHeader?: boolean;
@@ -43,6 +44,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
+  const [cameraControlMode, setCameraControlMode] = useState<'none' | 'orbit' | 'rotate'>('none');
+  const lastTouchRef = useRef<{x: number, y: number} | null>(null);
   
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
@@ -121,6 +124,19 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [modelViewer]);
 
   const handleToolChange = useCallback((tool: any) => {
+    if (modelViewer.tempPoints && modelViewer.tempPoints.length > 0) {
+      if (modelViewer.activeTool === 'length' || modelViewer.activeTool === 'height') {
+        if (modelViewer.tempPoints.length < 2) {
+          modelViewer.clearTempPoints();
+          toast({
+            title: "Unvollständige Messung entfernt",
+            description: "Es werden mindestens 2 Punkte für eine Längen- oder Höhenmessung benötigt.",
+            duration: 3000,
+          });
+        }
+      }
+    }
+    
     if (tool !== 'none') {
       modelViewer.measurements.forEach(measurement => {
         if (measurement.editMode) {
@@ -129,7 +145,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       });
     }
     modelViewer.setActiveTool(tool);
-  }, [modelViewer]);
+  }, [modelViewer, toast]);
 
   const handleNewProject = useCallback(() => {
     if (modelViewer.loadedModel) {
@@ -461,6 +477,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
     
     const touch = event.touches[0];
+    lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+    
+    if (navigator.vibrate && isMobile) {
+      navigator.vibrate(50);
+    }
+    
     const rect = containerRef.current.getBoundingClientRect();
     const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
@@ -469,14 +491,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     
     if (modelViewer.measurementGroupRef?.current && modelViewer.camera) {
       raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
-      raycasterRef.current.params.Points = { threshold: 0.2 };
+      raycasterRef.current.params.Points = { threshold: 0.3 };
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
         modelViewer.camera,
         touchPosition,
         modelViewer.measurementGroupRef.current,
-        0.3
+        0.5
       );
       
       if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
@@ -518,49 +540,82 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         }
       }
     }
-  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [modelViewer, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, isMobile]);
 
   const handleTouchMove = useCallback((event: TouchEvent) => {
-    if (!isFollowingMouse || !draggedPoint || !selectedMeasurementId || selectedPointIndex === null) return;
     if (!modelViewer.loadedModel || !containerRef.current || event.touches.length !== 1) return;
-    
-    event.preventDefault();
     
     const touch = event.touches[0];
     const rect = containerRef.current.getBoundingClientRect();
-    const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-    const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
-    const touchPosition = new THREE.Vector2(touchX, touchY);
+    if (cameraControlMode !== 'none' && lastTouchRef.current) {
+      event.preventDefault();
+      
+      const deltaX = touch.clientX - lastTouchRef.current.x;
+      const deltaY = touch.clientY - lastTouchRef.current.y;
+      
+      if (cameraControlMode === 'rotate') {
+        modelViewer.controls?.rotateY(deltaX * 0.01);
+      } else if (cameraControlMode === 'orbit') {
+        modelViewer.controls?.rotateLeft(deltaX * 0.005);
+        modelViewer.controls?.rotateUp(deltaY * 0.005);
+      }
+      
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      return;
+    }
     
-    if (modelViewer.camera) {
-      raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
+    if (isFollowingMouse && draggedPoint && selectedMeasurementId !== null && selectedPointIndex !== null) {
+      event.preventDefault();
       
-      const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
+      const touchX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+      const touchY = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
       
-      if (intersects.length > 0) {
-        const newPosition = intersects[0].point.clone();
+      const touchPosition = new THREE.Vector2(touchX, touchY);
+      
+      if (modelViewer.camera) {
+        raycasterRef.current.setFromCamera(touchPosition, modelViewer.camera);
         
-        draggedPoint.position.copy(newPosition);
+        const intersects = raycasterRef.current.intersectObject(modelViewer.loadedModel, true);
         
-        const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
-        
-        if (measurement) {
-          const updatedPoints = [...measurement.points];
-          updatedPoints[selectedPointIndex] = {
-            position: newPosition.clone(),
-            worldPosition: newPosition.clone()
-          };
+        if (intersects.length > 0) {
+          const newPosition = intersects[0].point.clone();
           
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          draggedPoint.position.copy(newPosition);
           
-          updateMeasurementGeometry(measurement);
+          const measurement = modelViewer.measurements.find(m => m.id === selectedMeasurementId);
+          
+          if (measurement) {
+            const updatedPoints = [...measurement.points];
+            updatedPoints[selectedPointIndex] = {
+              position: newPosition.clone(),
+              worldPosition: newPosition.clone()
+            };
+            
+            modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+            
+            updateMeasurementGeometry(measurement);
+          }
         }
       }
     }
-  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex]);
+  }, [isFollowingMouse, draggedPoint, modelViewer, selectedMeasurementId, selectedPointIndex, cameraControlMode]);
 
   const handleTouchEnd = useCallback((event: TouchEvent) => {
+    if (cameraControlMode !== 'none') {
+      lastTouchRef.current = null;
+    }
+    
+    if (isFollowingMouse && selectedMeasurementId !== null && selectedPointIndex !== null) {
+      setIsFollowingMouse(false);
+      setDraggedPoint(null);
+      setSelectedMeasurementId(null);
+      setSelectedPointIndex(null);
+    }
+  }, [cameraControlMode, isFollowingMouse, selectedMeasurementId, selectedPointIndex]);
+
+  const handleCameraControlChange = useCallback((mode: 'none' | 'orbit' | 'rotate') => {
+    setCameraControlMode(prev => prev === mode ? 'none' : mode);
   }, []);
 
   useEffect(() => {
@@ -624,6 +679,25 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     };
   }, [isDragging, isFollowingMouse, modelViewer, toast]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (modelViewer.loadedModel && modelViewer.controls) {
+        const currentRotation = new THREE.Euler().copy(modelViewer.loadedModel.rotation);
+        
+        modelViewer.fitCameraToModel();
+        
+        if (modelViewer.loadedModel) {
+          modelViewer.loadedModel.rotation.copy(currentRotation);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [modelViewer]);
+
   return (
     <div className="relative h-full w-full flex flex-col">
       <ViewerToolbar 
@@ -654,6 +728,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             onFileSelected={handleFileSelected}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+          />
+        )}
+        
+        {modelViewer.loadedModel && isMobile && (
+          <CameraControls
+            activeMode={cameraControlMode}
+            onModeChange={handleCameraControlChange}
           />
         )}
       </ViewerContainer>
