@@ -89,7 +89,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       </div>
 
       {/* Interaktiver Bereich (rechts/unten) */}
-      <div className={`flex flex-col justify-center items-center w-full md:w-1/2 p-4 ${isPortrait ? 'w-full' : ''}`}>
+      <div className={`flex flex-col justify-center items-center w-full md:flex-grow p-4 ${isPortrait ? 'w-full' : ''}`}> {/* Änderung hier */}
         <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
             <h2 className="text-xl font-bold text-gray-800">3D-Modell Viewer</h2>
