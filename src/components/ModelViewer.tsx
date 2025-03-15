@@ -495,7 +495,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       
       const nearestPoint = findNearestEditablePoint(
         raycasterRef.current,
-        modelViewer.camera,
+        modelViewer.camera!,
         touchPosition,
         modelViewer.measurementGroupRef.current,
         0.5

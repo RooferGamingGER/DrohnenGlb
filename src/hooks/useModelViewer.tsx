@@ -893,6 +893,53 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  const clearTempPoints = () => {
+    if (measurementGroupRef.current && temporaryPoints.length > 0) {
+      temporaryPoints.forEach((_, index) => {
+        const pointName = `point-temp-${index}`;
+        const tempPoint = measurementGroupRef.current?.children.find(
+          child => child.name === pointName
+        );
+        
+        if (tempPoint) {
+          if (tempPoint instanceof THREE.Mesh) {
+            tempPoint.geometry.dispose();
+            if (tempPoint.material instanceof THREE.Material) {
+              tempPoint.material.dispose();
+            } else if (Array.isArray(tempPoint.material)) {
+              tempPoint.material.forEach(m => m.dispose());
+            }
+          }
+          measurementGroupRef.current?.remove(tempPoint);
+        }
+      });
+      
+      if (currentMeasurementRef.current) {
+        currentMeasurementRef.current.lines.forEach(line => {
+          line.geometry.dispose();
+          if (line.material instanceof THREE.Material) {
+            line.material.dispose();
+          } else if (Array.isArray(line.material)) {
+            line.material.forEach(m => m.dispose());
+          }
+          measurementGroupRef.current?.remove(line);
+        });
+        
+        currentMeasurementRef.current.labels.forEach(label => {
+          if (label.material instanceof THREE.SpriteMaterial) {
+            label.material.map?.dispose();
+            label.material.dispose();
+          }
+          measurementGroupRef.current?.remove(label);
+        });
+        
+        currentMeasurementRef.current = null;
+      }
+      
+      setTemporaryPoints([]);
+    }
+  };
+
   const setProgress = (value: number) => {
     setState(prev => ({ ...prev, progress: value }));
   };
@@ -1126,57 +1173,30 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         if (activeTool === 'length') {
           value = calculateDistance(prevPoint, position);
           inclination = calculateInclination(prevPoint, position);
-          
-          const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
-          midPoint.y += 0.1;
-          
-          const labelText = formatMeasurementWithInclination(value, inclination);
-          const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
-          
-          labelSprite.userData = {
-            ...labelSprite.userData,
-            isLabel: true,
-            baseScale: { x: 0.8, y: 0.4, z: 1 }
-          };
-          
-          if (cameraRef.current) {
-            updateLabelScale(labelSprite, cameraRef.current);
-          }
-          
-          measurementGroupRef.current.add(labelSprite);
-          
-          if (currentMeasurementRef.current) {
-            currentMeasurementRef.current.labels.push(labelSprite);
-          }
-        } else {
+        } else if (activeTool === 'height') {
           value = calculateHeight(prevPoint, position);
-          
-          const midHeight = (prevPoint.y + position.y) / 2;
-          const midPoint = new THREE.Vector3(
-            prevPoint.x,
-            midHeight,
-            prevPoint.z
-          );
-          midPoint.x += 0.1;
-          
-          const labelText = `${value.toFixed(2)} ${unit}`;
-          const labelSprite = createTextSprite(labelText, midPoint, 0x0000ff);
-          
-          labelSprite.userData = {
-            ...labelSprite.userData,
-            isLabel: true,
-            baseScale: { x: 0.8, y: 0.4, z: 1 }
-          };
-          
-          if (cameraRef.current) {
-            updateLabelScale(labelSprite, cameraRef.current);
-          }
-          
-          measurementGroupRef.current.add(labelSprite);
-          
-          if (currentMeasurementRef.current) {
-            currentMeasurementRef.current.labels.push(labelSprite);
-          }
+        }
+        
+        const midPoint = new THREE.Vector3().addVectors(prevPoint, position).multiplyScalar(0.5);
+        midPoint.y += 0.1;
+        
+        const labelText = formatMeasurementWithInclination(value, inclination);
+        const labelSprite = createTextSprite(labelText, midPoint, 0x00ff00);
+        
+        labelSprite.userData = {
+          ...labelSprite.userData,
+          isLabel: true,
+          baseScale: { x: 0.8, y: 0.4, z: 1 }
+        };
+        
+        if (cameraRef.current) {
+          updateLabelScale(labelSprite, cameraRef.current);
+        }
+        
+        measurementGroupRef.current.add(labelSprite);
+        
+        if (currentMeasurementRef.current) {
+          currentMeasurementRef.current.labels.push(labelSprite);
         }
       }
     }
@@ -1543,6 +1563,28 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  const fitCameraToModel = () => {
+    if (modelRef.current && cameraRef.current && controlsRef.current) {
+      const box = new THREE.Box3().setFromObject(modelRef.current);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      
+      const distance = size * 1.5;
+      
+      const currentDirection = new THREE.Vector3().subVectors(
+        cameraRef.current.position, 
+        controlsRef.current.target
+      ).normalize();
+      
+      cameraRef.current.position.copy(center).add(
+        currentDirection.multiplyScalar(distance)
+      );
+      
+      controlsRef.current.target.copy(center);
+      controlsRef.current.update();
+    }
+  };
+
   const initScene = () => {
     if (rendererRef.current && sceneRef.current && cameraRef.current) {
       while (sceneRef.current.children.length > 0) {
@@ -1609,6 +1651,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current,
-    loadedModel: modelRef.current
+    loadedModel: modelRef.current,
+    clearTempPoints,
+    controls: controlsRef.current,
+    fitCameraToModel
   };
 };
