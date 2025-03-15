@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { Move, RotateCw, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Move, RotateCw, ZoomIn, ZoomOut, Maximize, ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TouchControlsPanelProps {
   activeMode: 'none' | 'pan' | 'rotate' | 'zoom';
@@ -11,6 +12,7 @@ interface TouchControlsPanelProps {
   onTakeScreenshot?: () => void;
   onNewProject?: () => void;
   onExportMeasurements?: () => void;
+  onBackToUpload?: () => void;
 }
 
 const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({ 
@@ -18,8 +20,10 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
   onModeChange,
   onZoomIn,
   onZoomOut,
-  onReset
+  onReset,
+  onBackToUpload
 }) => {
+  const { isPortrait } = useIsMobile();
   console.log("TouchControlsPanel rendered with activeMode:", activeMode);
 
   const handleButtonClick = (mode: 'none' | 'pan' | 'rotate' | 'zoom') => {
@@ -48,6 +52,17 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
   return (
     <div className="fixed bottom-4 left-0 right-0 flex flex-col items-center gap-2 z-50">
       <div className="touch-controls-panel bg-white/90 dark:bg-black/90 rounded-full px-4 py-2 flex gap-4 shadow-lg backdrop-blur">
+        {isPortrait && onBackToUpload && (
+          <button
+            type="button"
+            className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
+            onClick={onBackToUpload}
+            aria-label="Zurück zum Upload"
+          >
+            <ArrowLeft size={24} />
+          </button>
+        )}
+        
         <button
           type="button"
           className={`touch-control-button p-2 rounded-full ${activeMode === 'pan' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
