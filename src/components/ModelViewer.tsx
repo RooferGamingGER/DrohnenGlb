@@ -22,6 +22,7 @@ import LoadingOverlay from '@/components/viewer/LoadingOverlay';
 import DropZone from '@/components/viewer/DropZone';
 import MeasurementToolsPanel from '@/components/viewer/MeasurementToolsPanel';
 import ScreenshotDialog from '@/components/ScreenshotDialog';
+import TouchControlsPanel from '@/components/TouchControlsPanel';
 
 interface ModelViewerProps {
   forceHideHeader?: boolean;
@@ -38,6 +39,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [showScreenshotDialog, setShowScreenshotDialog] = useState(false);
   const [savedScreenshots, setSavedScreenshots] = useState<{id: string, imageDataUrl: string, description: string}[]>([]);
   
+  const [touchMode, setTouchMode] = useState<'none' | 'pan' | 'rotate' | 'zoom'>('none');
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
@@ -563,6 +565,49 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const handleTouchEnd = useCallback((event: TouchEvent) => {
   }, []);
 
+  const handleTouchModeChange = useCallback((mode: 'none' | 'pan' | 'rotate' | 'zoom') => {
+    console.log(`Touch mode changed to: ${mode}`);
+    setTouchMode(mode);
+
+    if (mode === 'zoom' && modelViewer.controls) {
+      const zoomSpeed = 0.5;
+      modelViewer.controls.zoom(zoomSpeed);
+      
+      setTimeout(() => {
+        setTouchMode('none');
+      }, 250);
+    }
+  }, [modelViewer.controls]);
+
+  useEffect(() => {
+    if (!modelViewer.controls) return;
+    
+    modelViewer.controls.enableRotate = false;
+    modelViewer.controls.enablePan = false;
+    modelViewer.controls.enableZoom = false;
+    
+    switch (touchMode) {
+      case 'rotate':
+        modelViewer.controls.enableRotate = true;
+        break;
+      case 'pan':
+        modelViewer.controls.enablePan = true;
+        break;
+      case 'zoom':
+        modelViewer.controls.enableZoom = true;
+        break;
+      case 'none':
+      default:
+        if (!isMobile) {
+          modelViewer.controls.enableRotate = true;
+          modelViewer.controls.enableZoom = true;
+        }
+        break;
+    }
+    
+    modelViewer.controls.update();
+  }, [touchMode, modelViewer.controls, isMobile]);
+
   useEffect(() => {
     if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
@@ -654,6 +699,13 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             onFileSelected={handleFileSelected}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+          />
+        )}
+        
+        {isMobile && modelViewer.loadedModel && (
+          <TouchControlsPanel 
+            activeMode={touchMode}
+            onModeChange={handleTouchModeChange}
           />
         )}
       </ViewerContainer>
