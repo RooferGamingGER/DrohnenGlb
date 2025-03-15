@@ -110,7 +110,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
       {/* Information Panel */}
       <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-primary/10 p-4`}>
-        <div className="w-full max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
+        <div className="w-full max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3 overflow-y-auto"> {/* overflow-y-auto hinzugefügt */}
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer
           </h1>
