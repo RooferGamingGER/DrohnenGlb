@@ -101,6 +101,57 @@ export const centerModel = (model: THREE.Object3D): THREE.Box3 => {
   return box;
 };
 
+// Optimales Zentrieren des Models nach dem Laden oder Orientierungswechsel
+export const optimallyCenterModel = (
+  model: THREE.Object3D, 
+  camera: THREE.Camera, 
+  controls: any
+): void => {
+  // Berechne Bounding Box
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  
+  // Zentriere das Modell an seinem Schwerpunkt
+  model.position.x = -center.x;
+  model.position.y = -center.y;
+  model.position.z = -center.z;
+  
+  // Berechne die optimale Kameraposition
+  const maxDimension = Math.max(size.x, size.y, size.z);
+  const distance = maxDimension * 2.0; // Größerer Abstand für bessere Übersicht
+  
+  // Setze Kamera auf eine Position mit besserem Überblick
+  camera.position.set(distance, distance * 0.8, distance);
+  
+  // Setze den Zielpunkt auf den Mittelpunkt des Modells
+  if (controls) {
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }
+  
+  // Aktualisiere die Matrizen
+  model.updateMatrix();
+  model.updateMatrixWorld(true);
+  
+  // Stellen Sie sicher, dass sich die Kamera auf das gesamte Modell konzentriert
+  if (camera instanceof THREE.PerspectiveCamera) {
+    const aspect = camera.aspect;
+    const fov = camera.fov * (Math.PI / 180);
+    
+    const requiredDistance = (maxDimension / 2) / Math.tan(fov / 2);
+    
+    if (requiredDistance > distance) {
+      const newPosition = camera.position.clone().normalize().multiplyScalar(requiredDistance * 1.2);
+      camera.position.copy(newPosition);
+      if (controls) {
+        controls.update();
+      }
+    }
+  }
+};
+
 // Create a texture loader
 export const loadTexture = (url: string): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {

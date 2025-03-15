@@ -15,7 +15,10 @@ import {
   findNearestEditablePoint,
   updateMeasurementGeometry
 } from '@/utils/measurementUtils';
-import { calculateZoomFactor } from '@/utils/modelUtils';
+import { 
+  calculateZoomFactor, 
+  optimallyCenterModel 
+} from '@/utils/modelUtils';
 
 import ViewerToolbar from '@/components/viewer/ViewerToolbar';
 import ViewerContainer from '@/components/viewer/ViewerContainer';
@@ -46,6 +49,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
   const [isFollowingMouse, setIsFollowingMouse] = useState(false);
+  const [modelCentered, setModelCentered] = useState(false);
   
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
@@ -74,6 +78,16 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     onLoadComplete: () => {
       setTimeout(() => {
         modelViewer.setProgress(100);
+        
+        if (modelViewer.loadedModel && modelViewer.camera && modelViewer.controls) {
+          console.log("Optimales Zentrieren des Modells nach vollständigem Laden");
+          optimallyCenterModel(
+            modelViewer.loadedModel,
+            modelViewer.camera,
+            modelViewer.controls
+          );
+          setModelCentered(true);
+        }
       }, 500);
     }
   });
@@ -97,12 +111,25 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     }
     
     try {
+      setModelCentered(false);
       await modelViewer.loadModel(file);
       setShowMeasurementTools(true);
     } catch (error) {
       console.error('Error loading model:', error);
     }
   }, [modelViewer, toast]);
+
+  useEffect(() => {
+    if (modelViewer.loadedModel && modelViewer.camera && modelViewer.controls && !modelCentered) {
+      console.log("Erstes Zentrieren nach Modellladung");
+      optimallyCenterModel(
+        modelViewer.loadedModel,
+        modelViewer.camera,
+        modelViewer.controls
+      );
+      setModelCentered(true);
+    }
+  }, [modelViewer.loadedModel, modelViewer.camera, modelViewer.controls, modelCentered]);
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -121,6 +148,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
   const handleResetView = useCallback(() => {
     modelViewer.resetView();
+    
+    if (modelViewer.loadedModel && modelViewer.camera && modelViewer.controls) {
+      setTimeout(() => {
+        console.log("Zentrieren nach Reset View");
+        optimallyCenterModel(
+          modelViewer.loadedModel,
+          modelViewer.camera,
+          modelViewer.controls
+        );
+      }, 100);
+    }
   }, [modelViewer]);
 
   const handleToolChange = useCallback((tool: any) => {
@@ -760,12 +798,22 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     const handleOrientationChange = () => {
       if (modelViewer.loadedModel) {
         setTimeout(() => {
-          modelViewer.resetView();
-          
-          const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          modelSizeRef.current = Math.max(size.x, size.y, size.z);
+          console.log("Zentrieren nach Orientierungswechsel");
+          setModelCentered(false);
+          if (modelViewer.camera && modelViewer.controls) {
+            optimallyCenterModel(
+              modelViewer.loadedModel,
+              modelViewer.camera,
+              modelViewer.controls
+            );
+            
+            const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            modelSizeRef.current = Math.max(size.x, size.y, size.z);
+            
+            setModelCentered(true);
+          }
         }, 300);
       }
     };
