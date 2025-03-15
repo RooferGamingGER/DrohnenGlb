@@ -15,7 +15,7 @@ const ViewerContainer = forwardRef<HTMLDivElement, ViewerContainerProps>(
     return (
       <div 
         ref={ref}
-        className={`flex-1 relative ${isPortrait ? 'h-full' : 'flex items-center justify-center'}`}
+        className={`relative ${isPortrait ? 'h-full w-full' : 'flex-1 flex items-center justify-center'}`}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >

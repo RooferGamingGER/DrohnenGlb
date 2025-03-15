@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp } from 'lucide-react';
@@ -72,22 +73,22 @@ const UploadWithExplanations = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="flex h-full w-full bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Informativer Bereich (links) */}
-      <div className={`md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
-        <div className="text-center flex flex-col items-center max-w-md">
+      <div className={`flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}>
+        <div className="text-center flex flex-col items-center max-w-xl mx-auto">
           <img
             src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
             alt="Drohnenvermessung by RooferGaming"
-            className="h-48 mb-4 filter drop-shadow-lg animate-float"
+            className="h-48 mb-6 filter drop-shadow-lg animate-float"
           />
-          <h1 className="text-3xl font-bold text-white mb-4 text-balance">
+          <h1 className="text-3xl font-bold text-white mb-6 text-balance">
             DrohnenGLB by RooferGaming®
           </h1>
           <p className="text-blue-100 mb-8 text-balance">
             Die präzise Lösung für Ihre Dachvermessung. Nehmen Sie genaue Messungen vor und erstellen Sie detaillierte Berichte direkt auf Ihrem Gerät.
           </p>
-          <div className="grid grid-cols-2 gap-4 w-full">
+          <div className="grid grid-cols-2 gap-6 w-full max-w-md">
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/20">
               <h3 className="font-semibold text-white mb-2">Präzise Messungen</h3>
               <p className="text-blue-100 text-sm">Exakte Messergebnisse für Ihre Projekte</p>
@@ -101,8 +102,8 @@ const UploadWithExplanations = () => {
       </div>
 
       {/* Upload-Bereich (rechts) */}
-      <div className={`flex flex-col justify-center items-center w-full md:flex-grow p-4 ${isPortrait ? 'w-full' : ''}`}>
-        <Card className="w-full max-w-md p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
+      <div className={`flex flex-col justify-center items-center p-8 ${isPortrait ? 'w-full' : 'flex-1'}`}>
+        <Card className="w-full max-w-lg p-8 shadow-xl bg-white/80 backdrop-blur-sm border border-gray-100">
           <div className="text-center md:hidden mb-8">
             <img
               src="/lovable-uploads/ae57186e-1cff-456d-9cc5-c34295a53942.png"
@@ -120,18 +121,18 @@ const UploadWithExplanations = () => {
           </div>
 
           <div
-            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+            className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all w-full p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
           >
-            <FileUp className="mb-3 md:mb-4 text-primary h-8 w-8 md:h-10 md:w-10" />
-            <h3 className="font-semibold mb-2 text-base md:text-xl text-foreground">GLB-Datei hochladen</h3>
-            <p className="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+            <FileUp className="mb-4 text-primary h-10 w-10" />
+            <h3 className="font-semibold mb-2 text-xl text-foreground">GLB-Datei hochladen</h3>
+            <p className="text-base text-muted-foreground mb-4">
               Ziehen Sie eine Datei hierher oder klicken
             </p>
             <Button
               ref={uploadButtonRef}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm md:text-base py-2 px-4 h-auto cursor-pointer touch-manipulation touch-target"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-base py-2 px-4 h-auto cursor-pointer touch-manipulation touch-target"
               onClick={handleButtonClick}
               type="button"
               aria-label="Datei auswählen"
