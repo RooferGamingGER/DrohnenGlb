@@ -14,6 +14,7 @@ interface DropZoneProps {
 const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const { isPortrait } = useIsMobile();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,41 +38,40 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
     }
   };
 
-  // Specific touch event handlers for mobile devices
+  // Enhanced touch event handling for the entire drop zone
   useEffect(() => {
+    const dropZoneElement = dropZoneRef.current;
     const uploadButton = uploadButtonRef.current;
     
-    if (uploadButton) {
-      const handleTouchStart = (e: TouchEvent) => {
-        // Prevent any default behavior that might interfere
-        e.preventDefault();
-      };
-      
+    if (dropZoneElement) {
       const handleTouchEnd = (e: TouchEvent) => {
-        e.preventDefault();
-        
-        // Small delay to ensure the event is processed correctly
-        setTimeout(() => {
-          if (fileInputRef.current) {
-            fileInputRef.current.click();
+        // Only trigger if this is part of the drop zone
+        if (e.target && dropZoneElement.contains(e.target as Node)) {
+          e.preventDefault();
+          
+          // If the touch is on the button, trigger the file input click
+          if (uploadButton && (e.target === uploadButton || uploadButton.contains(e.target as Node))) {
+            setTimeout(() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.click();
+              }
+            }, 10);
           }
-        }, 10);
+        }
       };
       
-      uploadButton.addEventListener('touchstart', handleTouchStart, { passive: false });
-      uploadButton.addEventListener('touchend', handleTouchEnd, { passive: false });
+      dropZoneElement.addEventListener('touchend', handleTouchEnd, { passive: false });
       
       return () => {
-        uploadButton.removeEventListener('touchstart', handleTouchStart);
-        uploadButton.removeEventListener('touchend', handleTouchEnd);
+        dropZoneElement.removeEventListener('touchend', handleTouchEnd);
       };
     }
   }, []);
 
   return (
-    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} w-full h-full`}>
+    <div className={`flex ${isPortrait ? 'flex-col' : 'flex-row'} h-full w-full`}>
       {/* Upload Area - top in portrait mode, left in landscape */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2 h-full'} flex items-center justify-center bg-muted/30`}>
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center`}>
         <Card className="w-[90%] max-w-xl bg-white/10 backdrop-blur-sm border border-muted shadow-xl p-4 md:p-6 m-4">
           <div className="text-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold text-foreground">Modell hochladen</h2>
@@ -81,9 +81,11 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
 
           <div
+            ref={dropZoneRef}
             className="border-2 border-dashed border-primary/30 rounded-lg text-center hover:border-primary transition-all 
                        w-full p-4 md:p-6 bg-white/5 backdrop-blur-sm shadow-lg hover:shadow-primary/10 
-                       hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center"
+                       hover:scale-[1.02] transition-all duration-300 flex flex-col items-center justify-center
+                       touch-manipulation"
             onDragOver={onDragOver}
             onDrop={onDrop}
           >
@@ -116,7 +118,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
       </div>
 
       {/* Information Panel - bottom in portrait mode, right in landscape */}
-      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2 h-full'} flex items-center justify-center bg-primary/10`}>
+      <div className={`${isPortrait ? 'h-1/2' : 'w-1/2'} flex items-center justify-center bg-primary/5`}>
         <div className="w-[90%] max-w-xl mx-auto p-3 md:p-5 space-y-2 md:space-y-3">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
             3D-Modell Viewer

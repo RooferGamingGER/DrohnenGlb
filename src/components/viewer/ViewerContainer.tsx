@@ -1,5 +1,6 @@
 
 import { forwardRef, ReactNode } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ViewerContainerProps {
   children: ReactNode;
@@ -9,10 +10,12 @@ interface ViewerContainerProps {
 
 const ViewerContainer = forwardRef<HTMLDivElement, ViewerContainerProps>(
   ({ children, onDragOver, onDrop }, ref) => {
+    const { isPortrait } = useIsMobile();
+    
     return (
       <div 
         ref={ref}
-        className="flex-1 relative"
+        className={`flex-1 relative ${isPortrait ? 'h-full' : 'flex items-center justify-center'}`}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >

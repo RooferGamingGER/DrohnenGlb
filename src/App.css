@@ -66,6 +66,7 @@ html, body {
   overflow: hidden;
   position: fixed;
   touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure buttons are easily tappable on touch devices */
@@ -97,5 +98,45 @@ button {
   a {
     cursor: pointer !important;
     touch-action: manipulation !important;
+  }
+}
+
+/* Fix for vertical centering in different views */
+.vertical-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Ensure content is properly displayed in portrait mode */
+@media (orientation: portrait) {
+  .portrait-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .portrait-section {
+    height: 50vh;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Ensure content is properly displayed in landscape mode */
+@media (orientation: landscape) {
+  .landscape-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .landscape-section {
+    height: 100%;
+    width: 50%;
+    overflow: hidden;
   }
 }
