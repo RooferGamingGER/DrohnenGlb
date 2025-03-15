@@ -29,6 +29,8 @@ import {
   isInclinationSignificant
 } from '@/utils/measurementUtils';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast'; // Angenommen, du verwendest use-toast für Benachrichtigungen
+
 
 interface UseModelViewerProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -663,6 +665,24 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  interface Measurement {
+  id: string;
+  type: 'length' | 'height' | string; // Ersetze 'string' durch spezifische Typen, falls vorhanden
+  points: THREE.Vector3[];
+  labelObject?: THREE.Sprite;
+  lineObjects?: THREE.Line[];
+  pointObjects?: THREE.Mesh[];
+  // ... andere Eigenschaften
+}
+
+interface MeasurementsProps {
+  measurements: Measurement[];
+  setMeasurements: React.Dispatch<React.SetStateAction<Measurement[]>>;
+  measurementGroupRef: React.RefObject<THREE.Group>;
+}
+
+const useMeasurements = ({ measurements, setMeasurements, measurementGroupRef }: MeasurementsProps) => {
+
   const deleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete && measurementGroupRef.current) {
@@ -673,7 +693,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }
         measurementGroupRef.current.remove(measurementToDelete.labelObject);
       }
-      
+
       if (measurementToDelete.lineObjects) {
         measurementToDelete.lineObjects.forEach(line => {
           line.geometry.dispose();
@@ -681,7 +701,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           measurementGroupRef.current?.remove(line);
         });
       }
-      
+
       if (measurementToDelete.pointObjects) {
         measurementToDelete.pointObjects.forEach(point => {
           point.geometry.dispose();
@@ -689,19 +709,26 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           measurementGroupRef.current?.remove(point);
         });
       }
-      
+
       setMeasurements(prev => prev.filter(m => m.id !== id));
     }
   };
 
   const deleteSinglePoint = (measurementId: string, pointIndex: number) => {
     const measurement = measurements.find(m => m.id === measurementId);
-    
+
     if (!measurement || !measurementGroupRef.current) {
       return;
     }
-    
-    if (measurement.type === 'length' && measurement.points.length <= 2) {
+
+    // Indexüberprüfung
+    if (pointIndex < 0 || pointIndex >= measurement.points.length) {
+      console.error("Ungültiger Punktindex:", pointIndex);
+      return;
+    }
+
+    // Typvergleich verbessern
+    if ((measurement.type.toLowerCase() === 'length' || measurement.type.toLowerCase() === 'height') && measurement.points.length <= 2) {
       deleteMeasurement(measurementId);
       toast({
         title: "Messung gelöscht",
@@ -709,15 +736,31 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       });
       return;
     }
-    
-    if (measurement.type === 'height' && measurement.points.length <= 2) {
-      deleteMeasurement(measurementId);
-      toast({
-        title: "Messung gelöscht",
-        description: "Die Messung wurde gelöscht, da sie mindestens zwei Punkte benötigt.",
-      });
-      return;
+
+    // Entfernung von Punkt und zugehörigen 3D-Objekten
+    const newPoints = measurement.points.filter((_, index) => index !== pointIndex);
+    const newLineObjects = measurement.lineObjects?.filter((_, index) => index !== pointIndex);
+    const newPointObjects = measurement.pointObjects?.filter((_, index) => index !== pointIndex);
+
+    // Fehlerbehandlung für 3D-Objekte
+    if (measurement.pointObjects && measurement.pointObjects[pointIndex]) {
+      measurement.pointObjects[pointIndex].geometry.dispose();
+      (measurement.pointObjects[pointIndex].material as THREE.Material).dispose();
+      measurementGroupRef.current.remove(measurement.pointObjects[pointIndex]);
     }
+
+    if (measurement.lineObjects && measurement.lineObjects[pointIndex]) {
+      measurement.lineObjects[pointIndex].geometry.dispose();
+      (measurement.lineObjects[pointIndex].material as THREE.Material).dispose();
+      measurementGroupRef.current.remove(measurement.lineObjects[pointIndex]);
+    }
+
+    setMeasurements(prev => prev.map(m => m.id === measurementId ? { ...m, points: newPoints, lineObjects: newLineObjects, pointObjects: newPointObjects } : m));
+  };
+
+  
+};
+
     
     const pointToDelete = measurement.pointObjects?.[pointIndex];
     if (pointToDelete && measurementGroupRef.current) {
@@ -1609,6 +1652,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current,
-    loadedModel: modelRef.current
+    loadedModel: modelRef.current,
+    deleteMeasurement, deleteSinglePoint 
   };
 };
+export default useMeasurements;
