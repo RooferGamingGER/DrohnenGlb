@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -316,22 +315,18 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
-  // Verbesserte Touch-Handling-Funktionen
   const handleTouchStart = (event: TouchEvent) => {
     if (!containerRef.current) return;
     
-    event.preventDefault(); // Verhindern das Standard-Touch-Verhalten
+    event.preventDefault();
     
-    // Prüfen auf Pinch-Zoom (2 Finger)
     if (event.touches.length === 2) {
       isPinchingRef.current = true;
       
-      // Initialen Pinch-Abstand berechnen
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
       pinchDistanceStartRef.current = Math.sqrt(dx * dx + dy * dy);
       
-      // OrbitControls deaktivieren während des Pinchens
       if (controlsRef.current) {
         controlsRef.current.enabled = false;
       }
@@ -347,17 +342,14 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     const rect = containerRef.current.getBoundingClientRect();
     const now = Date.now();
     
-    // Speichern der Berührungsinformationen
     touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     touchIdentifierRef.current = touch.identifier;
     isTouchMoveRef.current = false;
     touchStartTimeRef.current = now;
     
-    // Setzen der Mausposition entsprechend dem Touch
     mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     mouseRef.current.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     
-    // Prüfen, ob der Benutzer einen Messpunkt berührt hat
     raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
     
     const pointObjects = measurementGroupRef.current.children.filter(
@@ -367,12 +359,10 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     const intersects = raycasterRef.current.intersectObjects(pointObjects, false);
     
     if (intersects.length > 0) {
-      // Benutzer hat einen Messpunkt berührt
       const pointMesh = intersects[0].object as THREE.Mesh;
       const pointId = pointMesh.name;
       setHoveredPointId(pointId);
       
-      // Doppeltipp erkennen
       const isDoubleTap = isDoubleClick(now, lastTouchTimeRef.current);
       lastTouchTimeRef.current = now;
       
@@ -383,7 +373,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         const measurement = measurements.find(m => m.id === measurementId);
         
         if (measurement?.editMode || isDoubleTap) {
-          // Bei Doppeltipp oder im Bearbeitungsmodus den Punkt zum Ziehen aktivieren
           setIsDraggingPoint(true);
           draggedPointRef.current = pointMesh;
           
@@ -404,14 +393,11 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }
       }
     } else if (activeTool !== 'none' && modelRef.current) {
-      // Prüfen ob der Benutzer das Modell berührt hat für neue Messpunkte
       const modelIntersects = raycasterRef.current.intersectObject(modelRef.current, true);
       
       if (modelIntersects.length > 0) {
-        // Lange Berührung (500ms) überwachen um festzustellen, ob der Benutzer messen möchte
         const touchPoint = modelIntersects[0].point.clone();
         setTimeout(() => {
-          // Nur ausführen, wenn keine Bewegung stattgefunden hat und es derselbe Touch ist
           if (!isTouchMoveRef.current && 
               touchIdentifierRef.current === touch.identifier && 
               touchStartPositionRef.current && 
@@ -429,45 +415,35 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     event.preventDefault();
     
-    // Pinch-Zoom verarbeiten
     if (isPinchingRef.current && event.touches.length === 2 && cameraRef.current && pinchDistanceStartRef.current) {
-      // Aktuellen Pinch-Abstand berechnen
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
       const pinchDistance = Math.sqrt(dx * dx + dy * dy);
       
-      // Zoom-Faktor berechnen
       const zoomDelta = (pinchDistance - pinchDistanceStartRef.current) * 0.01;
       
-      // Kamera-Zoom anpassen (positiver Wert = reinzoomen)
       const newZoom = cameraRef.current.position.z - zoomDelta;
       
-      // Begrenzung des Zooms auf sinnvolle Werte
       cameraRef.current.position.z = Math.max(2, Math.min(20, newZoom));
       
-      // Aktualisieren des Startwertes für den nächsten Move-Event
       pinchDistanceStartRef.current = pinchDistance;
       
       return;
     }
     
-    // Ein-Finger-Gesten
     if (event.touches.length !== 1) return;
     
     const touch = event.touches[0];
     
-    // Bewegung erkennen
     if (touchStartPositionRef.current) {
       const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
       const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
       
-      // Ab einer gewissen Schwelle als Bewegung interpretieren
       if (deltaX > 10 || deltaY > 10) {
         isTouchMoveRef.current = true;
       }
     }
     
-    // Punkt-Ziehen verarbeiten
     if (isDraggingPoint && draggedPointRef.current && modelRef.current && cameraRef.current && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       mouseRef.current.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
@@ -488,29 +464,18 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           );
         }
       }
-    }
-    // Modell drehen/verschieben durch Touch
-    else if (isTouchMoveRef.current && controlsRef.current && touchStartPositionRef.current && activeTool === 'none' && !isPinchingRef.current) {
-      // Manuelle Rotation durch Berechnung der Winkel statt direkter Methoden
+    } else if (isTouchMoveRef.current && controlsRef.current && touchStartPositionRef.current && activeTool === 'none' && !isPinchingRef.current) {
       if (controlsRef.current) {
-        // Berechnen der Deltas für die Rotation
         const deltaX = (touch.clientX - touchStartPositionRef.current.x) * 0.005;
         const deltaY = (touch.clientY - touchStartPositionRef.current.y) * 0.005;
         
-        // Rotieren des Modells durch Ändern der Kameraposition auf dem Orbit
-        // Dies ersetzt rotateLeft und rotateUp, die nicht existieren
         if (cameraRef.current) {
-          // Aktuelle Kameraposition in Kugelkoordinaten umrechnen
           const radius = cameraRef.current.position.distanceTo(controlsRef.current.target);
           
-          // Anwenden der Rotation auf die Orbit Controls
-          // Wir aktualisieren den Zustand direkt
           controlsRef.current.update();
           
-          // Kamera um die X-Achse rotieren (hoch/runter)
           cameraRef.current.position.y += deltaY * radius;
           
-          // Kamera um die Y-Achse rotieren (links/rechts)
           const theta = Math.atan2(
             cameraRef.current.position.x - controlsRef.current.target.x,
             cameraRef.current.position.z - controlsRef.current.target.z
@@ -523,22 +488,18 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           cameraRef.current.position.x = x;
           cameraRef.current.position.z = z;
           
-          // Sicherstellen, dass die Kamera zum Ziel schaut
           cameraRef.current.lookAt(controlsRef.current.target);
           
-          // Update der Controls erzwingen
           controlsRef.current.update();
         }
       }
       
-      // Update der Startposition
       touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     }
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
     if (isPinchingRef.current) {
-      // End of pinch
       isPinchingRef.current = false;
       pinchDistanceStartRef.current = null;
       
@@ -570,9 +531,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       setSelectedMeasurementId(null);
       setSelectedPointIndex(null);
     } else if (!isTouchMoveRef.current && activeTool !== 'none' && modelRef.current && containerRef.current && event.changedTouches.length > 0) {
-      // Statischer Tipp (kein Drag) auf dem Modell für Messung
       const touch = event.changedTouches[0];
-      // Nur verarbeiten, wenn es der ursprüngliche Touch ist
       if (touchIdentifierRef.current === touch.identifier) {
         handleMeasurementTap(touch);
       }
@@ -583,7 +542,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     touchIdentifierRef.current = null;
   };
 
-  // Neue Hilfsfunktion für Touch-basierte Messungen
   const addMeasurementPointTouch = (point: THREE.Vector3) => {
     if (activeTool === 'none') return;
     
@@ -601,7 +559,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       finalizeMeasurement(newPoints);
     }
     
-    // Vibration für haptisches Feedback (falls vom Browser unterstützt)
     if (window.navigator && window.navigator.vibrate) {
       window.navigator.vibrate(50);
     }
@@ -1050,7 +1007,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls.enableZoom = true;
     controls.screenSpacePanning = true;
     
-    // Bessere Anpassung der Controlgeschwindigkeit an die Modellgröße
     const updateControlSpeed = () => {
       if (controlsRef.current && modelRef.current) {
         const box = new THREE.Box3().setFromObject(modelRef.current);
@@ -1059,7 +1015,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         const maxDimension = Math.max(size.x, size.y, size.z);
         const distance = camera.position.distanceTo(center);
         
-        // Anpassung der Kontrollgeschwindigkeit basierend auf Modellgröße und Kameradistanz
         controlsRef.current.rotateSpeed = 0.5 * (distance / maxDimension);
         controlsRef.current.panSpeed = 0.6 * (distance / maxDimension);
         controlsRef.current.zoomSpeed = 1.0 + (maxDimension / 10);
@@ -1083,11 +1038,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (measurementGroupRef.current && cameraRef.current) {
         measurementGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Sprite) {
-            // Sprites immer zur Kamera orientieren
             child.quaternion.copy(cameraRef.current!.quaternion);
           
             if (child.userData && child.userData.isLabel) {
-              // Labels skalieren, damit sie bei Zoom immer gleich groß erscheinen
               updateLabelScale(child, cameraRef.current);
             }
           }
@@ -1103,7 +1056,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     requestRef.current = requestAnimationFrame(animate);
 
-    // Verbesserte Größenanpassung, um die Modellansicht beim Wechsel der Bildschirmgröße zu optimieren
     const handleResize = () => {
       if (
         containerRef.current &&
@@ -1119,7 +1071,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         rendererRef.current.setSize(width, height);
         rendererRef.current.setPixelRatio(window.devicePixelRatio);
         
-        // Wenn ein Modell geladen ist, sicherstellen, dass es auch nach Resize korrekt zentriert ist
         if (modelRef.current) {
           adjustCameraToModelSize();
         }
@@ -1161,31 +1112,24 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     };
   }, []);
 
-  // Neue Funktion zur besseren Ausrichtung der Kamera an das Modell
   const adjustCameraToModelSize = () => {
     if (!modelRef.current || !cameraRef.current || !controlsRef.current) return;
     
-    // Bounding-Box des Modells berechnen
     const box = new THREE.Box3().setFromObject(modelRef.current);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     
-    // Maximale Dimension des Modells für optimalen Zoom ermitteln
     const maxDimension = Math.max(size.x, size.y, size.z);
     
-    // Optimaler Abstand basierend auf Modellgröße und Sichtfeld der Kamera
     const fov = cameraRef.current.fov * (Math.PI / 180);
     const optimalDistance = maxDimension / (2 * Math.tan(fov / 2));
     
-    // Aktuelle Richtung der Kamera beibehalten, nur Abstand ändern
     const direction = new THREE.Vector3();
     direction.subVectors(cameraRef.current.position, center).normalize();
     
-    // Neue Kameraposition berechnen
     const newPosition = new THREE.Vector3();
-    newPosition.copy(center).add(direction.multiplyScalar(optimalDistance * 1.2)); // 1.2 für etwas Puffer
+    newPosition.copy(center).add(direction.multiplyScalar(optimalDistance * 1.2));
     
-    // Kamera sanft an die neue Position bewegen
     cameraRef.current.position.copy(newPosition);
     controlsRef.current.target.copy(center);
     controlsRef.current.update();
@@ -1453,7 +1397,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         finalizeMeasurement(newPoints);
       }
       
-      // Vibration als Feedback, falls vom Browser unterstützt
       if (window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(50);
       }
@@ -1621,7 +1564,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       processingStartTimeRef.current = Date.now();
 
-      // Zentieren des Modells mithilfe der verbesserten Funktion
       const box = centerModel(model);
       const size = box.getSize(new THREE.Vector3()).length();
       const center = box.getCenter(new THREE.Vector3());
@@ -1658,7 +1600,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
       applyBackground(backgroundOptions.find(bg => bg.id === 'dark') || backgroundOptions[0]);
       
-      // Anpassung der Kameraposition für optimale Sicht auf das Modell
       setTimeout(() => {
         adjustCameraToModelSize();
       }, 300);
@@ -1726,10 +1667,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
 
   const resetView = () => {
     if (controlsRef.current && modelRef.current && cameraRef.current) {
-      // Verbesserte Ansichtsrücksetzung mit sanfter Animation
       adjustCameraToModelSize();
       
-      // Sicherstellen, dass Controls zurückgesetzt werden
       controlsRef.current.reset();
     }
   };
@@ -1776,11 +1715,33 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     });
   };
 
-  // Hilfsfunktion, um die Modelviewer-Instanz zu aktualisieren
   const updateModelViewer = () => {
     if (rendererRef.current && sceneRef.current && cameraRef.current) {
       rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
+  };
+
+  const adjustCameraToModelSize = () => {
+    if (!modelRef.current || !cameraRef.current || !controlsRef.current) return;
+    
+    const box = new THREE.Box3().setFromObject(modelRef.current);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()).length();
+    
+    const maxDimension = Math.max(size.x, size.y, size.z);
+    
+    const fov = cameraRef.current.fov * (Math.PI / 180);
+    const optimalDistance = maxDimension / (2 * Math.tan(fov / 2));
+    
+    const direction = new THREE.Vector3();
+    direction.subVectors(cameraRef.current.position, center).normalize();
+    
+    const newPosition = new THREE.Vector3();
+    newPosition.copy(center).add(direction.multiplyScalar(optimalDistance * 1.2));
+    
+    cameraRef.current.position.copy(newPosition);
+    controlsRef.current.target.copy(center);
+    controlsRef.current.update();
   };
 
   return {
@@ -1807,8 +1768,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     renderer: rendererRef.current,
     scene: sceneRef.current,
     camera: cameraRef.current,
+    controls: controlsRef.current,
     loadedModel: modelRef.current,
-    updateModelViewer, // Neue Funktion für manuelle Updates
-    adjustCameraToModelSize // Neue Funktion für bessere Kamerapositionierung
+    updateModelViewer,
+    adjustCameraToModelSize
   };
 };
