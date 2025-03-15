@@ -1,6 +1,6 @@
 
 import * as XLSX from 'xlsx';
-import { Measurement } from '@/types/measurement';
+import { Measurement } from '../measurementUtils';
 
 /**
  * Exports measurements to Excel format

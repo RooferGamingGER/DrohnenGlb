@@ -1,6 +1,6 @@
 
 import MeasurementTools from '@/components/MeasurementTools';
-import { Measurement, MeasurementType, MeasurementPoint } from '@/types/measurement';
+import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { FileDown, Home, RefreshCcw, Camera, Trash2 } from "lucide-react";
@@ -73,10 +73,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
 
     try {
       await exportMeasurementsToPDF(measurements, screenshots, false);
-      // Provide haptic feedback on mobile devices after successful download
-      if (navigator.vibrate && isMobile) {
-        navigator.vibrate([100, 50, 100]); // Vibration pattern for success
-      }
       toast({
         title: "Bericht gespeichert",
         description: "Der Bericht wurde als PDF heruntergeladen.",

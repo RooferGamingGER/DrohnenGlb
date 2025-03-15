@@ -1,9 +1,8 @@
-
-import jsPDF from 'jspdf';
-import { Measurement, isInclinationSignificant, MeasurementType } from '@/types/measurement';
+import { jsPDF as JsPDFModule } from "jspdf";
+import autoTable from 'jspdf-autotable';
+import { Measurement, isInclinationSignificant, MeasurementType } from '../measurementUtils';
 import { Screenshot } from './types';
-import 'jspdf-autotable'; // Import autotable plugin
-import { optimizeImageData } from './captureUtils'; // Import the optimizeImageData function
+import { optimizeImageData } from './captureUtils';
 
 /**
  * Exports measurements and screenshots to PDF format (DIN A4)
@@ -22,7 +21,7 @@ export const exportMeasurementsToPDF = async (
         }
 
         // 🔹 PDF im DIN A4 Format (210mm x 297mm)
-        const doc = new jsPDF({
+        const doc = new JsPDFModule({
             orientation: "portrait",
             unit: "mm",
             format: "a4",
@@ -120,9 +119,7 @@ export const exportMeasurementsToPDF = async (
                 return measurementRow;
             });
 
-            // Create table with jspdf-autotable
-            // @ts-ignore - Using type assertion to bypass TypeScript error
-            (doc as any).autoTable({
+            autoTable(doc, {
                 startY: tableStartY,
                 head: [['Beschreibung', 'Typ', 'Messwert', 'Dachneigung']],
                 body: tableData,
@@ -233,4 +230,3 @@ export const exportMeasurementsToPDF = async (
         throw error;
     }
 };
-

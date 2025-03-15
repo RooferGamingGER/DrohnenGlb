@@ -1,6 +1,6 @@
 
 import { saveAs } from 'file-saver';
-import { Measurement, isInclinationSignificant } from '@/types/measurement';
+import { Measurement, isInclinationSignificant } from '../measurementUtils';
 import { Screenshot } from './types';
 
 /**

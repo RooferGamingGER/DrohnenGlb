@@ -1,4 +1,3 @@
-
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileUp, ArrowDown, ArrowUpRight, Send } from 'lucide-react';
@@ -32,7 +31,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
 
       {/* Upload Area - Now on the left or top side */}
       <div className={`${isPortrait ? 'w-full h-1/2' : 'w-1/2 h-full'} flex flex-col items-center justify-center bg-muted/30 overflow-hidden`}>
-        <div className="flex-grow flex items-center justify-center p-4">
+        <div className="flex-grow flex items-center justify-center">
           <Card className={`w-full max-w-2xl mx-4 p-4 md:p-6 bg-white/10 backdrop-blur-sm border border-muted shadow-xl ${isPortrait ? 'my-2' : ''}`}>
             <div className="text-center mb-3 md:mb-4">
               <h2 className="text-xl md:text-3xl font-bold text-foreground">Modell hochladen</h2>
@@ -47,7 +46,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
               onDragOver={onDragOver}
               onDrop={onDrop}
             >
-              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" />
+              <FileUp className="mb-3 md:mb-4 text-primary h-10 w-10" /> {/* animate-float entfernt */}
               <h3 className="font-semibold mb-2 md:mb-3 text-lg md:text-2xl text-foreground">GLB-Datei hochladen</h3>
               <p className="text-md md:text-lg text-muted-foreground mb-3 md:mb-4">
                 Ziehen Sie eine Datei hierher oder klicken
@@ -129,6 +128,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
           </div>
         </div>
       </div>
+
     </div>
   );
 };
