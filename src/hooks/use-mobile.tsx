@@ -1,51 +1,46 @@
 
-import * as React from "react"
+import { useState, useEffect } from 'react';
 
-const MOBILE_BREAKPOINT = 768
+interface UseMobileReturn {
+  isMobile: boolean;
+  isTablet: boolean;
+  isPortrait: boolean;
+}
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
-  const [isPortrait, setIsPortrait] = React.useState<boolean | undefined>(undefined)
+export const useIsMobile = (): UseMobileReturn => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    
-    const checkOrientation = () => {
-      setIsPortrait(window.innerHeight > window.innerWidth)
-    }
-    
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-      checkOrientation()
-    }
-    
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    checkOrientation()
-    
-    window.addEventListener("resize", checkOrientation)
-    window.addEventListener("orientationchange", checkOrientation)
-    
+  useEffect(() => {
+    const checkMobile = () => {
+      // Check for mobile devices based on user agent
+      const userAgent = navigator.userAgent.toLowerCase();
+      const mobileRegex = /(android|webos|iphone|ipad|ipod|blackberry|windows phone)/i;
+      const tabletRegex = /(ipad|tablet|playbook|silk)|(android(?!.*mobile))/i;
+      
+      const isMobileDevice = mobileRegex.test(userAgent);
+      const isTabletDevice = tabletRegex.test(userAgent) || 
+                            (isMobileDevice && window.innerWidth >= 768 && window.innerWidth <= 1024);
+      
+      // Check orientation
+      const orientation = window.innerHeight > window.innerWidth;
+      
+      setIsMobile(isMobileDevice);
+      setIsTablet(isTabletDevice);
+      setIsPortrait(orientation);
+    };
+
+    checkMobile();
+
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+
     return () => {
-      mql.removeEventListener("change", onChange)
-      window.removeEventListener("resize", checkOrientation)
-      window.removeEventListener("orientationchange", checkOrientation)
-    }
-  }, [])
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
 
-  // Return both the object with properties and a boolean for backward compatibility
-  return {
-    isMobile: !!isMobile,
-    isPortrait: !!isPortrait,
-    // For backward compatibility with code expecting a boolean directly
-    [Symbol.toPrimitive](hint: string) {
-      return hint === 'boolean' ? !!isMobile : undefined;
-    }
-  }
-}
-
-// Add a convenience hook for when only the boolean is needed
-export function useIsMobileBoolean(): boolean {
-  const mobileState = useIsMobile();
-  return mobileState.isMobile;
-}
+  return { isMobile, isTablet, isPortrait };
+};

@@ -31,7 +31,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
   const [description, setDescription] = useState('');
   const timestamp = new Date().getTime();
   const filename = `Aufnahme_${timestamp}`;
-  const isMobile = useIsMobile();
+  const { isMobile, isTablet, isPortrait } = useIsMobile();
 
   const handleDownload = () => {
     if (imageDataUrl) {
@@ -47,6 +47,17 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
     }
   };
 
+  // Add touch-specific event handlers
+  const handleTouchSave = (event: React.TouchEvent) => {
+    event.preventDefault();
+    handleSave();
+  };
+
+  const handleTouchDownload = (event: React.TouchEvent) => {
+    event.preventDefault();
+    handleDownload();
+  };
+
   if (!imageDataUrl) return null;
 
   return (
@@ -56,7 +67,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           <DialogTitle>Aufnahme</DialogTitle>
           <DialogDescription>
             Geben Sie eine Beschreibung für die Aufnahme ein.
-            {isMobile.isPortrait && " (Aufnahme wurde automatisch im Querformat erstellt)"}
+            {(isMobile || isTablet) && isPortrait && " (Aufnahme wurde automatisch im Querformat erstellt)"}
           </DialogDescription>
         </DialogHeader>
         
@@ -89,13 +100,22 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
           
           <div className="flex gap-2">
             {onSave && (
-              <Button onClick={handleSave} variant="secondary">
+              <Button 
+                onClick={handleSave} 
+                onTouchStart={handleTouchSave}
+                variant="secondary"
+                className="touch-manipulation"
+              >
                 <Save className="mr-2 h-4 w-4" />
                 Zur Messung hinzufügen
               </Button>
             )}
             
-            <Button onClick={handleDownload}>
+            <Button 
+              onClick={handleDownload}
+              onTouchStart={handleTouchDownload}
+              className="touch-manipulation"
+            >
               <Download className="mr-2 h-4 w-4" />
               Herunterladen
             </Button>

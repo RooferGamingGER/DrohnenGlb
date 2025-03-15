@@ -43,6 +43,19 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
     action();
   };
 
+  // Handle zoom buttons with proper touch events
+  const handleZoomInTouch = (event: React.TouchEvent) => {
+    event.preventDefault();
+    console.log("Zoom in touch triggered");
+    onZoomIn();
+  };
+
+  const handleZoomOutTouch = (event: React.TouchEvent) => {
+    event.preventDefault();
+    console.log("Zoom out touch triggered");
+    onZoomOut();
+  };
+
   // Enable Hammer.js or similar touch gesture library if available in the window object
   useEffect(() => {
     // This is a check that would help if we were to add Hammer.js in the future
@@ -80,7 +93,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
           onClick={onZoomIn}
-          onTouchStart={(e) => handleTouchStart(e, onZoomIn)}
+          onTouchStart={handleZoomInTouch}
           aria-label="Heranzoomen"
         >
           <ZoomIn size={24} />
@@ -90,7 +103,7 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
           type="button"
           className="touch-control-button p-2 rounded-full bg-muted hover:bg-muted/80"
           onClick={onZoomOut}
-          onTouchStart={(e) => handleTouchStart(e, onZoomOut)}
+          onTouchStart={handleZoomOutTouch}
           aria-label="Herauszoomen"
         >
           <ZoomOut size={24} />

@@ -38,7 +38,7 @@ interface ModelViewerProps {
 const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isMobile, isPortrait } = useIsMobile();
+  const { isMobile, isTablet, isPortrait } = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -57,10 +57,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   const shouldShowHeader = useCallback(() => {
     if (forceHideHeader) return false;
     
-    if (isPortrait) return false; // Always hide header in portrait mode
+    if (isPortrait && (isMobile || isTablet)) return false; // Hide header in portrait mode on mobile/tablet
     
     return !showMeasurementTools;
-  }, [forceHideHeader, isPortrait, showMeasurementTools]);
+  }, [forceHideHeader, isPortrait, showMeasurementTools, isMobile, isTablet]);
   
   const [showHeader, setShowHeader] = useState(shouldShowHeader());
   
@@ -69,10 +69,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [shouldShowHeader, showMeasurementTools, isPortrait]);
   
   useEffect(() => {
-    if (!isPortrait) {
+    if (!(isPortrait && (isMobile || isTablet))) {
       setShowMeasurementTools(true);
     }
-  }, [isPortrait]);
+  }, [isPortrait, isMobile, isTablet]);
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const lastMousePositionRef = useRef<{x: number, y: number}>({ x: 0, y: 0 });
@@ -242,9 +242,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   }, [modelViewer, toast]);
 
   const handleTakeScreenshot = useCallback(() => {
-    const isPortrait = window.innerHeight > window.innerWidth;
+    const isPortraitMode = window.innerHeight > window.innerWidth;
     
-    if (isMobile && isPortrait) {
+    if ((isMobile || isTablet) && isPortraitMode) {
       toast({
         title: "Portrait-Modus erkannt",
         description: "Screenshots können nur im Querformat erstellt werden. Bitte drehen Sie Ihr Gerät.",
@@ -274,7 +274,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         duration: 3000,
       });
     }
-  }, [isMobile, modelViewer, toast]);
+  }, [isMobile, isTablet, modelViewer, toast]);
 
   const handleSaveScreenshot = useCallback((imageDataUrl: string, description: string) => {
     const newScreenshot = {
@@ -781,8 +781,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     console.log(`Touch mode changed to: ${mode}`);
     setTouchMode(mode);
 
-    if (mode === 'zoom') {
-      return;
+    if (containerRef.current) {
+      containerRef.current.setAttribute('data-mode', mode);
     }
   }, []);
 
@@ -828,7 +828,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         break;
       case 'none':
       default:
-        if (!isMobile) {
+        if (!isMobile && !isTablet) {
           modelViewer.controls.enableRotate = true;
           modelViewer.controls.enableZoom = true;
         }
@@ -837,7 +837,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     
     if (modelViewer.controls.enabled) {
       modelViewer.controls.touches = {
-        ONE: THREE.TOUCH.ROTATE,
+        ONE: touchMode === 'rotate' ? THREE.TOUCH.ROTATE : 
+             touchMode === 'pan' ? THREE.TOUCH.PAN : 
+             THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN
       };
       
@@ -850,19 +852,19 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     }
     
     modelViewer.controls.update();
-  }, [touchMode, modelViewer.controls, modelViewer.loadedModel, isMobile]);
+  }, [touchMode, modelViewer.controls, modelViewer.loadedModel, isMobile, isTablet]);
 
   useEffect(() => {
-    if (isMobile && isPortrait) {
+    if ((isMobile || isTablet) && isPortrait) {
       setShowMeasurementTools(false);
     }
-  }, [isMobile, isPortrait]);
+  }, [isMobile, isTablet, isPortrait]);
 
   useEffect(() => {
-    if (isMobile && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
+    if ((isMobile || isTablet) && !isPortrait && modelViewer.loadedModel && !showMeasurementTools) {
       setShowMeasurementTools(true);
     }
-  }, [isMobile, isPortrait, modelViewer.loadedModel, showMeasurementTools]);
+  }, [isMobile, isTablet, isPortrait, modelViewer.loadedModel, showMeasurementTools]);
 
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
@@ -975,7 +977,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         onNewProject={handleNewProject}
         onTakeScreenshot={handleTakeScreenshot}
         onExportMeasurements={handleExportMeasurements}
-        isMobile={isMobile}
+        isMobile={isMobile || isTablet}
         forceHideHeader={!showHeader}
       />
       
@@ -996,7 +998,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           />
         )}
         
-        {isMobile && modelViewer.loadedModel && (
+        {(isMobile || isTablet) && modelViewer.loadedModel && (
           <TouchControlsPanel 
             activeMode={touchMode}
             onModeChange={handleTouchModeChange}
@@ -1023,7 +1025,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           allMeasurementsVisible={measurementsVisible}
           canUndo={modelViewer.canUndo}
           screenshots={savedScreenshots}
-          isMobile={isMobile}
+          isMobile={isMobile || isTablet}
           isFullscreen={isFullscreen}
           onNewProject={handleNewProject}
           onTakeScreenshot={handleTakeScreenshot}
