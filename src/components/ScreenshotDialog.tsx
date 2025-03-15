@@ -31,7 +31,7 @@ const ScreenshotDialog: React.FC<ScreenshotDialogProps> = ({
   const [description, setDescription] = useState('');
   const timestamp = new Date().getTime();
   const filename = `Aufnahme_${timestamp}`;
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
 
   const handleDownload = () => {
     if (imageDataUrl) {

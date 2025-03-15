@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -12,46 +11,50 @@ interface MeasurementToolsPanelProps {
   measurements: Measurement[];
   activeTool: MeasurementType;
   onToolChange: (tool: MeasurementType) => void;
-  onClearMeasurements: () => void;
-  onDeleteMeasurement: (id: string) => void;
-  onUndoLastPoint: () => void;
-  onUpdateMeasurement: (id: string, data: Partial<Measurement>) => void;
-  onToggleMeasurementVisibility: (id: string) => void;
-  onToggleAllMeasurementsVisibility: () => void;
   onToggleEditMode: (id: string) => void;
-  allMeasurementsVisible: boolean;
-  canUndo: boolean;
-  screenshots: { id: string, imageDataUrl: string, description: string }[];
-  isMobile: boolean;
-  isFullscreen: boolean;
-  onNewProject: () => void;
-  onTakeScreenshot: () => void;
-  tempPoints: MeasurementPoint[];
-  onDeleteTempPoint: (index: number) => void;
-  onDeleteSinglePoint: (measurementId: string, pointIndex: number) => void;
+  onRemoveMeasurement: (id: string) => void;
+  onToggleVisibility?: (id: string) => void;
+  onClearMeasurements?: () => void;
+  onUndoLastPoint?: () => void;
+  onUpdateMeasurement?: (id: string, data: Partial<Measurement>) => void;
+  onToggleMeasurementVisibility?: (id: string) => void;
+  onToggleAllMeasurementsVisibility?: () => void;
+  allMeasurementsVisible?: boolean;
+  canUndo?: boolean;
+  screenshots?: { id: string, imageDataUrl: string, description: string }[];
+  isMobile?: boolean;
+  isFullscreen?: boolean;
+  onNewProject?: () => void;
+  onTakeScreenshot?: () => void;
+  tempPoints?: MeasurementPoint[];
+  onDeleteTempPoint?: (index: number) => void;
+  onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
+  scrollThreshold?: number;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   measurements,
   activeTool,
   onToolChange,
+  onToggleEditMode,
+  onRemoveMeasurement,
+  onToggleVisibility,
   onClearMeasurements,
-  onDeleteMeasurement,
   onUndoLastPoint,
   onUpdateMeasurement,
   onToggleMeasurementVisibility,
   onToggleAllMeasurementsVisibility,
-  onToggleEditMode,
-  allMeasurementsVisible,
-  canUndo,
-  screenshots,
-  isMobile,
-  isFullscreen,
+  allMeasurementsVisible = true,
+  canUndo = false,
+  screenshots = [],
+  isMobile = false,
+  isFullscreen = false,
   onNewProject,
   onTakeScreenshot,
-  tempPoints,
+  tempPoints = [],
   onDeleteTempPoint,
-  onDeleteSinglePoint
+  onDeleteSinglePoint,
+  scrollThreshold = 5
 }) => {
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
@@ -140,7 +143,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             activeTool={activeTool}
             onToolChange={onToolChange}
             onClearMeasurements={onClearMeasurements}
-            onDeleteMeasurement={onDeleteMeasurement}
+            onDeleteMeasurement={onRemoveMeasurement}
             onUndoLastPoint={onUndoLastPoint}
             onUpdateMeasurement={onUpdateMeasurement}
             onToggleMeasurementVisibility={onToggleMeasurementVisibility}
@@ -207,10 +210,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               activeTool={activeTool}
               onToolChange={onToolChange}
               onClearMeasurements={onClearMeasurements}
-              onDeleteMeasurement={onDeleteMeasurement}
+              onDeleteMeasurement={onRemoveMeasurement}
               onUndoLastPoint={onUndoLastPoint}
               onUpdateMeasurement={onUpdateMeasurement}
-              onToggleMeasurementVisibility={onToggleMeasurementVisibility}
+              onToggleMeasurementVisibility={onToggleMeasurementVisibility || onToggleVisibility}
               onToggleAllMeasurementsVisibility={onToggleAllMeasurementsVisibility}
               onToggleEditMode={onToggleEditMode}
               allMeasurementsVisible={allMeasurementsVisible}
@@ -218,7 +221,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               canUndo={canUndo}
               screenshots={screenshots}
               isMobile={isMobile}
-              scrollThreshold={5}
+              scrollThreshold={scrollThreshold}
               tempPoints={tempPoints}
               onDeleteTempPoint={onDeleteTempPoint}
               onDeleteSinglePoint={onDeleteSinglePoint}

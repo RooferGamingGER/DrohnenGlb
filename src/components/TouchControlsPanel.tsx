@@ -21,6 +21,9 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
   onZoomIn,
   onZoomOut,
   onReset,
+  onTakeScreenshot,
+  onNewProject,
+  onExportMeasurements,
   onBackToUpload
 }) => {
   const { isPortrait } = useIsMobile();
