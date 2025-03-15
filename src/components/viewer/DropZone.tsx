@@ -67,7 +67,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, onDragOver, onDrop 
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Informativer Bereich (links/oben) */}
-      <div className={`hidden md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : 'md:flex'}`}> {/* Änderung hier */}
+      <div className={`md:flex md:flex-col md:justify-center md:items-center md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 ${isPortrait ? 'hidden' : ''}`}> {/* Änderung hier */}
         <div className="text-center flex flex-col items-center max-w-md">
           <h1 className="text-3xl font-bold text-white mb-4 text-balance">
             3D-Modell Viewer
