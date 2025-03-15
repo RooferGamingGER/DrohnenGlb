@@ -753,6 +753,64 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     }
   }, [modelViewer.controls, modelViewer.camera]);
 
+  const handleContextMenu = useCallback((event: MouseEvent) => {
+    event.preventDefault();
+  }, []);
+
+  const handleRightMouseDown = useCallback((event: MouseEvent) => {
+    if (event.button === 2) {
+      setIsRightMouseDown(true);
+      
+      rightMousePreviousPosition.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
+      
+      event.preventDefault();
+    }
+  }, []);
+
+  const handleRightMouseMove = useCallback((event: MouseEvent) => {
+    if (isRightMouseDown && rightMousePreviousPosition.current && modelViewer.controls && modelViewer.camera) {
+      const deltaX = event.clientX - rightMousePreviousPosition.current.x;
+      const deltaY = event.clientY - rightMousePreviousPosition.current.y;
+      
+      const panSpeed = calculatePanSpeedFactor(
+        modelViewer.camera,
+        modelViewer.controls.target,
+        modelSizeRef.current
+      );
+      
+      const camera = modelViewer.camera;
+      const controls = modelViewer.controls;
+      
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      
+      const moveRight = right.clone().multiplyScalar(-deltaX * panSpeed);
+      const moveUp = up.clone().multiplyScalar(deltaY * panSpeed);
+      
+      const movement = moveRight.add(moveUp);
+      camera.position.add(movement);
+      controls.target.add(movement);
+      
+      controls.update();
+      
+      rightMousePreviousPosition.current = {
+        x: event.clientX,
+        y: event.clientY
+      };
+    }
+  }, [isRightMouseDown, modelViewer.controls, modelViewer.camera, modelSizeRef]);
+
+  const handleRightMouseUp = useCallback((event: MouseEvent) => {
+    if (event.button === 2) {
+      setIsRightMouseDown(false);
+      rightMousePreviousPosition.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!modelViewer.controls) return;
     
