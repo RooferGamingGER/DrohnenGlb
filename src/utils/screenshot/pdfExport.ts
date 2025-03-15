@@ -1,6 +1,9 @@
+
 import jsPDF from 'jspdf';
 import { Measurement, isInclinationSignificant, MeasurementType } from '@/types/measurement';
 import { Screenshot } from './types';
+import 'jspdf-autotable'; // Import autotable plugin
+import { optimizeImageData } from './captureUtils'; // Import the optimizeImageData function
 
 /**
  * Exports measurements and screenshots to PDF format (DIN A4)
@@ -117,7 +120,8 @@ export const exportMeasurementsToPDF = async (
                 return measurementRow;
             });
 
-            autoTable(doc, {
+            // Use autoTable from jspdf-autotable
+            doc.autoTable({
                 startY: tableStartY,
                 head: [['Beschreibung', 'Typ', 'Messwert', 'Dachneigung']],
                 body: tableData,
