@@ -338,6 +338,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     const measurement = modelViewer.measurements.find(m => m.id === id);
     if (measurement) {
       const newVisibility = !measurement.visible;
+      
       modelViewer.updateMeasurement(id, { visible: newVisibility });
       
       toast({
@@ -841,15 +842,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
       console.log("Schließe Polygon mit", modelViewer.tempPoints.length, "Punkten");
       
-      // Calculate the area value before finalizing
       const tempPositions = modelViewer.tempPoints.map(p => p.position);
       const calculatedArea = calculatePolygonArea([...tempPositions, tempPositions[0]]);
       
-      // Close the polygon by adding the first point as the last point
       let newPoints = closePolygon([...modelViewer.tempPoints]);
       
       if (modelViewer.finalizeMeasurement) {
-        // Ensure all preview objects are cleared BEFORE creating the final measurement
         if (modelViewer.measurementGroupRef?.current) {
           const previewMeasurement: Measurement = {
             id: 'preview',
@@ -863,7 +861,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           clearPreviewObjects(previewMeasurement, modelViewer.measurementGroupRef.current);
         }
         
-        // Create a finalized measurement with the calculated area value
         modelViewer.finalizeMeasurement(newPoints, {
           value: calculatedArea
         });
@@ -874,15 +871,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           if (lastMeasurement.type === 'area') {
             console.log("Aktualisiere die Flächenmessung nach dem Schließen");
             
-            // Clean up all preview elements without removing the actual measurement points
             if (modelViewer.measurementGroupRef?.current) {
-              // First clear any previous preview objects
               clearPreviewObjects(lastMeasurement, modelViewer.measurementGroupRef.current);
-              
-              // Then finalize the polygon with proper area calculation
               finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
               
-              // Make sure the area value is set correctly
               if (!lastMeasurement.value || lastMeasurement.value === 0) {
                 const positions = lastMeasurement.points.map(p => p.position);
                 const area = calculatePolygonArea(positions);
@@ -892,15 +884,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // Force update geometry to ensure all line segments are created
               updateMeasurementGeometry(lastMeasurement);
               
-              // Force all points to be visible and draggable
               if (lastMeasurement.pointObjects) {
                 lastMeasurement.pointObjects.forEach(point => {
                   if (point) {
                     point.visible = true;
-                    // Ensure it remains draggable
                     if (point.userData) {
                       point.userData.isDraggable = true;
                     }
@@ -908,12 +897,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // IMPORTANT: Switch to navigation mode explicitly after a short delay
-              // This allows the points to fully initialize
               setTimeout(() => {
-                // Force update geometry one more time to ensure all lines are visible
                 updateMeasurementGeometry(lastMeasurement);
-                // Then switch to navigation mode
                 modelViewer.setActiveTool('none');
               }, 100);
               

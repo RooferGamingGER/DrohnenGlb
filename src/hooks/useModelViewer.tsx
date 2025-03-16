@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -738,7 +737,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     if (measurementToDelete && measurementGroupRef.current) {
       if (measurementToDelete.labelObject) {
         if (measurementToDelete.labelObject.material instanceof THREE.SpriteMaterial) {
-          measurementToDelete.labelObject.material.map?.dispose();
+          if (measurementToDelete.labelObject.material.map) {
+            measurementToDelete.labelObject.material.map.dispose();
+          }
           measurementToDelete.labelObject.material.dispose();
         }
         measurementGroupRef.current.remove(measurementToDelete.labelObject);
@@ -746,17 +747,27 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       if (measurementToDelete.lineObjects) {
         measurementToDelete.lineObjects.forEach(line => {
-          line.geometry.dispose();
-          (line.material as THREE.Material).dispose();
-          measurementGroupRef.current?.remove(line);
+          if (line) {
+            if (line.geometry) line.geometry.dispose();
+            if (line.material instanceof THREE.Material) line.material.dispose();
+            else if (Array.isArray(line.material)) {
+              line.material.forEach(mat => mat.dispose());
+            }
+            measurementGroupRef.current?.remove(line);
+          }
         });
       }
       
       if (measurementToDelete.pointObjects) {
         measurementToDelete.pointObjects.forEach(point => {
-          point.geometry.dispose();
-          (point.material as THREE.Material).dispose();
-          measurementGroupRef.current?.remove(point);
+          if (point) {
+            if (point.geometry) point.geometry.dispose();
+            if (point.material instanceof THREE.Material) point.material.dispose();
+            else if (Array.isArray(point.material)) {
+              point.material.forEach(mat => mat.dispose());
+            }
+            measurementGroupRef.current?.remove(point);
+          }
         });
       }
       
@@ -1260,7 +1271,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (activeTool === 'length' || activeTool === 'height') {
         let value: number;
         let unit = 'm';
-        let inclination: number | undefined;
+        let inclination: number | undefined = undefined;
         
         if (activeTool === 'length') {
           value = calculateDistance(prevPoint, position);
@@ -1405,7 +1416,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       measurements.forEach(measurement => {
         if (measurement.labelObject) {
           if (measurement.labelObject.material instanceof THREE.SpriteMaterial) {
-            measurement.labelObject.material.map?.dispose();
+            if (measurement.labelObject.material.map) {
+              measurement.labelObject.material.map.dispose();
+            }
             measurement.labelObject.material.dispose();
           }
           measurementGroupRef.current?.remove(measurement.labelObject);
@@ -1413,17 +1426,27 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         
         if (measurement.lineObjects) {
           measurement.lineObjects.forEach(line => {
-            line.geometry.dispose();
-            (line.material as THREE.Material).dispose();
-            measurementGroupRef.current?.remove(line);
+            if (line) {
+              if (line.geometry) line.geometry.dispose();
+              if (line.material instanceof THREE.Material) line.material.dispose();
+              else if (Array.isArray(line.material)) {
+                line.material.forEach(mat => mat.dispose());
+              }
+              measurementGroupRef.current?.remove(line);
+            }
           });
         }
         
         if (measurement.pointObjects) {
           measurement.pointObjects.forEach(point => {
-            point.geometry.dispose();
-            (point.material as THREE.Material).dispose();
-            measurementGroupRef.current?.remove(point);
+            if (point) {
+              if (point.geometry) point.geometry.dispose();
+              if (point.material instanceof THREE.Material) point.material.dispose();
+              else if (Array.isArray(point.material)) {
+                point.material.forEach(mat => mat.dispose());
+              }
+              measurementGroupRef.current?.remove(point);
+            }
           });
         }
       });
@@ -1442,24 +1465,44 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   const updateMeasurement = (id: string, data: Partial<Measurement>) => {
-    setMeasurements(prevMeasurements => 
-      prevMeasurements.map(m => {
+    setMeasurements(prev => 
+      prev.map(m => {
         if (m.id === id) {
-          const updatedMeasurement = { ...m, ...data };
-          
-          if (data.visible !== undefined && measurementGroupRef.current) {
-            const measObjects = [
-              ...(m.pointObjects || []),
-              ...(m.lineObjects || []),
-              m.labelObject
-            ].filter(Boolean);
-            
-            measObjects.forEach(obj => {
-              if (obj) obj.visible = data.visible as boolean;
-            });
+          if (data.visible !== undefined && m.visible !== data.visible) {
+            if (measurementGroupRef.current) {
+              if (m.labelObject) {
+                m.labelObject.visible = data.visible;
+              }
+              
+              if (m.lineObjects) {
+                m.lineObjects.forEach(line => {
+                  if (line) line.visible = data.visible;
+                });
+              }
+              
+              if (m.pointObjects) {
+                m.pointObjects.forEach(point => {
+                  if (point) point.visible = data.visible;
+                });
+              }
+            }
           }
           
-          return updatedMeasurement;
+          if (data.editMode !== undefined && m.editMode !== data.editMode) {
+            if (measurementGroupRef.current && m.pointObjects) {
+              m.pointObjects.forEach(point => {
+                if (point) {
+                  if (data.editMode) {
+                    point.material = createEditablePointMaterial(false);
+                  } else {
+                    point.material = createDraggablePointMaterial(false);
+                  }
+                }
+              });
+            }
+          }
+          
+          return { ...m, ...data };
         }
         return m;
       })
@@ -1719,36 +1762,43 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   };
 
   return {
-    ...state,
-    loadModel,
-    background,
-    setBackground: applyBackground,
-    backgroundOptions,
-    resetView,
+    isLoading: state.isLoading,
+    progress: state.progress,
+    error: state.error,
+    loadedModel: state.loadedModel,
+    measurements,
     activeTool,
     setActiveTool,
-    measurements,
     clearMeasurements,
     undoLastPoint,
+    finalizeMeasurement,
     deleteMeasurement,
     deleteSinglePoint,
     deleteTempPoint,
     updateMeasurement,
     toggleMeasurementsVisibility,
     setProgress,
-    canUndo,
+    canUndo: temporaryPoints.length > 0,
     tempPoints: temporaryPoints,
     measurementGroupRef,
-    renderer: rendererRef.current,
-    scene: sceneRef.current,
+    loadModel,
+    setActiveTool,
+    undoLastPoint,
+    finalizeMeasurement,
+    deleteMeasurement,
+    clearMeasurements,
+    resetView,
+    setBackground,
+    deleteTempPoint,
+    deleteSinglePoint,
+    updateMeasurement,
     camera: cameraRef.current,
     controls: controlsRef.current,
-    loadedModel: modelRef.current,
-    updateModelViewer,
-    adjustCameraToModelSize,
-    finalizeMeasurement
+    scene: sceneRef.current,
+    renderer: rendererRef.current,
+    setProgress,
+    toggleMeasurementsVisibility,
   };
 };
 
 export default useModelViewer;
-

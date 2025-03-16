@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -109,11 +108,35 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Only show close polygon option when we have enough points and are in area tool mode
-  const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
+  const handleClearAllMeasurements = () => {
+    if (measurements.length === 0) {
+      toast({
+        title: "Keine Messungen vorhanden",
+        description: "Es sind keine Messungen zu löschen vorhanden.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (window.confirm("Möchten Sie wirklich alle Messungen löschen?")) {
+      onClearMeasurements();
+      toast({
+        title: "Messungen gelöscht",
+        description: "Alle Messungen wurden erfolgreich gelöscht.",
+      });
+    }
+  };
+
+  const handleDeleteMeasurement = (id: string) => {
+    onDeleteMeasurement(id);
+    toast({
+      title: "Messung gelöscht",
+      description: "Die Messung wurde erfolgreich gelöscht.",
+    });
+  };
 
   const handleClosePolygon = () => {
-    if (canClosePolygon) {
+    if (canClosePolygon && onClosePolygon) {
       onClosePolygon();
       // Toast notification will be shown by ModelViewer after actual completion
     } else {
@@ -280,14 +303,26 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               <Home className="mr-2 h-4 w-4" />
               Zurück zur Hauptseite
             </Button>
+            {measurements.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClearAllMeasurements}
+                className="w-full justify-start text-red-500 border-red-200 hover:bg-red-50"
+                title="Löschen Sie alle Messungen"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Alle Messungen löschen
+              </Button>
+            )}
           </div>
           
           <ScrollArea className="h-[calc(100vh-380px)]">
             <MeasurementTools
               activeTool={activeTool}
               onToolChange={onToolChange}
-              onClearMeasurements={onClearMeasurements}
-              onDeleteMeasurement={onDeleteMeasurement}
+              onClearMeasurements={handleClearAllMeasurements}
+              onDeleteMeasurement={handleDeleteMeasurement}
               onUndoLastPoint={onUndoLastPoint}
               onUpdateMeasurement={onUpdateMeasurement}
               onToggleMeasurementVisibility={onToggleMeasurementVisibility}
