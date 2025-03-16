@@ -15,11 +15,12 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
+  description?: string;
   visible?: boolean;
   editMode?: boolean;
   inclination?: number;
   labelObject?: THREE.Sprite;
-  lineObjects?: THREE.Line[];
+  lineObjects?: THREE.Object3D[];  // Changed from Line to Object3D to accommodate both Line and Mesh
   pointObjects?: THREE.Mesh[];
   isActive?: boolean;
 }
@@ -292,41 +293,50 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
   
   // Update line geometry
   if (measurement.type === 'length' && measurement.lineObjects.length > 0) {
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-      measurement.points[0].position,
-      measurement.points[1].position
-    ]);
-    
-    measurement.lineObjects[0].geometry.dispose();
-    measurement.lineObjects[0].geometry = lineGeometry;
+    const lineObject = measurement.lineObjects[0];
+    if (lineObject instanceof THREE.Line) {
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        measurement.points[0].position,
+        measurement.points[1].position
+      ]);
+      
+      lineObject.geometry.dispose();
+      lineObject.geometry = lineGeometry;
+    }
   } else if (measurement.type === 'height' && measurement.lineObjects.length > 0) {
-    const verticalPoint = new THREE.Vector3(
-      measurement.points[0].position.x,
-      measurement.points[1].position.y,
-      measurement.points[0].position.z
-    );
-    
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-      measurement.points[0].position,
-      verticalPoint,
-      measurement.points[1].position
-    ]);
-    
-    measurement.lineObjects[0].geometry.dispose();
-    measurement.lineObjects[0].geometry = lineGeometry;
+    const lineObject = measurement.lineObjects[0];
+    if (lineObject instanceof THREE.Line) {
+      const verticalPoint = new THREE.Vector3(
+        measurement.points[0].position.x,
+        measurement.points[1].position.y,
+        measurement.points[0].position.z
+      );
+      
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        measurement.points[0].position,
+        verticalPoint,
+        measurement.points[1].position
+      ]);
+      
+      lineObject.geometry.dispose();
+      lineObject.geometry = lineGeometry;
+    }
   } else if (measurement.type === 'area' && measurement.lineObjects.length > 0) {
     // For area, we need to update the polygon
-    const positions = measurement.points.map(p => p.position);
-    if (positions.length >= 3) {
-      // Close the polygon by adding the first point at the end
-      const closedPositions = [...positions];
-      if (positions[0].distanceTo(positions[positions.length - 1]) > 0.001) {
-        closedPositions.push(positions[0]);
+    const lineObject = measurement.lineObjects[0];
+    if (lineObject instanceof THREE.Line) {
+      const positions = measurement.points.map(p => p.position);
+      if (positions.length >= 3) {
+        // Close the polygon by adding the first point at the end
+        const closedPositions = [...positions];
+        if (positions[0].distanceTo(positions[positions.length - 1]) > 0.001) {
+          closedPositions.push(positions[0]);
+        }
+        
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(closedPositions);
+        lineObject.geometry.dispose();
+        lineObject.geometry = lineGeometry;
       }
-      
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(closedPositions);
-      measurement.lineObjects[0].geometry.dispose();
-      measurement.lineObjects[0].geometry = lineGeometry;
     }
   }
   
@@ -517,14 +527,19 @@ export const clearPreviewObjects = (measurement: Measurement, measurementGroup: 
   previewObjectNames.forEach(name => {
     const object = measurementGroup.children.find(child => child.name === name);
     if (object) {
-      if (object instanceof THREE.Line || object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-      }
-      
-      if (object.material instanceof THREE.Material) {
-        object.material.dispose();
-      } else if (Array.isArray(object.material)) {
-        object.material.forEach(mat => mat.dispose());
+      // Type checking before accessing material property
+      if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(mat => mat.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
       }
       
       measurementGroup.remove(object);

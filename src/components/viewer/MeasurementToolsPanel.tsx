@@ -1,8 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, Ruler, ArrowsMaximize, Trash2, ChevronLeft, ChevronRight, ArrowRightFromLine, ArrowUpDown, Square, Undo2, ScreenshotIcon, BringToFront, SendToBack, Pencil } from 'lucide-react';
+import { HelpCircle, Ruler, Trash2, ChevronLeft, ChevronRight, 
+         ArrowUpDown, Square, Undo2, ScreenShare, 
+         BringToFront, SendToBack, Pencil, Maximize2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -71,6 +72,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
       setTempPointsOpen(true);
     }
   }, [tempPoints]);
+  
+  const canClosePolygonValue = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
   
   const renderToolButtons = () => (
     <div className="flex flex-wrap gap-1 sm:gap-2 justify-center sm:justify-start pb-2">
@@ -159,7 +162,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         </Tooltip>
       )}
       
-      {onClosePolygon && canClosePolygon && (
+      {onClosePolygon && canClosePolygonValue && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -206,7 +209,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               </div>
             ))}
           </div>
-          {onClosePolygon && canClosePolygon && (
+          {onClosePolygon && canClosePolygonValue && (
             <Button 
               variant="outline" 
               size="sm" 
@@ -425,7 +428,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               className="flex-1"
               aria-label="Screenshot erstellen"
             >
-              <ScreenshotIcon className="h-4 w-4 mr-1" />
+              <ScreenShare className="h-4 w-4 mr-1" />
               <span>Screenshot</span>
             </Button>
           )}
@@ -438,7 +441,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               className="flex-1"
               aria-label="Neues Projekt"
             >
-              <ArrowsMaximize className="h-4 w-4 mr-1" />
+              <Maximize2 className="h-4 w-4 mr-1" />
               <span>Reset</span>
             </Button>
           )}
