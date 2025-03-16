@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -108,19 +109,13 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Real-time area calculation for in-progress polygon
-  const tempArea = tempPoints && tempPoints.length >= 3 
-    ? calculatePolygonArea([...tempPoints.map(p => p.position), tempPoints[0].position])
-    : 0;
-
+  // Only show close polygon option when we have enough points and are in area tool mode
   const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
 
   const handleClosePolygon = () => {
     if (canClosePolygon) {
       onClosePolygon();
-      
       // Toast notification will be shown by ModelViewer after actual completion
-      // so we won't add a duplicate notification here
     } else {
       toast({
         title: "Nicht genügend Punkte",
@@ -141,11 +136,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={handleClosePolygon}
-                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse transition-all duration-300"
+                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold"
               >
                 <Square className="mr-1 h-3 w-3" />
                 Fläche schließen
-                {tempArea > 0 && <span className="ml-1 opacity-75">({tempArea < 0.01 ? `${(tempArea * 10000).toFixed(2)} cm²` : `${tempArea.toFixed(2)} m²`})</span>}
               </Button>
             )}
             </div>
@@ -225,11 +219,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={handleClosePolygon}
-              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse transition-all duration-300"
+              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold"
             >
               <Square className="mr-2 h-4 w-4" />
-              Fläche schließen
-              {tempArea > 0 && <span className="ml-1 opacity-75">({tempArea < 0.01 ? `${(tempArea * 10000).toFixed(2)} cm²` : `${tempArea.toFixed(2)} m²`})</span>}
+              <span className="truncate">Fläche schließen</span>
             </Button>
           )}
           

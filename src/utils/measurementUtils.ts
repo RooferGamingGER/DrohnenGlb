@@ -900,88 +900,44 @@ export const updateAreaPreview = (
     return;
   }
   
-  const positions = points.map(p => p.position);
+  // We'll only show points during measurement, not preview lines or area calculations
+  // This removes the temporary preview lines and area calculation until the polygon is closed
   
-  // Create preview line connecting last point to first point
-  const previewLinePoints = [
-    positions[positions.length - 1].clone(),
-    positions[0].clone()
-  ];
-  
-  // Create or update the preview line
-  if (!measurement.previewLineObject) {
-    measurement.previewLineObject = createPreviewLine(previewLinePoints);
-    scene.add(measurement.previewLineObject);
-  } else {
-    updateMeasurementLine(measurement.previewLineObject, previewLinePoints);
-  }
-  
-  // Calculate area for the preview
-  const area = calculatePolygonArea(positions);
-  
-  // Create or update the preview label
-  const center = new THREE.Vector3();
-  positions.forEach(p => center.add(p));
-  center.divideScalar(positions.length);
-  
-  // Add a small Y offset to ensure visibility above the mesh
-  center.y += 0.1;
-  
-  const areaText = formatArea(area);
-  
-  if (!measurement.previewLabelObject) {
-    measurement.previewLabelObject = createPreviewTextSprite(areaText, center);
-    scene.add(measurement.previewLabelObject);
-  } else {
-    // Update the existing label
-    measurement.previewLabelObject.position.copy(center);
-    
-    // Update text if possible
-    if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial &&
-        measurement.previewLabelObject.material.map instanceof THREE.CanvasTexture) {
-      const texture = measurement.previewLabelObject.material.map;
-      const canvas = texture.image;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        // Clear the canvas
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Redraw the background
-        const bgGradient = context.createLinearGradient(0, 0, canvas.width, 0);
-        bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.8)');
-        bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.8)');
-        
-        context.fillStyle = bgGradient;
-        context.roundRect(0, 0, canvas.width, canvas.height, 16);
-        context.fill();
-        
-        context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        context.lineWidth = 2;
-        context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
-        context.stroke();
-        
-        // Draw the updated text
-        context.font = 'bold 48px Inter, sans-serif';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        
-        const textGradient = context.createLinearGradient(0, 0, 0, canvas.height);
-        textGradient.addColorStop(0, '#ffffff');
-        textGradient.addColorStop(1, '#e0e0e0');
-        
-        context.fillStyle = textGradient;
-        context.fillText(areaText, canvas.width / 2, canvas.height / 2);
-        
-        // Update the texture
-        texture.needsUpdate = true;
+  // Clean up any existing preview objects to ensure they don't accumulate
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
       }
     }
+    measurement.previewLineObject = undefined;
   }
   
-  // Update the label scale based on camera distance
+  // Remove preview label if it exists
   if (measurement.previewLabelObject) {
-    updateLabelScale(measurement.previewLabelObject, camera);
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
   }
 };
 
@@ -1058,11 +1014,12 @@ export const clearPreviewObjects = (
     measurement.previewLabelObject = undefined;
   }
   
-  // Find and remove ALL preview objects related to this measurement
+  // Find and remove ALL preview objects related to this measurement - more aggressive cleanup
   scene.traverse((object) => {
     if (object.userData && 
        (object.userData.isPreview || 
         object.userData.isTemporary || 
+        object.userData.measurementId === 'preview' ||
         (object.userData.measurementId === measurement.id && object.userData.isPreviewElement))) {
       
       if (object.parent) {
