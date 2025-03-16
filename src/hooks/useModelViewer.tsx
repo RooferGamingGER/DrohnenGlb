@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -67,6 +68,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const draggedPointRef = useRef<THREE.Mesh | null>(null);
   const lastClickTimeRef = useRef<number>(0);
   const lastTouchTimeRef = useRef<number>(0);
+  
+  // Add variables that were missing
+  const [isFollowingMouse, setIsFollowingMouse] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedPoint, setDraggedPoint] = useState<THREE.Mesh | null>(null);
+  const [touchMode, setTouchMode] = useState<'none' | 'pan' | 'rotate' | 'zoom'>('none');
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -217,7 +224,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
     
     previousMouseRef.current.copy(mouseRef.current);
-  }, [isFollowingMouse, draggedPoint, modelRef, selectedMeasurementId, selectedPointIndex, isDragging]);
+  }, [isFollowingMouse, draggedPointRef, modelRef, selectedMeasurementId, selectedPointIndex, isDraggingPoint, activeTool, measurements, hoveredPointId, hoverPoint]);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     if (!containerRef.current || !measurementGroupRef.current) return;
@@ -327,7 +334,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }
       }
     }
-  }, [modelRef, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
+  }, [measurements, toast, hoveredPointId, isDraggingPoint]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
     if (!containerRef.current) return;
@@ -422,7 +429,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }, 500);
       }
     }
-  }, [modelRef, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, activeTool, touchMode]);
+  }, [measurements, toast, isDraggingPoint, activeTool, modelRef]);
 
   const handleTouchMove = useCallback((event: TouchEvent) => {
     if (!containerRef.current) return;
@@ -510,7 +517,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     }
-  }, [isFollowingMouse, draggedPoint, modelRef, selectedMeasurementId, selectedPointIndex, isDragging]);
+  }, [isDraggingPoint, modelRef, selectedMeasurementId, selectedPointIndex, activeTool]);
 
   const handleTouchEnd = useCallback((event: TouchEvent) => {
     if (isPinchingRef.current) {
@@ -554,7 +561,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     touchStartPositionRef.current = null;
     isTouchMoveRef.current = false;
     touchIdentifierRef.current = null;
-  }, [activeTool, containerRef, isDraggingPoint, modelRef, toast]);
+  }, [activeTool, isDraggingPoint, modelRef, toast]);
 
   const addMeasurementPointTouch = (point: THREE.Vector3) => {
     if (activeTool === 'none') return;
@@ -778,7 +785,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               (line as THREE.Line).material.dispose();
             }
             else if (Array.isArray((line as THREE.Line).material)) {
-              ((line as THREE.Line).material as THREE.Material[]).forEach(mat => mat.dispose());
+              ((line as THREE.Line).material as THREE.Material[]).forEach(mat => {
+                if (mat.dispose) mat.dispose();
+              });
             }
             measurementGroupRef.current?.remove(line);
           }
@@ -795,7 +804,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               (point as THREE.Mesh).material.dispose();
             }
             else if (Array.isArray((point as THREE.Mesh).material)) {
-              ((point as THREE.Mesh).material as THREE.Material[]).forEach(mat => mat.dispose());
+              ((point as THREE.Mesh).material as THREE.Material[]).forEach(mat => {
+                if (mat.dispose) mat.dispose();
+              });
             }
             measurementGroupRef.current?.remove(point);
           }
@@ -834,7 +845,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     const pointToDelete = measurement.pointObjects?.[pointIndex];
     if (pointToDelete && measurementGroupRef.current) {
       (pointToDelete as THREE.Mesh).geometry.dispose();
-      ((pointToDelete as THREE.Mesh).material as THREE.Material).dispose();
+      
+      if ((pointToDelete as THREE.Mesh).material instanceof THREE.Material) {
+        ((pointToDelete as THREE.Mesh).material as THREE.Material).dispose();
+      } else if (Array.isArray((pointToDelete as THREE.Mesh).material)) {
+        ((pointToDelete as THREE.Mesh).material as THREE.Material[]).forEach(mat => {
+          if (mat.dispose) mat.dispose();
+        });
+      }
+      
       measurementGroupRef.current.remove(pointToDelete);
     }
     
@@ -850,7 +869,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           if (m.lineObjects && measurementGroupRef.current) {
             m.lineObjects.forEach(line => {
               (line as THREE.Line).geometry.dispose();
-              ((line as THREE.Line).material as THREE.Material).dispose();
+              
+              if ((line as THREE.Line).material instanceof THREE.Material) {
+                ((line as THREE.Line).material as THREE.Material).dispose();
+              } else if (Array.isArray((line as THREE.Line).material)) {
+                ((line as THREE.Line).material as THREE.Material[]).forEach(mat => {
+                  if (mat.dispose) mat.dispose();
+                });
+              }
+              
               measurementGroupRef.current?.remove(line);
             });
           }

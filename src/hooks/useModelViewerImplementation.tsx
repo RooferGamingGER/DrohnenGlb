@@ -20,6 +20,7 @@ export interface ModelViewerImplementation {
   camera: THREE.PerspectiveCamera | null;
   renderer: THREE.WebGLRenderer | null;
   controls: any | null;
+  measurementGroupRef: React.RefObject<THREE.Group> | null;
   
   // Methods
   setProgress: (progress: number) => void;
@@ -55,6 +56,7 @@ export const useModelViewerImplementation = (props: Parameters<typeof useModelVi
     camera: modelViewer.camera,
     renderer: modelViewer.renderer,
     controls: modelViewer.controls,
+    measurementGroupRef: modelViewer.measurementGroupRef,
     
     // Methods
     setProgress: modelViewer.setProgress,
