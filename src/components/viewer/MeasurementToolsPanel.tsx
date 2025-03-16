@@ -66,6 +66,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }))
   });
 
+  const canClosePolygon = activeTool === 'area' && tempPoints?.length >= 3;
+
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);

@@ -1782,22 +1782,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     tempPoints: temporaryPoints,
     measurementGroupRef,
     loadModel,
-    setActiveTool,
-    undoLastPoint,
-    finalizeMeasurement,
-    deleteMeasurement,
-    clearMeasurements,
     resetView,
     setBackground,
-    deleteTempPoint,
-    deleteSinglePoint,
-    updateMeasurement,
     camera: cameraRef.current,
     controls: controlsRef.current,
     scene: sceneRef.current,
     renderer: rendererRef.current,
-    setProgress,
-    toggleMeasurementsVisibility,
   };
 };
 
