@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import type { Measurement } from '../measurementUtils';
+import { Measurement } from '../measurementUtils';
 
 export interface ScreenshotData {
   imageDataUrl: string;
