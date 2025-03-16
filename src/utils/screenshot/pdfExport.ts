@@ -1,3 +1,4 @@
+
 import { jsPDF as JsPDFModule } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Measurement, isInclinationSignificant, MeasurementType } from '../measurementUtils';
@@ -97,11 +98,15 @@ export const exportMeasurementsToPDF = async (
 
             const tableStartY = yPos;
 
-            const tableData = measurements.map(m => {
+            // Only include visible measurements in the report
+            const visibleMeasurements = measurements.filter(m => m.visible);
+
+            const tableData = visibleMeasurements.map(m => {
                 const measurementRow = [
                     m.description || '-',
                     m.type === 'length' ? 'Länge' : 
-                    m.type === 'height' ? 'Höhe' : 'Andere',
+                    m.type === 'height' ? 'Höhe' : 
+                    m.type === 'area' ? 'Fläche' : 'Andere',
                     `${m.value.toFixed(2)} ${m.unit}`
                 ];
                 

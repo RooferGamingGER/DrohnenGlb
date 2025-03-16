@@ -31,10 +31,15 @@ const ViewerToolbar: React.FC<ViewerToolbarProps> = ({
   // If header is forced to be hidden, don't render anything
   if (forceHideHeader) return null;
   
+  // Create toolbar component with dynamic positioning based on fullscreen status
+  const toolbarClassName = `flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${
+    isFullscreen ? 'fixed top-0 left-0 right-0' : ''
+  }`;
+  
   return (
-    <div className={`flex items-center justify-between w-full p-2 lg:p-4 bg-background/80 backdrop-blur-sm z-10 ${isFullscreen ? (isMobile ? 'fixed top-0 left-0 right-0' : 'fixed top-0 left-0 right-0') : ''}`}>
+    <div className={toolbarClassName}>
       <div>
-        {/* Empty left section */}
+        {/* Empty left section - could be used for logo or branding in the future */}
       </div>
       
       <ViewerControls

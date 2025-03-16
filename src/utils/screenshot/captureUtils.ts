@@ -10,9 +10,15 @@ export const captureScreenshot = (
   camera: THREE.Camera,
   isMobile: boolean = false
 ): string | null => {
-  renderer.render(scene, camera);
-  const dataUrl = renderer.domElement.toDataURL('image/png');
-  return dataUrl;
+  try {
+    // Ensure the scene is rendered once before capture
+    renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    return dataUrl;
+  } catch (error) {
+    console.error("Error capturing screenshot:", error);
+    return null;
+  }
 };
 
 /**
@@ -30,6 +36,74 @@ export const dataURLToBlob = (dataUrl: string): Blob => {
   }
 
   return new Blob([uInt8Array], { type: contentType });
+};
+
+/**
+ * Safely dispose of Three.js materials
+ */
+export const safelyDisposeMaterial = (material: THREE.Material | THREE.Material[] | null): void => {
+  if (!material) return;
+  
+  try {
+    if (Array.isArray(material)) {
+      material.forEach(mat => {
+        safelyDisposeMaterial(mat);
+      });
+    } else {
+      // Handle textures
+      if (material.map) material.map.dispose();
+      if ((material as any).lightMap) (material as any).lightMap.dispose();
+      if ((material as any).bumpMap) (material as any).bumpMap.dispose();
+      if ((material as any).normalMap) (material as any).normalMap.dispose();
+      if ((material as any).specularMap) (material as any).specularMap.dispose();
+      if ((material as any).envMap) (material as any).envMap.dispose();
+      
+      // Dispose the material itself
+      material.dispose();
+    }
+  } catch (error) {
+    console.error("Error disposing material:", error);
+  }
+};
+
+/**
+ * Safely dispose of Three.js geometries
+ */
+export const safelyDisposeGeometry = (geometry: THREE.BufferGeometry | null): void => {
+  if (!geometry) return;
+  
+  try {
+    // Dispose the geometry
+    geometry.dispose();
+  } catch (error) {
+    console.error("Error disposing geometry:", error);
+  }
+};
+
+/**
+ * Safely dispose of Three.js objects (recursively)
+ */
+export const safelyDisposeObject = (object: THREE.Object3D | null): void => {
+  if (!object) return;
+  
+  try {
+    // Recursively process all children
+    while (object.children.length > 0) {
+      safelyDisposeObject(object.children[0]);
+      object.remove(object.children[0]);
+    }
+    
+    // Dispose geometries and materials
+    if (object instanceof THREE.Mesh) {
+      safelyDisposeGeometry(object.geometry);
+      safelyDisposeMaterial(object.material);
+    } else if (object instanceof THREE.Line) {
+      safelyDisposeGeometry(object.geometry);
+      safelyDisposeMaterial(object.material);
+    }
+  } catch (error) {
+    console.error("Error disposing object:", error);
+  }
 };
 
 /**

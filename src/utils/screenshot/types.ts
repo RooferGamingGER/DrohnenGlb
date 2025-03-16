@@ -13,4 +13,13 @@ export interface Screenshot {
   description: string;
   filename?: string;
   relatedMeasurements?: Measurement[];
+  timestamp?: number;
+  createdAt?: Date;
+}
+
+export interface ExportSettings {
+  includeMeasurements: boolean;
+  includeScreenshots: boolean;
+  quality: 'low' | 'medium' | 'high';
+  format: 'pdf' | 'excel' | 'png';
 }

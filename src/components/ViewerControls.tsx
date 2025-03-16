@@ -69,10 +69,10 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant="ghost" 
+                variant={showMeasurementTools ? "secondary" : "ghost"}
                 size="icon" 
                 onClick={toggleMeasurementTools}
-                className="h-10 w-10 bg-primary/90 rounded-full border border-primary/30 text-primary-foreground hover:bg-primary hover:scale-105 transition-all duration-200 shadow-md"
+                className={`h-10 w-10 rounded-full border border-primary/30 text-primary-foreground ${showMeasurementTools ? 'bg-blue-600 hover:bg-blue-700' : 'bg-primary/90 hover:bg-primary'} hover:scale-105 transition-all duration-200 shadow-md`}
               >
                 <Ruler className="h-4 w-4" />
               </Button>
@@ -138,7 +138,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {showUpload && (
+          {showUpload && onNewProject && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 

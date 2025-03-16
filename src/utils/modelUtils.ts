@@ -16,6 +16,58 @@ export const backgroundOptions: BackgroundOption[] = [
   { id: 'gray', name: 'Grau', color: '#404040', texture: null },
 ];
 
+// Safely dispose of Three.js objects and materials
+export const safelyDisposeObject = (object: THREE.Object3D | null): void => {
+  if (!object) return;
+  
+  // Recursively process all children
+  while (object.children.length > 0) {
+    safelyDisposeObject(object.children[0]);
+    object.remove(object.children[0]);
+  }
+  
+  // Dispose geometries and materials
+  if (object instanceof THREE.Mesh) {
+    if (object.geometry) {
+      object.geometry.dispose();
+    }
+    
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(material => {
+          if (material.map) material.map.dispose();
+          if (material.lightMap) material.lightMap.dispose();
+          if (material.bumpMap) material.bumpMap.dispose();
+          if (material.normalMap) material.normalMap.dispose();
+          if (material.specularMap) material.specularMap.dispose();
+          if (material.envMap) material.envMap.dispose();
+          material.dispose();
+        });
+      } else {
+        if (object.material.map) object.material.map.dispose();
+        if (object.material.lightMap) object.material.lightMap.dispose();
+        if (object.material.bumpMap) object.material.bumpMap.dispose();
+        if (object.material.normalMap) object.material.normalMap.dispose();
+        if (object.material.specularMap) object.material.specularMap.dispose();
+        if (object.material.envMap) object.material.envMap.dispose();
+        object.material.dispose();
+      }
+    }
+  }
+  
+  // Dispose any other properties if needed
+  if (object instanceof THREE.Line) {
+    if (object.geometry) object.geometry.dispose();
+    if (object.material) {
+      if (Array.isArray(object.material)) {
+        object.material.forEach(material => material.dispose());
+      } else {
+        object.material.dispose();
+      }
+    }
+  }
+};
+
 // Extract camera position from model for better initial view
 export const extractCameraPositionFromModel = (box: THREE.Box3): THREE.Vector3 => {
   const size = new THREE.Vector3();

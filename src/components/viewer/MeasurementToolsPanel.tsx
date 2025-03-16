@@ -63,7 +63,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
       id: m.id,
       type: m.type,
       value: m.value,
-      points: m.points.length
+      points: m.points.length,
+      visible: m.visible
     }))
   });
 
@@ -113,7 +114,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
 
   const handleClosePolygon = () => {
-    if (canClosePolygon) {
+    if (canClosePolygon && onClosePolygon) {
       onClosePolygon();
       // Toast notification will be shown by ModelViewer after actual completion
     } else {
@@ -121,6 +122,26 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
         title: "Nicht genügend Punkte",
         description: "Es werden mindestens 3 Punkte benötigt, um eine Fläche zu schließen.",
         variant: "destructive",
+      });
+    }
+  };
+
+  // Handle clear measurements with confirmation
+  const handleClearMeasurements = () => {
+    if (measurements.length === 0) {
+      toast({
+        title: "Keine Messungen vorhanden",
+        description: "Es gibt keine Messungen zum Löschen.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (window.confirm("Möchten Sie wirklich alle Messungen löschen?")) {
+      onClearMeasurements();
+      toast({
+        title: "Messungen gelöscht",
+        description: "Alle Messungen wurden gelöscht.",
       });
     }
   };
@@ -187,7 +208,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
           <MeasurementTools
             activeTool={activeTool}
             onToolChange={onToolChange}
-            onClearMeasurements={onClearMeasurements}
+            onClearMeasurements={handleClearMeasurements}
             onDeleteMeasurement={onDeleteMeasurement}
             onUndoLastPoint={onUndoLastPoint}
             onUpdateMeasurement={onUpdateMeasurement}
@@ -286,7 +307,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             <MeasurementTools
               activeTool={activeTool}
               onToolChange={onToolChange}
-              onClearMeasurements={onClearMeasurements}
+              onClearMeasurements={handleClearMeasurements}
               onDeleteMeasurement={onDeleteMeasurement}
               onUndoLastPoint={onUndoLastPoint}
               onUpdateMeasurement={onUpdateMeasurement}
@@ -317,6 +338,18 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               <FileDown className="mr-2 h-4 w-4" />
               Bericht speichern
             </Button>
+            
+            {measurements.length > 0 && (
+              <Button 
+                variant="outline" 
+                className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                onClick={handleClearMeasurements}
+                title="Löschen Sie alle Messungen"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Alle Messungen löschen
+              </Button>
+            )}
           </div>
         </SidebarFooter>
       </Sidebar>
