@@ -804,8 +804,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       if (firstPoint && firstPoint.position) {
         const newPoints = [...modelViewer.tempPoints];
         
-        modelViewer.finalizeMeasurement?.(newPoints) || 
-        modelViewer.setActiveTool('none');
+        if (modelViewer.finalizeMeasurement) {
+          modelViewer.finalizeMeasurement(newPoints);
+        } else {
+          modelViewer.setActiveTool('none');
+        }
         
         toast({
           title: "Fläche geschlossen",
