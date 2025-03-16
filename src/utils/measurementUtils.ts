@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -1009,6 +1008,9 @@ export const finalizePolygon = (
       });
     }
     
+    // Calculate the final area value
+    measurement.value = calculatePolygonArea(closedPositions);
+    
     // Update all geometry with the finalized points
     updateMeasurementGeometry(measurement);
   }
@@ -1055,4 +1057,21 @@ export const clearPreviewObjects = (
     }
     measurement.previewLabelObject = undefined;
   }
+  
+  // Also remove any temporary meshes or other preview objects that might be in the scene
+  scene.traverse((object) => {
+    if (object.userData && object.userData.isPreview && object.userData.measurementId === measurement.id) {
+      scene.remove(object);
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      }
+    }
+  });
 };

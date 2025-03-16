@@ -1319,51 +1319,45 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
   
-  const finalizeMeasurement = useCallback((points: MeasurementPoint[]) => {
-    if (activeTool === 'none' || points.length < 2) return;
+  const finalizeMeasurement = useCallback((points: MeasurementPoint[], additionalData?: Partial<Measurement>) => {
+    if (activeTool === 'none' || !points || points.length < 2) return;
     
     let value = 0;
     let unit = 'm';
-    let inclination: number | undefined;
+    let inclination: number | undefined = undefined;
     
-    if (activeTool === 'length') {
-      value = calculateDistance(points[0].position, points[1].position);
-      inclination = calculateInclination(points[0].position, points[1].position);
-    } else if (activeTool === 'height') {
-      value = calculateHeight(points[0].position, points[1].position);
+    if (additionalData?.value !== undefined) {
+      value = additionalData.value;
+    } else {
+      if (activeTool === 'length' && points.length >= 2) {
+        value = calculateDistance(points[0].position, points[1].position);
+        inclination = calculateInclination(points[0].position, points[1].position);
+      } else if (activeTool === 'height' && points.length >= 2) {
+        value = calculateHeight(points[0].position, points[1].position);
+      } else if (activeTool === 'area' && points.length >= 3) {
+        const positions = points.map(p => p.position);
+        value = calculatePolygonArea(positions);
+        unit = 'm²';
+      }
     }
-    
-    const measurementId = createMeasurementId();
-    
-    if (currentMeasurementRef.current && currentMeasurementRef.current.meshes) {
-      currentMeasurementRef.current.meshes.forEach((mesh, index) => {
-        mesh.name = `point-${measurementId}-${index}`;
-      });
-    }
-    
-    const measurementObjects = {
-      pointObjects: currentMeasurementRef.current?.meshes || [],
-      lineObjects: currentMeasurementRef.current?.lines || [],
-      labelObject: currentMeasurementRef.current?.labels[0] || null
-    };
     
     const newMeasurement: Measurement = {
-      id: measurementId,
+      id: createMeasurementId(),
       type: activeTool,
       points: points,
-      value,
-      unit,
-      inclination: activeTool === 'length' ? inclination : undefined,
-      ...measurementObjects,
-      editMode: false,
-      visible: true
+      value: value,
+      unit: unit,
+      inclination: inclination,
+      visible: true,
+      isActive: false
     };
     
     setMeasurements(prev => [...prev, newMeasurement]);
     setTemporaryPoints([]);
     
-    currentMeasurementRef.current = null;
-    setActiveTool('none');
+    console.log(`Measurement finalized: ${activeTool} with value ${value} ${unit}`);
+    
+    return newMeasurement;
   }, [activeTool]);
 
   const handleMeasurementTap = (touch: Touch) => {
@@ -1753,3 +1747,6 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     finalizeMeasurement
   };
 };
+
+export default useModelViewer;
+
