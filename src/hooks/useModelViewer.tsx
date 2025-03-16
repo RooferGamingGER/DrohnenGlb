@@ -758,8 +758,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (measurementToDelete.lineObjects) {
         measurementToDelete.lineObjects.forEach(line => {
           if (line) {
-            if ((line as THREE.Line).geometry) (line as THREE.Line).geometry.dispose();
-            if ((line as THREE.Line).material instanceof THREE.Material) (line as THREE.Line).material.dispose();
+            if ((line as THREE.Line).geometry) {
+              (line as THREE.Line).geometry.dispose();
+            }
+            if ((line as THREE.Line).material instanceof THREE.Material) {
+              (line as THREE.Line).material.dispose();
+            }
             else if (Array.isArray((line as THREE.Line).material)) {
               ((line as THREE.Line).material as THREE.Material[]).forEach(mat => mat.dispose());
             }
@@ -771,8 +775,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       if (measurementToDelete.pointObjects) {
         measurementToDelete.pointObjects.forEach(point => {
           if (point) {
-            if ((point as THREE.Mesh).geometry) (point as THREE.Mesh).geometry.dispose();
-            if ((point as THREE.Mesh).material instanceof THREE.Material) (point as THREE.Mesh).material.dispose();
+            if ((point as THREE.Mesh).geometry) {
+              (point as THREE.Mesh).geometry.dispose();
+            }
+            if ((point as THREE.Mesh).material instanceof THREE.Material) {
+              (point as THREE.Mesh).material.dispose();
+            }
             else if (Array.isArray((point as THREE.Mesh).material)) {
               ((point as THREE.Mesh).material as THREE.Material[]).forEach(mat => mat.dispose());
             }
@@ -878,3 +886,43 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               
               newInclination = calculateInclination(
                 updatedPoints[0].position,
+
+  return {
+    state,
+    background,
+    activeTool,
+    measurements,
+    temporaryPoints,
+    isDraggingPoint,
+    hoveredPointId,
+    selectedMeasurementId,
+    selectedPointIndex,
+    draggedPointRef,
+    lastClickTimeRef,
+    lastTouchTimeRef,
+    sceneRef,
+    cameraRef,
+    rendererRef,
+    controlsRef,
+    lightsRef,
+    requestRef,
+    modelRef,
+    processingStartTimeRef,
+    loadStartTimeRef,
+    modelSizeRef,
+    progressIntervalRef,
+    raycasterRef,
+    mouseRef,
+    previousMouseRef,
+    measurementGroupRef,
+    currentMeasurementRef,
+    touchStartPositionRef,
+    isTouchMoveRef,
+    touchStartTimeRef,
+    touchIdentifierRef,
+    pinchDistanceStartRef,
+    isPinchingRef,
+    hoverPoint,
+    canUndo,
+  };
+};
