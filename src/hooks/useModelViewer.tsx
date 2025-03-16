@@ -851,6 +851,14 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   }
 
+  const toggleMeasurementsVisibility = (visible: boolean) => {
+    // Implementation here
+  };
+
+  const setActiveTool = (tool: MeasurementType) => {
+    setActiveTool(tool);
+  };
+
   return {
     state,
     background,
@@ -878,6 +886,4 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setProgress: (progress: number) => setState(prev => ({ ...prev, progress })),
     loadModel: async (file: File) => console.log("Load model", file),
     resetView: () => console.log("Reset view"),
-    clearMeasurements: () => setMeasurements([]),
-    updateMeasurement: (id: string, updates: Partial<Measurement>) => {
-      setMeasurements(prev => prev.map(m => m.id === id ?
+    clearMeasurements:
