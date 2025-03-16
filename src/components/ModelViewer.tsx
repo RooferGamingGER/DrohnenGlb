@@ -13,7 +13,9 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
-  updateMeasurementGeometry
+  updateMeasurementGeometry,
+  calculatePolygonArea,
+  closePolygon
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
