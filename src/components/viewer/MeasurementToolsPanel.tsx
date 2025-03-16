@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -55,7 +54,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onDeleteSinglePoint,
   onClosePolygon
 }) => {
-  // Add debug logging to verify props
   console.log("MeasurementToolsPanel props:", {
     activeTool,
     tempPointsLength: tempPoints?.length,
@@ -104,7 +102,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Calculate temporary area from current tempPoints
   const tempArea = tempPoints && tempPoints.length >= 3 
     ? calculatePolygonArea(tempPoints.map(p => p.position))
     : 0;
@@ -123,7 +120,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Mobile portrait layout (bottom panel)
   if (isMobile && window.innerHeight > window.innerWidth) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
@@ -135,7 +131,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={handleClosePolygon}
-                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50"
+                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse"
               >
                 <Square className="mr-1 h-3 w-3" />
                 Fläche schließen
@@ -210,7 +206,6 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     );
   }
 
-  // Desktop or landscape layout (side panel)
   return (
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
@@ -220,7 +215,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={handleClosePolygon}
-              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50"
+              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse"
             >
               <Square className="mr-2 h-4 w-4" />
               Fläche schließen

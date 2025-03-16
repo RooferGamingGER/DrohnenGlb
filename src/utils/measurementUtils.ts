@@ -265,17 +265,18 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
 export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
   if (points.length < 3) return points;
   
-  // Überprüfen, ob das Polygon bereits geschlossen ist
+  // Get the first and last points
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
   
+  // Check if the polygon is already closed
   const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
   
   if (isClosed) {
-    return points; // Polygon ist bereits geschlossen
+    return points; // Already closed
   }
   
-  // Polygon schließen, indem wir den ersten Punkt am Ende hinzufügen
+  // Close the polygon by adding a copy of the first point at the end
   return [
     ...points,
     {
@@ -656,7 +657,7 @@ export const findNearestEditablePoint = (
   return null;
 };
 
-// Update the measurement lines and label
+// Update the measurement lines and label with improved polygon closing
 export const updateMeasurementGeometry = (measurement: Measurement): void => {
   if (!measurement.points || measurement.points.length < 2) return;
   
@@ -670,31 +671,43 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       ];
       updateMeasurementLine(measurement.lineObjects[0], linePoints);
     }
-    // For area measurements - with closing line
+    // For area measurements - with proper closing line
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Für Flächenmessungen müssen wir sicherstellen, dass auch eine Linie 
-      // vom letzten zum ersten Punkt existiert (Schließung des Polygons)
-      const totalPoints = measurement.points.length;
+      // Make sure we're working with a closed polygon
+      const closedPoints = ensureClosedPolygon(measurement.points.map(p => p.position));
+      const totalPoints = closedPoints.length;
+      
+      // Calculate how many lines we need
+      const requiredLines = totalPoints - 1;  // For a closed polygon
+      
+      // Create line objects if they don't exist or if we need more
+      if (!measurement.lineObjects) {
+        measurement.lineObjects = [];
+      }
+      
+      // Add more line objects if needed
+      while (measurement.lineObjects.length < requiredLines) {
+        const newLine = createMeasurementLine(
+          [new THREE.Vector3(), new THREE.Vector3()], 
+          measurement.type === 'area' ? 0x9b87f5 : 0x00ff00
+        );
+        measurement.lineObjects.push(newLine);
+        
+        // If this line has a parent, add the new line to it
+        if (measurement.lineObjects[0].parent) {
+          measurement.lineObjects[0].parent.add(newLine);
+        }
+      }
       
       // Update all the lines including closure line
-      for (let i = 0; i < totalPoints; i++) {
-        const nextIndex = (i + 1) % totalPoints; // Schließt das Polygon automatisch
+      for (let i = 0; i < requiredLines; i++) {
         const linePoints = [
           measurement.points[i].position.clone(),
-          measurement.points[nextIndex].position.clone()
+          measurement.points[(i + 1) % measurement.points.length].position.clone()
         ];
         
-        // Stelle sicher, dass wir genügend lineObjects haben
         if (i < measurement.lineObjects.length) {
           updateMeasurementLine(measurement.lineObjects[i], linePoints);
-        } else if (i === totalPoints - 1) {
-          // Wenn die Schließungslinie noch nicht existiert, erstelle sie
-          const closingLine = createMeasurementLine(linePoints, 0x9b87f5);
-          if (measurement.lineObjects) {
-            measurement.lineObjects.push(closingLine);
-          } else {
-            measurement.lineObjects = [closingLine];
-          }
         }
       }
     }
@@ -809,11 +822,11 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       }
     }
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Für Flächenmessungen sicherstellen, dass wir die Positionen als Vektoren haben
-      const positionArray = measurement.points.map(p => p.position);
+      // Make sure we have a closed polygon for area calculations
+      const closedPoints = ensureClosedPolygon(measurement.points.map(p => p.position));
       
-      // Berechne die Fläche basierend auf den Punkten
-      measurement.value = calculatePolygonArea(positionArray);
+      // Calculate area with the closed polygon
+      measurement.value = calculatePolygonArea(closedPoints);
       
       // Update the label
       if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
@@ -821,8 +834,8 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
         
         // Calculate the center of the polygon
         const center = new THREE.Vector3();
-        positionArray.forEach(p => center.add(p));
-        center.divideScalar(positionArray.length);
+        closedPoints.forEach(p => center.add(p));
+        center.divideScalar(closedPoints.length);
         
         // Add a small offset above the center point for better visibility
         center.y += 0.1;
@@ -853,7 +866,7 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
   }
   
-  // Update label position if it exists (use the existing label position update code)
+  // Update label position if it exists
   if (measurement.labelObject) {
     // For two-point measurements, place label in the middle
     if (measurement.points.length === 2) {

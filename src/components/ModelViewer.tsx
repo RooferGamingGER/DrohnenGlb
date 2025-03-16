@@ -427,7 +427,41 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             worldPosition: newPosition.clone()
           };
           
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          if (measurement.type === 'area' && updatedPoints.length >= 3) {
+            if (selectedPointIndex === 0) {
+              const lastIndex = updatedPoints.length - 1;
+              const firstPoint = updatedPoints[0].position;
+              const lastPoint = updatedPoints[lastIndex].position;
+              
+              if (lastPoint.distanceTo(firstPoint) < 0.1) {
+                updatedPoints[lastIndex] = {
+                  position: newPosition.clone(),
+                  worldPosition: newPosition.clone()
+                };
+              }
+            }
+            
+            if (selectedPointIndex === updatedPoints.length - 1) {
+              const firstPoint = updatedPoints[0].position;
+              const lastPoint = updatedPoints[selectedPointIndex].position;
+              
+              if (lastPoint.distanceTo(firstPoint) < 0.1) {
+                updatedPoints[0] = {
+                  position: newPosition.clone(),
+                  worldPosition: newPosition.clone()
+                };
+              }
+            }
+            
+            const positions = updatedPoints.map(p => p.position);
+            const area = calculatePolygonArea(positions);
+            measurement.value = area;
+          }
+          
+          modelViewer.updateMeasurement(selectedMeasurementId, { 
+            points: updatedPoints,
+            value: measurement.value 
+          });
           
           updateMeasurementGeometry(measurement);
         }
@@ -803,20 +837,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
       console.log("Schließe Polygon mit", modelViewer.tempPoints.length, "Punkten");
       
-      let newPoints = [...modelViewer.tempPoints];
-      
-      const firstPoint = newPoints[0];
-      const lastPoint = newPoints[newPoints.length - 1];
-      
-      const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
-      
-      if (!isClosed) {
-        newPoints.push({
-          position: firstPoint.position.clone(),
-          worldPosition: firstPoint.worldPosition.clone()
-        });
-        console.log("Polygon wurde geschlossen durch Hinzufügen des ersten Punktes am Ende");
-      }
+      let newPoints = closePolygon([...modelViewer.tempPoints]);
       
       if (modelViewer.finalizeMeasurement) {
         modelViewer.finalizeMeasurement(newPoints);
@@ -836,14 +857,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             });
             
             updateMeasurementGeometry(lastMeasurement);
+            
+            toast({
+              title: "Fläche berechnet",
+              description: `Die Flächenmessung wurde abgeschlossen: ${area < 0.01 ? `${(area * 10000).toFixed(2)} cm²` : `${area.toFixed(2)} m²`}`,
+              duration: 3000,
+            });
           }
         }
-        
-        toast({
-          title: "Fläche berechnet",
-          description: "Die Flächenmessung wurde erfolgreich abgeschlossen und berechnet.",
-          duration: 3000,
-        });
       } else {
         modelViewer.setActiveTool('none');
         
