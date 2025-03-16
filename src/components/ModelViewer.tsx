@@ -13,7 +13,13 @@ import {
   highlightMeasurementPoints, 
   updateCursorForDraggablePoint,
   findNearestEditablePoint,
-  updateMeasurementGeometry
+  updateMeasurementGeometry,
+  calculatePolygonArea,
+  closePolygon,
+  updateAreaPreview,
+  finalizePolygon,
+  Measurement,
+  clearPreviewObjects
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
@@ -425,9 +431,43 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             worldPosition: newPosition.clone()
           };
           
-          modelViewer.updateMeasurement(selectedMeasurementId, { points: updatedPoints });
+          if (measurement.type === 'area' && updatedPoints.length >= 3) {
+            if (selectedPointIndex === 0) {
+              const lastIndex = updatedPoints.length - 1;
+              const firstPoint = updatedPoints[0].position;
+              const lastPoint = updatedPoints[lastIndex].position;
+              
+              if (lastPoint.distanceTo(firstPoint) < 0.1) {
+                updatedPoints[lastIndex] = {
+                  position: newPosition.clone(),
+                  worldPosition: newPosition.clone()
+                };
+              }
+            }
+            
+            if (selectedPointIndex === updatedPoints.length - 1) {
+              const firstPoint = updatedPoints[0].position;
+              const lastPoint = updatedPoints[selectedPointIndex].position;
+              
+              if (lastPoint.distanceTo(firstPoint) < 0.1) {
+                updatedPoints[0] = {
+                  position: newPosition.clone(),
+                  worldPosition: newPosition.clone()
+                };
+              }
+            }
+            
+            const positions = updatedPoints.map(p => p.position);
+            const area = calculatePolygonArea(positions);
+            measurement.value = area;
+            
+            updateMeasurementGeometry(measurement);
+          }
           
-          updateMeasurementGeometry(measurement);
+          modelViewer.updateMeasurement(selectedMeasurementId, { 
+            points: updatedPoints,
+            value: measurement.value 
+          });
         }
       }
     } else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
@@ -776,8 +816,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     
     if (modelViewer.controls.enabled && isTouchDevice) {
       modelViewer.controls.touches = {
-        ONE: THREE.TOUCH.ROTATE,
-        TWO: THREE.TOUCH.DOLLY_PAN
+         ONE: THREE.TOUCH.ROTATE,
+         TWO: THREE.TOUCH.DOLLY_PAN
       };
       
       if (mode === 'pan') {
@@ -799,23 +839,92 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
   const handleClosePolygon = useCallback(() => {
     if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
-      const firstPoint = modelViewer.tempPoints[0];
+      console.log("Schließe Polygon mit", modelViewer.tempPoints.length, "Punkten");
       
-      if (firstPoint && firstPoint.position) {
-        const newPoints = [...modelViewer.tempPoints];
-        
-        if (modelViewer.finalizeMeasurement) {
-          modelViewer.finalizeMeasurement(newPoints);
-        } else {
-          modelViewer.setActiveTool('none');
+      // Calculate the area value before finalizing
+      const tempPositions = modelViewer.tempPoints.map(p => p.position);
+      const calculatedArea = calculatePolygonArea([...tempPositions, tempPositions[0]]);
+      
+      // Close the polygon by adding the first point as the last point
+      let newPoints = closePolygon([...modelViewer.tempPoints]);
+      
+      if (modelViewer.finalizeMeasurement) {
+        // Ensure all preview objects are cleared BEFORE creating the final measurement
+        if (modelViewer.measurementGroupRef?.current) {
+          const previewMeasurement: Measurement = {
+            id: 'preview',
+            type: 'area',
+            points: [...modelViewer.tempPoints],
+            value: 0,
+            unit: 'm²',
+            visible: true
+          };
+          
+          clearPreviewObjects(previewMeasurement, modelViewer.measurementGroupRef.current);
         }
         
+        // Create a finalized measurement with the calculated area value
+        modelViewer.finalizeMeasurement(newPoints, {
+          value: calculatedArea
+        });
+        
+        if (modelViewer.measurements.length > 0) {
+          const lastMeasurement = modelViewer.measurements[modelViewer.measurements.length - 1];
+          
+          if (lastMeasurement.type === 'area') {
+            console.log("Aktualisiere die Flächenmessung nach dem Schließen");
+            
+            // Clean up all preview elements
+            if (modelViewer.measurementGroupRef?.current) {
+              // First clear any previous preview objects
+              clearPreviewObjects(lastMeasurement, modelViewer.measurementGroupRef.current);
+              
+              // Then finalize the polygon with proper area calculation
+              finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
+              
+              // Make sure the area value is set correctly
+              if (!lastMeasurement.value || lastMeasurement.value === 0) {
+                const positions = lastMeasurement.points.map(p => p.position);
+                const area = calculatePolygonArea(positions);
+                
+                modelViewer.updateMeasurement(lastMeasurement.id, { 
+                  value: area
+                });
+              }
+              
+              // Reset the active tool to stop capturing points
+              modelViewer.setActiveTool('none');
+              
+              // Update the measurement visuals
+              updateMeasurementGeometry(lastMeasurement);
+              
+              toast({
+                title: "Fläche berechnet",
+                description: `Die Flächenmessung wurde abgeschlossen: ${lastMeasurement.value < 0.01 ? 
+                  `${(lastMeasurement.value * 10000).toFixed(2)} cm²` : 
+                  `${lastMeasurement.value.toFixed(2)} m²`}`,
+                duration: 3000,
+              });
+            }
+          }
+        }
+      } else {
+        modelViewer.setActiveTool('none');
+        
         toast({
-          title: "Fläche geschlossen",
-          description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
+          title: "Fehler bei Berechnung",
+          description: "Die Flächenmessung konnte nicht abgeschlossen werden.",
+          variant: "destructive",
           duration: 3000,
         });
       }
+    } else if (modelViewer.tempPoints && modelViewer.tempPoints.length < 3) {
+      toast({
+        title: "Nicht genügend Punkte",
+        description: "Es werden mindestens 3 Punkte für eine Flächenmessung benötigt.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   }, [modelViewer, toast]);
 
@@ -1062,6 +1171,31 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       handleInitialTouchSetup();
     }
   }, [modelViewer.controls, modelViewer.loadedModel, isTouchDevice]);
+
+  useEffect(() => {
+    if (modelViewer.activeTool === 'area' && 
+        modelViewer.tempPoints && 
+        modelViewer.tempPoints.length >= 3 &&
+        modelViewer.measurementGroupRef?.current &&
+        modelViewer.camera) {
+      
+      const previewMeasurement: Measurement = {
+        id: 'preview',
+        type: 'area',
+        points: [...modelViewer.tempPoints],
+        value: 0,
+        unit: 'm²',
+        visible: true
+      };
+      
+      updateAreaPreview(
+        previewMeasurement, 
+        modelViewer.tempPoints, 
+        modelViewer.measurementGroupRef.current,
+        modelViewer.camera
+      );
+    }
+  }, [modelViewer.activeTool, modelViewer.tempPoints, modelViewer.measurementGroupRef, modelViewer.camera]);
 
   return (
     <div className="relative h-full w-full flex flex-col">

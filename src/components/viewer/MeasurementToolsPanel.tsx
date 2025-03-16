@@ -1,9 +1,9 @@
 
 import MeasurementTools from '@/components/MeasurementTools';
-import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
+import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { FileDown, Home, RefreshCcw, Camera, Trash2 } from "lucide-react";
+import { FileDown, Home, RefreshCcw, Camera, Trash2, Square } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import { exportMeasurementsToPDF } from '@/utils/screenshotUtils';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -55,11 +55,16 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onDeleteSinglePoint,
   onClosePolygon
 }) => {
-  // Add debug logging to verify props
   console.log("MeasurementToolsPanel props:", {
     activeTool,
     tempPointsLength: tempPoints?.length,
-    hasClosePolygonHandler: !!onClosePolygon
+    hasClosePolygonHandler: !!onClosePolygon,
+    measurements: measurements.map(m => ({
+      id: m.id,
+      type: m.type,
+      value: m.value,
+      points: m.points.length
+    }))
   });
 
   const totalLength = measurements
@@ -104,13 +109,39 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
-  // Mobile portrait layout (bottom panel)
+  // Only show close polygon option when we have enough points and are in area tool mode
+  const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
+
+  const handleClosePolygon = () => {
+    if (canClosePolygon) {
+      onClosePolygon();
+      // Toast notification will be shown by ModelViewer after actual completion
+    } else {
+      toast({
+        title: "Nicht genügend Punkte",
+        description: "Es werden mindestens 3 Punkte benötigt, um eine Fläche zu schließen.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isMobile && window.innerHeight > window.innerWidth) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white p-2 border-t border-zinc-200">
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center sticky top-0 bg-white">
             <div className="flex space-x-2">
+            {canClosePolygon && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClosePolygon}
+                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold"
+              >
+                <Square className="mr-1 h-3 w-3" />
+                Fläche schließen
+              </Button>
+            )}
             </div>
           </div>
           
@@ -179,11 +210,22 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     );
   }
 
-  // Desktop or landscape layout (side panel)
   return (
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
         <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
+          {canClosePolygon && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleClosePolygon}
+              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold"
+            >
+              <Square className="mr-2 h-4 w-4" />
+              <span className="truncate">Fläche schließen</span>
+            </Button>
+          )}
+          
           {(totalLengthCount > 0 || totalAreaCount > 0) && (
             <div className="text-xs text-muted-foreground mb-2">
               {totalLengthCount > 0 && (

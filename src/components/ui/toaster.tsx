@@ -13,10 +13,10 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider duration={3000}>
+    <ToastProvider duration={4000}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} {...props} className="select-none">
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
@@ -28,7 +28,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport />
+      <ToastViewport className="bottom-0 right-0 top-auto flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col-reverse md:max-w-[420px]" />
     </ToastProvider>
   )
 }

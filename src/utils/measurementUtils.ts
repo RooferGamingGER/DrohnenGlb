@@ -21,6 +21,8 @@ export interface Measurement {
   labelObject?: THREE.Sprite; // Reference to the 3D label
   lineObjects?: THREE.Line[]; // References to the 3D lines
   pointObjects?: THREE.Mesh[]; // References to the 3D points
+  previewLineObject?: THREE.Line; // New: Reference to preview line connecting last to first point
+  previewLabelObject?: THREE.Sprite; // New: Reference to preview area label
 }
 
 // Calculate distance between two points in 3D space
@@ -69,19 +71,42 @@ export const formatMeasurementWithInclination = (
   return `${value.toFixed(2)} m`;
 };
 
+// Ensure polygon is closed by adding first point to the end if needed
+export const ensureClosedPolygon = (points: THREE.Vector3[]): THREE.Vector3[] => {
+  if (points.length < 3) return points;
+  
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  
+  // Überprüfen, ob der letzte Punkt mit dem ersten identisch ist
+  const isClosed = firstPoint.distanceTo(lastPoint) < 0.001;
+  
+  // Wenn nicht geschlossen, füge den ersten Punkt am Ende hinzu
+  if (!isClosed) {
+    return [...points, firstPoint.clone()];
+  }
+  
+  // Polygon ist bereits geschlossen
+  return points;
+};
+
 // Calculate area of a polygon defined by an array of 3D points
+// Enhanced with triangle fan triangulation
 export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   if (points.length < 3) return 0;
+  
+  // Stelle sicher, dass das Polygon geschlossen ist
+  const closedPoints = ensureClosedPolygon(points);
   
   // Project points onto the best-fitting plane
   // First, find the center of mass of all points
   const center = new THREE.Vector3();
-  points.forEach(p => center.add(p));
-  center.divideScalar(points.length);
+  closedPoints.forEach(p => center.add(p));
+  center.divideScalar(closedPoints.length);
   
   // Find the normal of the best-fitting plane using covariance matrix
   const covariance = new THREE.Matrix3();
-  points.forEach(p => {
+  closedPoints.forEach(p => {
     const dx = p.x - center.x;
     const dy = p.y - center.y;
     const dz = p.z - center.z;
@@ -101,15 +126,15 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   // For simplicity, we'll use a heuristic approach to approximate the normal
   // Finding the cross product of two dominant directions in the data
   const v1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
+    closedPoints[1].x - closedPoints[0].x,
+    closedPoints[1].y - closedPoints[0].y,
+    closedPoints[1].z - closedPoints[0].z
   ).normalize();
   
   const v2 = new THREE.Vector3(
-    points[Math.min(2, points.length - 1)].x - points[0].x,
-    points[Math.min(2, points.length - 1)].y - points[0].y,
-    points[Math.min(2, points.length - 1)].z - points[0].z
+    closedPoints[Math.min(2, closedPoints.length - 1)].x - closedPoints[0].x,
+    closedPoints[Math.min(2, closedPoints.length - 1)].y - closedPoints[0].y,
+    closedPoints[Math.min(2, closedPoints.length - 1)].z - closedPoints[0].z
   ).normalize();
   
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
@@ -129,7 +154,7 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   const zAxis = new THREE.Vector3().crossVectors(xAxis, normal).normalize();
   
   // Project all points onto the plane
-  const projectedPoints = points.map(p => {
+  const projectedPoints = closedPoints.map(p => {
     const offsetVector = new THREE.Vector3().subVectors(p, center);
     return new THREE.Vector2(
       offsetVector.dot(xAxis),
@@ -139,13 +164,28 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   
   // Calculate area using the shoelace formula
   let area = 0;
-  for (let i = 0; i < projectedPoints.length; i++) {
-    const j = (i + 1) % projectedPoints.length;
-    area += projectedPoints[i].x * projectedPoints[j].y;
-    area -= projectedPoints[j].x * projectedPoints[i].y;
+  for (let i = 0; i < projectedPoints.length - 1; i++) {
+    area += projectedPoints[i].x * projectedPoints[i+1].y;
+    area -= projectedPoints[i+1].x * projectedPoints[i].y;
   }
   
+  // Add the final segment (last point to first point)
+  const lastIdx = projectedPoints.length - 1;
+  area += projectedPoints[lastIdx].x * projectedPoints[0].y;
+  area -= projectedPoints[0].x * projectedPoints[lastIdx].y;
+  
   return Math.abs(area) / 2;
+};
+
+// New: Calculate preview area for incomplete polygon
+export const calculatePreviewPolygonArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  // Create a temporary closed polygon for calculation
+  const previewPoints = [...points];
+  
+  // Create a closed polygon for area calculation
+  return calculatePolygonArea(previewPoints);
 };
 
 // Format area measurement with appropriate unit
@@ -156,7 +196,7 @@ export const formatArea = (area: number): string => {
   return `${area.toFixed(2)} m²`;
 };
 
-// Create a mesh for the area polygon
+// Create a mesh for the area polygon - now ensures closed polygon
 export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   if (points.length < 3) {
     // Return an empty mesh if fewer than 3 points
@@ -166,14 +206,17 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
     );
   }
   
+  // Stelle sicher, dass das Polygon geschlossen ist
+  const closedPoints = ensureClosedPolygon(points);
+  
   // Create a shape from the projected points
   const center = new THREE.Vector3();
-  points.forEach(p => center.add(p));
-  center.divideScalar(points.length);
+  closedPoints.forEach(p => center.add(p));
+  center.divideScalar(closedPoints.length);
   
   // Find the normal of the best-fitting plane
-  const v1 = new THREE.Vector3().subVectors(points[1], points[0]).normalize();
-  const v2 = new THREE.Vector3().subVectors(points[Math.min(2, points.length - 1)], points[0]).normalize();
+  const v1 = new THREE.Vector3().subVectors(closedPoints[1], closedPoints[0]).normalize();
+  const v2 = new THREE.Vector3().subVectors(closedPoints[Math.min(2, closedPoints.length - 1)], closedPoints[0]).normalize();
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
   
   // If the normal is too small, default to the Y-axis
@@ -191,7 +234,7 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   const rotationMatrix = new THREE.Matrix4().extractRotation(lookAtMatrix);
   
   // Project points onto the XZ plane
-  const projectedPoints = points.map(p => {
+  const projectedPoints = closedPoints.map(p => {
     const localPoint = p.clone().sub(center);
     localPoint.applyMatrix4(rotationMatrix);
     return new THREE.Vector2(localPoint.x, localPoint.z);
@@ -229,6 +272,31 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   mesh.userData.isAreaMeasurement = true;
   
   return mesh;
+};
+
+// Schließt ein Polygon indem der erste Punkt als letzter Punkt hinzugefügt wird
+export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
+  if (points.length < 3) return points;
+  
+  // Get the first and last points
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  
+  // Check if the polygon is already closed
+  const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
+  
+  if (isClosed) {
+    return points; // Already closed
+  }
+  
+  // Close the polygon by adding a copy of the first point at the end
+  return [
+    ...points,
+    {
+      position: firstPoint.position.clone(),
+      worldPosition: firstPoint.worldPosition.clone()
+    }
+  ];
 };
 
 // Create a unique ID for measurements
@@ -363,6 +431,88 @@ export const createTextSprite = (text: string, position: THREE.Vector3, color: n
   return sprite;
 };
 
+// Create a temporary preview text sprite for in-progress measurements
+export const createPreviewTextSprite = (text: string, position: THREE.Vector3): THREE.Sprite => {
+  // Similar to createTextSprite but with 'preview' styling
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  
+  if (!context) throw new Error("Could not get canvas context");
+  
+  canvas.width = 512;
+  canvas.height = 128;
+  
+  // More transparent background for preview
+  const bgGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+  bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.8)');
+  bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.8)');
+  
+  // Draw a rounded rectangle with gradient background
+  context.fillStyle = bgGradient;
+  context.roundRect(0, 0, canvas.width, canvas.height, 16);
+  context.fill();
+  
+  // Add subtle border for better visibility
+  context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  context.lineWidth = 2;
+  context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
+  context.stroke();
+  
+  // Add a subtle inner glow
+  context.shadowColor = 'rgba(155, 135, 245, 0.5)';  // Purple glow for preview
+  context.shadowBlur = 8;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 0;
+  
+  // Use the Inter font which is used in the UI (from index.css)
+  context.font = 'bold 48px Inter, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  
+  // Remove text shadow to make text cleaner
+  context.shadowColor = 'transparent';
+  
+  // Draw text with a light gradient fill for better legibility
+  const textGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  textGradient.addColorStop(0, '#ffffff');
+  textGradient.addColorStop(1, '#e0e0e0');
+  
+  context.fillStyle = textGradient;
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  
+  // Create sprite material with canvas texture
+  const texture = new THREE.CanvasTexture(canvas);
+  
+  // Apply texture filtering for clearer text
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  
+  const material = new THREE.SpriteMaterial({ 
+    map: texture,
+    sizeAttenuation: true,
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.85  // More transparent for preview
+  });
+  
+  // Create sprite and position it
+  const sprite = new THREE.Sprite(material);
+  sprite.position.copy(position);
+  
+  // Scale the sprite - initial scale will be adjusted dynamically based on camera distance
+  sprite.scale.set(0.8, 0.4, 1);
+  
+  // Add custom property to store base scale for dynamic scaling
+  sprite.userData = {
+    baseScale: { x: 0.8, y: 0.4, z: 1 },
+    isLabel: true,
+    isPreview: true
+  };
+  
+  return sprite;
+};
+
 // Update sprite scale based on camera distance
 export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): void => {
   if (!sprite.userData.baseScale) return;
@@ -435,6 +585,22 @@ export const createMeasurementLine = (points: THREE.Vector3[], color: number = 0
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
   return new THREE.Line(lineGeometry, lineMaterial);
 };
+
+// Create a preview line for showing the potential closure of a polygon
+export const createPreviewLine = (points: THREE.Vector3[]): THREE.Line => {
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x9b87f5,
+    linewidth: 8,
+    opacity: 0.6,  // More transparent for preview
+    transparent: true,
+  });
+  
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+  const line = new THREE.Line(lineGeometry, lineMaterial);
+  line.userData = { isPreviewLine: true };
+  
+  return line;
+}
 
 // Update a measurement line with new points
 export const updateMeasurementLine = (line: THREE.Line, points: THREE.Vector3[]): void => {
@@ -602,7 +768,7 @@ export const findNearestEditablePoint = (
   return null;
 };
 
-// Update the measurement lines and label
+// Update the measurement lines and label with improved polygon closing
 export const updateMeasurementGeometry = (measurement: Measurement): void => {
   if (!measurement.points || measurement.points.length < 2) return;
   
@@ -616,202 +782,307 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       ];
       updateMeasurementLine(measurement.lineObjects[0], linePoints);
     }
-    // For area measurements
+    // For area measurements - with proper closing line
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Update the outline lines
-      for (let i = 0; i < measurement.points.length; i++) {
-        const nextIndex = (i + 1) % measurement.points.length;
-        const linePoints = [
-          measurement.points[i].position.clone(),
-          measurement.points[nextIndex].position.clone()
-        ];
+      // Always work with and ensure a properly closed polygon
+      const positions = measurement.points.map(p => p.position);
+      const closedPolygon = ensureClosedPolygon(positions);
+      const totalPoints = closedPolygon.length;
+      
+      // Calculate how many lines we need
+      const requiredLines = totalPoints - 1;  // For a closed polygon
+      
+      // Create line objects if they don't exist or if we need more
+      if (!measurement.lineObjects) {
+        measurement.lineObjects = [];
+      }
+      
+      // Add more line objects if needed
+      while (measurement.lineObjects.length < requiredLines) {
+        const newLine = createMeasurementLine(
+          [new THREE.Vector3(), new THREE.Vector3()], 
+          0x9b87f5 // Purple color for area measurements
+        );
+        measurement.lineObjects.push(newLine);
         
-        if (i < measurement.lineObjects.length) {
-          updateMeasurementLine(measurement.lineObjects[i], linePoints);
+        // If this line has a parent, add the new line to it
+        if (measurement.lineObjects[0].parent) {
+          measurement.lineObjects[0].parent.add(newLine);
         }
       }
-    }
-    // For more complex measurements with multiple lines
-    else if (measurement.lineObjects.length === measurement.points.length - 1) {
-      for (let i = 0; i < measurement.points.length - 1; i++) {
+      
+      // Update all the lines including the closure line
+      for (let i = 0; i < requiredLines; i++) {
+        const startIdx = i;
+        const endIdx = (i + 1) % closedPolygon.length;
+        
         const linePoints = [
-          measurement.points[i].position.clone(), 
-          measurement.points[i+1].position.clone()
+          closedPolygon[startIdx].clone(),
+          closedPolygon[endIdx].clone()
         ];
         updateMeasurementLine(measurement.lineObjects[i], linePoints);
       }
     }
   }
   
-  // Recalculate measurement value and inclination
-  if (measurement.points.length >= 2) {
-    // Update the value based on the measurement type
-    if (measurement.type === 'length') {
-      measurement.value = calculateDistance(
-        measurement.points[0].position,
-        measurement.points[1].position
-      );
-      
-      // Update inclination for length measurements
-      measurement.inclination = calculateInclination(
-        measurement.points[0].position,
-        measurement.points[1].position
-      );
-      
-      // Update the label text with the new value and inclination
-      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
-        const labelText = formatMeasurementWithInclination(measurement.value, measurement.inclination);
-        
-        // Get the current position to maintain it
-        const currentPosition = measurement.labelObject.position.clone();
-        
-        // Calculate the updated midpoint
-        const midpoint = new THREE.Vector3().addVectors(
-          measurement.points[0].position,
-          measurement.points[1].position
-        ).multiplyScalar(0.5);
-        
-        // Add a small offset above the line for better visibility
-        midpoint.y += 0.1;
-        
-        // Update the sprite with the new text and position
-        const updatedSprite = createTextSprite(
-          labelText,
-          midpoint,
-          0x00ff00
-        );
-        
-        // Preserve the userData and scale from the existing label
-        updatedSprite.userData = measurement.labelObject.userData;
-        updatedSprite.scale.copy(measurement.labelObject.scale);
-        
-        // Replace the old label with the new one
-        if (measurement.labelObject.parent) {
-          const parent = measurement.labelObject.parent;
-          if (measurement.labelObject.material.map) {
-            measurement.labelObject.material.map.dispose();
-          }
-          measurement.labelObject.material.dispose();
-          parent.remove(measurement.labelObject);
-          parent.add(updatedSprite);
-          measurement.labelObject = updatedSprite;
-        }
-      }
-    } 
-    else if (measurement.type === 'height') {
-      measurement.value = calculateHeight(
-        measurement.points[0].position,
-        measurement.points[1].position
-      );
-      
-      // Update the label text with the new height value
-      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
-        const labelText = `${measurement.value.toFixed(2)} ${measurement.unit}`;
-        
-        // Calculate the updated vertical midpoint
-        const midHeight = (measurement.points[0].position.y + measurement.points[1].position.y) / 2;
-        const midPoint = new THREE.Vector3(
-          measurement.points[0].position.x,
-          midHeight,
-          measurement.points[0].position.z
-        );
-        midPoint.x += 0.1;
-        
-        // Update the sprite with the new text and position
-        const updatedSprite = createTextSprite(
-          labelText,
-          midPoint,
-          0x0000ff
-        );
-        
-        // Preserve the userData and scale from the existing label
-        updatedSprite.userData = measurement.labelObject.userData;
-        updatedSprite.scale.copy(measurement.labelObject.scale);
-        
-        // Replace the old label with the new one
-        if (measurement.labelObject.parent) {
-          const parent = measurement.labelObject.parent;
-          if (measurement.labelObject.material.map) {
-            measurement.labelObject.material.map.dispose();
-          }
-          measurement.labelObject.material.dispose();
-          parent.remove(measurement.labelObject);
-          parent.add(updatedSprite);
-          measurement.labelObject = updatedSprite;
-        }
-      }
-    }
-    else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Calculate the area based on the points
-      const positionArray = measurement.points.map(p => p.position);
-      measurement.value = calculatePolygonArea(positionArray);
-      
-      // Update the label
-      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
-        const labelText = formatArea(measurement.value);
-        
-        // Calculate the center of the polygon
-        const center = new THREE.Vector3();
-        positionArray.forEach(p => center.add(p));
-        center.divideScalar(positionArray.length);
-        
-        // Add a small offset above the center point for better visibility
-        center.y += 0.1;
-        
-        // Create a new sprite with the updated area
-        const updatedSprite = createTextSprite(
-          labelText,
-          center,
-          0x9b87f5
-        );
-        
-        // Preserve the userData and scale from the existing label
-        updatedSprite.userData = measurement.labelObject.userData;
-        updatedSprite.scale.copy(measurement.labelObject.scale);
-        
-        // Replace the old label with the new one
-        if (measurement.labelObject.parent) {
-          const parent = measurement.labelObject.parent;
-          if (measurement.labelObject.material.map) {
-            measurement.labelObject.material.map.dispose();
-          }
-          measurement.labelObject.material.dispose();
-          parent.remove(measurement.labelObject);
-          parent.add(updatedSprite);
-          measurement.labelObject = updatedSprite;
-        }
-      }
-    }
-  }
-  
-  // Update label position if it exists (use the existing label position update code)
+  // Update label if it exists
   if (measurement.labelObject) {
-    // For two-point measurements, place label in the middle
-    if (measurement.points.length === 2) {
+    if (measurement.type === 'length' && measurement.points.length === 2) {
+      // For length measurements, position label at the midpoint
       const midpoint = new THREE.Vector3().addVectors(
         measurement.points[0].position,
         measurement.points[1].position
       ).multiplyScalar(0.5);
       
-      // Add a small offset above the line for better visibility
-      midpoint.y += 0.1;
-      measurement.labelObject.position.copy(midpoint);
-    }
-    // For area measurements, place at the center of the polygon
-    else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      const center = new THREE.Vector3();
-      measurement.points.forEach(p => center.add(p.position));
-      center.divideScalar(measurement.points.length);
+      // Add a small Y offset to avoid z-fighting with the line
+      midpoint.y += 0.05;
       
-      // Add a small offset above the center for better visibility
+      measurement.labelObject.position.copy(midpoint);
+    } else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // For area measurements, position label at the centroid
+      const positions = measurement.points.map(p => p.position);
+      
+      const center = new THREE.Vector3();
+      positions.forEach(p => center.add(p));
+      center.divideScalar(positions.length);
+      
+      // Add a small Y offset to ensure visibility
       center.y += 0.1;
+      
       measurement.labelObject.position.copy(center);
     }
-    // For multi-point measurements, place near the last point
-    else if (measurement.points.length > 2) {
-      const lastPoint = measurement.points[measurement.points.length - 1].position;
-      const offsetPosition = lastPoint.clone().add(new THREE.Vector3(0, 0.1, 0));
-      measurement.labelObject.position.copy(offsetPosition);
-    }
   }
-}
+};
+
+// Calculate the normal of a polygon for better orientation
+export const calculatePolygonNormal = (points: THREE.Vector3[]): THREE.Vector3 => {
+  if (points.length < 3) {
+    return new THREE.Vector3(0, 1, 0); // Default to Y-up if not enough points
+  }
+  
+  // Calculate the center/average of all points
+  const center = new THREE.Vector3();
+  points.forEach(p => center.add(p));
+  center.divideScalar(points.length);
+  
+  // Use Newell's method for a more robust normal calculation
+  const normal = new THREE.Vector3(0, 0, 0);
+  
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % points.length];
+    
+    normal.x += (current.y - next.y) * (current.z + next.z);
+    normal.y += (current.z - next.z) * (current.x + next.x);
+    normal.z += (current.x - next.x) * (current.y + next.y);
+  }
+  
+  normal.normalize();
+  
+  // If normal length is too small, default to Y-axis
+  if (normal.length() < 0.1) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  
+  return normal;
+};
+
+// Update area preview for in-progress measurements
+export const updateAreaPreview = (
+  measurement: Measurement,
+  points: MeasurementPoint[],
+  scene: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  if (points.length < 3) {
+    // Clear any existing preview elements if we have fewer than 3 points
+    clearPreviewObjects(measurement, scene);
+    return;
+  }
+  
+  // We'll only show points during measurement, not preview lines or area calculations
+  // This removes the temporary preview lines and area calculation until the polygon is closed
+  
+  // Clean up any existing preview objects to ensure they don't accumulate
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
+      }
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  // Remove preview label if it exists
+  if (measurement.previewLabelObject) {
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
+  }
+};
+
+// Finalize polygon measurement after preview
+export const finalizePolygon = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // First, clean up any preview objects
+  clearPreviewObjects(measurement, scene);
+  
+  // Ensure the polygon is properly closed
+  if (measurement.type === 'area' && measurement.points.length >= 3) {
+    // Make sure the polygon is closed in 3D
+    const positions = measurement.points.map(p => p.position);
+    const closedPositions = ensureClosedPolygon(positions);
+    
+    // If a new point was added for closure, we need to update the measurement
+    if (closedPositions.length > positions.length) {
+      const firstPoint = measurement.points[0];
+      measurement.points.push({
+        position: firstPoint.position.clone(),
+        worldPosition: firstPoint.worldPosition.clone()
+      });
+    }
+    
+    // Calculate the final area value
+    measurement.value = calculatePolygonArea(closedPositions);
+    
+    // Update all geometry with the finalized points
+    updateMeasurementGeometry(measurement);
+  }
+};
+
+// Clear temporary preview objects - Enhanced to be more thorough
+export const clearPreviewObjects = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // Remove preview line if it exists
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
+      }
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  // Remove preview label if it exists
+  if (measurement.previewLabelObject) {
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
+  }
+  
+  // Find and remove ALL preview objects related to this measurement - more aggressive cleanup
+  scene.traverse((object) => {
+    if (object.userData && 
+       (object.userData.isPreview || 
+        object.userData.isTemporary || 
+        object.userData.measurementId === 'preview' ||
+        (object.userData.measurementId === measurement.id && object.userData.isPreviewElement))) {
+      
+      if (object.parent) {
+        object.parent.remove(object);
+      }
+      
+      // Properly dispose of resources
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Line) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Sprite) {
+        if (object.material instanceof THREE.SpriteMaterial) {
+          if (object.material.map) {
+            object.material.map.dispose();
+          }
+          object.material.dispose();
+        }
+      }
+    }
+  });
+  
+  // Also remove any objects directly in the scene with names matching this measurement's preview patterns
+  const objectsToRemove: THREE.Object3D[] = [];
+  
+  scene.traverse((object) => {
+    const name = object.name.toLowerCase();
+    
+    if (name.includes('preview') || 
+        name.includes('temp') || 
+        name.includes(`preview-${measurement.id}`) || 
+        name.includes(`temp-${measurement.id}`)) {
+      objectsToRemove.push(object);
+    }
+  });
+  
+  // Remove identified objects
+  objectsToRemove.forEach(object => {
+    scene.remove(object);
+    
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(m => m.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
+    }
+  });
+};
