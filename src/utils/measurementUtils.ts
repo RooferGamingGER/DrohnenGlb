@@ -820,4 +820,39 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
         
         const linePoints = [
           closedPolygon[startIdx].clone(),
-          closedPolygon[endIdx].clone
+          closedPolygon[endIdx].clone()
+        ];
+        updateMeasurementLine(measurement.lineObjects[i], linePoints);
+      }
+    }
+  }
+  
+  // Update the label position
+  if (measurement.labelObject) {
+    // For a length measurement, place label at midpoint
+    if (measurement.type === 'length' && measurement.points.length === 2) {
+      const midpoint = new THREE.Vector3().addVectors(
+        measurement.points[0].position,
+        measurement.points[1].position
+      ).multiplyScalar(0.5);
+      
+      measurement.labelObject.position.copy(midpoint);
+    }
+    // For an area measurement, find centroid of the polygon
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      const positions = measurement.points.map(p => p.position);
+      const totalPoints = positions.length;
+      
+      // Calculate centroid
+      const centroid = new THREE.Vector3();
+      positions.forEach(pos => centroid.add(pos));
+      centroid.divideScalar(totalPoints);
+      
+      // Move label to centroid
+      measurement.labelObject.position.copy(centroid);
+      
+      // Slightly raise the label for better visibility
+      centroid.y += 0.2;
+    }
+  }
+};
