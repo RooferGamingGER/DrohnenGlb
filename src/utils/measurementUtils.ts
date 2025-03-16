@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -820,4 +821,238 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
           closedPolygon[startIdx].clone(),
           closedPolygon[endIdx].clone()
         ];
-        updateMeasurementLine(measurement.lineObjects[i], linePoints
+        updateMeasurementLine(measurement.lineObjects[i], linePoints);
+      }
+    }
+  }
+  
+  // Update label if it exists
+  if (measurement.labelObject) {
+    if (measurement.type === 'length' && measurement.points.length === 2) {
+      // For length measurements, position label at the midpoint
+      const midpoint = new THREE.Vector3().addVectors(
+        measurement.points[0].position,
+        measurement.points[1].position
+      ).multiplyScalar(0.5);
+      
+      // Add a small Y offset to avoid z-fighting with the line
+      midpoint.y += 0.05;
+      
+      measurement.labelObject.position.copy(midpoint);
+    } else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // For area measurements, position label at the centroid
+      const positions = measurement.points.map(p => p.position);
+      
+      const center = new THREE.Vector3();
+      positions.forEach(p => center.add(p));
+      center.divideScalar(positions.length);
+      
+      // Add a small Y offset to ensure visibility
+      center.y += 0.1;
+      
+      measurement.labelObject.position.copy(center);
+    }
+  }
+};
+
+// Calculate the normal of a polygon for better orientation
+export const calculatePolygonNormal = (points: THREE.Vector3[]): THREE.Vector3 => {
+  if (points.length < 3) {
+    return new THREE.Vector3(0, 1, 0); // Default to Y-up if not enough points
+  }
+  
+  // Calculate the center/average of all points
+  const center = new THREE.Vector3();
+  points.forEach(p => center.add(p));
+  center.divideScalar(points.length);
+  
+  // Use Newell's method for a more robust normal calculation
+  const normal = new THREE.Vector3(0, 0, 0);
+  
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % points.length];
+    
+    normal.x += (current.y - next.y) * (current.z + next.z);
+    normal.y += (current.z - next.z) * (current.x + next.x);
+    normal.z += (current.x - next.x) * (current.y + next.y);
+  }
+  
+  normal.normalize();
+  
+  // If normal length is too small, default to Y-axis
+  if (normal.length() < 0.1) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  
+  return normal;
+};
+
+// Update area preview for in-progress measurements
+export const updateAreaPreview = (
+  measurement: Measurement,
+  points: MeasurementPoint[],
+  scene: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  if (points.length < 3) {
+    // Clear any existing preview elements if we have fewer than 3 points
+    clearPreviewObjects(measurement, scene);
+    return;
+  }
+  
+  const positions = points.map(p => p.position);
+  
+  // Create preview line connecting last point to first point
+  const previewLinePoints = [
+    positions[positions.length - 1].clone(),
+    positions[0].clone()
+  ];
+  
+  // Create or update the preview line
+  if (!measurement.previewLineObject) {
+    measurement.previewLineObject = createPreviewLine(previewLinePoints);
+    scene.add(measurement.previewLineObject);
+  } else {
+    updateMeasurementLine(measurement.previewLineObject, previewLinePoints);
+  }
+  
+  // Calculate area for the preview
+  const area = calculatePolygonArea(positions);
+  
+  // Create or update the preview label
+  const center = new THREE.Vector3();
+  positions.forEach(p => center.add(p));
+  center.divideScalar(positions.length);
+  
+  // Add a small Y offset to ensure visibility above the mesh
+  center.y += 0.1;
+  
+  const areaText = formatArea(area);
+  
+  if (!measurement.previewLabelObject) {
+    measurement.previewLabelObject = createPreviewTextSprite(areaText, center);
+    scene.add(measurement.previewLabelObject);
+  } else {
+    // Update the existing label
+    measurement.previewLabelObject.position.copy(center);
+    
+    // Update text if possible
+    if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial &&
+        measurement.previewLabelObject.material.map instanceof THREE.CanvasTexture) {
+      const texture = measurement.previewLabelObject.material.map;
+      const canvas = texture.image;
+      const context = canvas.getContext('2d');
+      
+      if (context) {
+        // Clear the canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Redraw the background
+        const bgGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+        bgGradient.addColorStop(0, 'rgba(41, 50, 65, 0.8)');
+        bgGradient.addColorStop(1, 'rgba(27, 32, 43, 0.8)');
+        
+        context.fillStyle = bgGradient;
+        context.roundRect(0, 0, canvas.width, canvas.height, 16);
+        context.fill();
+        
+        context.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        context.lineWidth = 2;
+        context.roundRect(2, 2, canvas.width-4, canvas.height-4, 14);
+        context.stroke();
+        
+        // Draw the updated text
+        context.font = 'bold 48px Inter, sans-serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        
+        const textGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+        textGradient.addColorStop(0, '#ffffff');
+        textGradient.addColorStop(1, '#e0e0e0');
+        
+        context.fillStyle = textGradient;
+        context.fillText(areaText, canvas.width / 2, canvas.height / 2);
+        
+        // Update the texture
+        texture.needsUpdate = true;
+      }
+    }
+  }
+  
+  // Update the label scale based on camera distance
+  if (measurement.previewLabelObject) {
+    updateLabelScale(measurement.previewLabelObject, camera);
+  }
+};
+
+// Finalize polygon measurement after preview
+export const finalizePolygon = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // First, clean up any preview objects
+  clearPreviewObjects(measurement, scene);
+  
+  // Ensure the polygon is properly closed
+  if (measurement.type === 'area' && measurement.points.length >= 3) {
+    // Make sure the polygon is closed in 3D
+    const positions = measurement.points.map(p => p.position);
+    const closedPositions = ensureClosedPolygon(positions);
+    
+    // If a new point was added for closure, we need to update the measurement
+    if (closedPositions.length > positions.length) {
+      const firstPoint = measurement.points[0];
+      measurement.points.push({
+        position: firstPoint.position.clone(),
+        worldPosition: firstPoint.worldPosition.clone()
+      });
+    }
+    
+    // Update all geometry with the finalized points
+    updateMeasurementGeometry(measurement);
+  }
+};
+
+// Clear temporary preview objects
+export const clearPreviewObjects = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // Remove preview line if it exists
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
+      }
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  // Remove preview label if it exists
+  if (measurement.previewLabelObject) {
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
+  }
+};
