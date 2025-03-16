@@ -69,6 +69,168 @@ export const formatMeasurementWithInclination = (
   return `${value.toFixed(2)} m`;
 };
 
+// Calculate area of a polygon defined by an array of 3D points
+export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  // Project points onto the best-fitting plane
+  // First, find the center of mass of all points
+  const center = new THREE.Vector3();
+  points.forEach(p => center.add(p));
+  center.divideScalar(points.length);
+  
+  // Find the normal of the best-fitting plane using covariance matrix
+  const covariance = new THREE.Matrix3();
+  points.forEach(p => {
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    const dz = p.z - center.z;
+    
+    covariance.elements[0] += dx * dx; // xx
+    covariance.elements[1] += dx * dy; // xy
+    covariance.elements[2] += dx * dz; // xz
+    covariance.elements[3] += dy * dx; // yx
+    covariance.elements[4] += dy * dy; // yy
+    covariance.elements[5] += dy * dz; // yz
+    covariance.elements[6] += dz * dx; // zx
+    covariance.elements[7] += dz * dy; // zy
+    covariance.elements[8] += dz * dz; // zz
+  });
+  
+  // Find the eigenvector corresponding to the smallest eigenvalue
+  // For simplicity, we'll use a heuristic approach to approximate the normal
+  // Finding the cross product of two dominant directions in the data
+  const v1 = new THREE.Vector3(
+    points[1].x - points[0].x,
+    points[1].y - points[0].y,
+    points[1].z - points[0].z
+  ).normalize();
+  
+  const v2 = new THREE.Vector3(
+    points[Math.min(2, points.length - 1)].x - points[0].x,
+    points[Math.min(2, points.length - 1)].y - points[0].y,
+    points[Math.min(2, points.length - 1)].z - points[0].z
+  ).normalize();
+  
+  const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+  
+  // If the normal is too small, default to the Y-axis
+  if (normal.length() < 0.1) {
+    normal.set(0, 1, 0);
+  }
+  
+  // Create a coordinate system in the plane
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(u)) > 0.9) {
+    u.set(0, 1, 0);
+  }
+  
+  const xAxis = new THREE.Vector3().crossVectors(normal, u).normalize();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, normal).normalize();
+  
+  // Project all points onto the plane
+  const projectedPoints = points.map(p => {
+    const offsetVector = new THREE.Vector3().subVectors(p, center);
+    return new THREE.Vector2(
+      offsetVector.dot(xAxis),
+      offsetVector.dot(zAxis)
+    );
+  });
+  
+  // Calculate area using the shoelace formula
+  let area = 0;
+  for (let i = 0; i < projectedPoints.length; i++) {
+    const j = (i + 1) % projectedPoints.length;
+    area += projectedPoints[i].x * projectedPoints[j].y;
+    area -= projectedPoints[j].x * projectedPoints[i].y;
+  }
+  
+  return Math.abs(area) / 2;
+};
+
+// Format area measurement with appropriate unit
+export const formatArea = (area: number): string => {
+  if (area < 0.01) {
+    return `${(area * 10000).toFixed(2)} cm²`;
+  }
+  return `${area.toFixed(2)} m²`;
+};
+
+// Create a mesh for the area polygon
+export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
+  if (points.length < 3) {
+    // Return an empty mesh if fewer than 3 points
+    return new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({ color: 0x9b87f5 })
+    );
+  }
+  
+  // Create a shape from the projected points
+  const center = new THREE.Vector3();
+  points.forEach(p => center.add(p));
+  center.divideScalar(points.length);
+  
+  // Find the normal of the best-fitting plane
+  const v1 = new THREE.Vector3().subVectors(points[1], points[0]).normalize();
+  const v2 = new THREE.Vector3().subVectors(points[Math.min(2, points.length - 1)], points[0]).normalize();
+  const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+  
+  // If the normal is too small, default to the Y-axis
+  if (normal.length() < 0.1) {
+    normal.set(0, 1, 0);
+  }
+  
+  // Create a matrix to transform points to the XZ plane
+  const lookAtMatrix = new THREE.Matrix4();
+  const tempCenter = center.clone();
+  const tempTarget = tempCenter.clone().add(normal);
+  const up = new THREE.Vector3(0, 1, 0);
+  
+  lookAtMatrix.lookAt(tempCenter, tempTarget, up);
+  const rotationMatrix = new THREE.Matrix4().extractRotation(lookAtMatrix);
+  
+  // Project points onto the XZ plane
+  const projectedPoints = points.map(p => {
+    const localPoint = p.clone().sub(center);
+    localPoint.applyMatrix4(rotationMatrix);
+    return new THREE.Vector2(localPoint.x, localPoint.z);
+  });
+  
+  // Create a shape from the 2D points
+  const shape = new THREE.Shape();
+  shape.moveTo(projectedPoints[0].x, projectedPoints[0].y);
+  for (let i = 1; i < projectedPoints.length; i++) {
+    shape.lineTo(projectedPoints[i].x, projectedPoints[i].y);
+  }
+  shape.closePath();
+  
+  // Create a ShapeGeometry
+  const geometry = new THREE.ShapeGeometry(shape);
+  
+  // Transform the geometry back to 3D space
+  geometry.rotateX(Math.PI / 2);
+  
+  const inverseRotation = rotationMatrix.clone().transpose();
+  geometry.applyMatrix4(inverseRotation);
+  geometry.translate(center.x, center.y, center.z);
+  
+  // Create a material with transparency
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x9b87f5,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  
+  // Create the mesh
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.isAreaMeasurement = true;
+  
+  return mesh;
+};
+
 // Create a unique ID for measurements
 export const createMeasurementId = (): string => {
   return Math.random().toString(36).substring(2, 10);
@@ -454,6 +616,21 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       ];
       updateMeasurementLine(measurement.lineObjects[0], linePoints);
     }
+    // For area measurements
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // Update the outline lines
+      for (let i = 0; i < measurement.points.length; i++) {
+        const nextIndex = (i + 1) % measurement.points.length;
+        const linePoints = [
+          measurement.points[i].position.clone(),
+          measurement.points[nextIndex].position.clone()
+        ];
+        
+        if (i < measurement.lineObjects.length) {
+          updateMeasurementLine(measurement.lineObjects[i], linePoints);
+        }
+      }
+    }
     // For more complex measurements with multiple lines
     else if (measurement.lineObjects.length === measurement.points.length - 1) {
       for (let i = 0; i < measurement.points.length - 1; i++) {
@@ -564,6 +741,47 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
         }
       }
     }
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // Calculate the area based on the points
+      const positionArray = measurement.points.map(p => p.position);
+      measurement.value = calculatePolygonArea(positionArray);
+      
+      // Update the label
+      if (measurement.labelObject && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+        const labelText = formatArea(measurement.value);
+        
+        // Calculate the center of the polygon
+        const center = new THREE.Vector3();
+        positionArray.forEach(p => center.add(p));
+        center.divideScalar(positionArray.length);
+        
+        // Add a small offset above the center point for better visibility
+        center.y += 0.1;
+        
+        // Create a new sprite with the updated area
+        const updatedSprite = createTextSprite(
+          labelText,
+          center,
+          0x9b87f5
+        );
+        
+        // Preserve the userData and scale from the existing label
+        updatedSprite.userData = measurement.labelObject.userData;
+        updatedSprite.scale.copy(measurement.labelObject.scale);
+        
+        // Replace the old label with the new one
+        if (measurement.labelObject.parent) {
+          const parent = measurement.labelObject.parent;
+          if (measurement.labelObject.material.map) {
+            measurement.labelObject.material.map.dispose();
+          }
+          measurement.labelObject.material.dispose();
+          parent.remove(measurement.labelObject);
+          parent.add(updatedSprite);
+          measurement.labelObject = updatedSprite;
+        }
+      }
+    }
   }
   
   // Update label position if it exists (use the existing label position update code)
@@ -578,6 +796,16 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       // Add a small offset above the line for better visibility
       midpoint.y += 0.1;
       measurement.labelObject.position.copy(midpoint);
+    }
+    // For area measurements, place at the center of the polygon
+    else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      const center = new THREE.Vector3();
+      measurement.points.forEach(p => center.add(p.position));
+      center.divideScalar(measurement.points.length);
+      
+      // Add a small offset above the center for better visibility
+      center.y += 0.1;
+      measurement.labelObject.position.copy(center);
     }
     // For multi-point measurements, place near the last point
     else if (measurement.points.length > 2) {

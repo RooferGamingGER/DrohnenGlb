@@ -37,7 +37,7 @@ interface ModelViewerProps {
 const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, initialFile = null }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isMobile, isTablet, isPortrait } = useIsMobile();
+  const { isMobile, isTablet, isPortrait, isTouchDevice } = useIsMobile();
   const [showMeasurementTools, setShowMeasurementTools] = useState(false);
   const [measurementsVisible, setMeasurementsVisible] = useState(true);
   const [screenshotData, setScreenshotData] = useState<string | null>(null);
@@ -726,32 +726,98 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     console.log(`Touch mode changed to: ${mode}`);
     setTouchMode(mode);
 
-    if (mode === 'zoom' && modelViewer.controls) {
-      const zoomFactor = 0.8;
-      const camera = modelViewer.camera;
-      
-      if (camera) {
-        const direction = new THREE.Vector3();
-        direction.subVectors(camera.position, modelViewer.controls.target).normalize();
-        
-        const adaptiveZoomFactor = calculateZoomFactor(
-          camera,
-          modelViewer.controls.target,
-          modelSizeRef.current
-        );
-        
-        camera.position.sub(direction.multiplyScalar(2 * adaptiveZoomFactor));
-        
-        if (modelViewer.controls) {
+    if (!modelViewer.controls) return;
+
+    modelViewer.controls.enableRotate = false;
+    modelViewer.controls.enablePan = false;
+    modelViewer.controls.enableZoom = false;
+
+    switch (mode) {
+      case 'rotate':
+        modelViewer.controls.enableRotate = true;
+        break;
+      case 'pan':
+        modelViewer.controls.enablePan = true;
+        break;
+      case 'zoom':
+        modelViewer.controls.enableZoom = true;
+        if (mode === 'zoom' && modelViewer.camera) {
+          const direction = new THREE.Vector3();
+          direction.subVectors(modelViewer.camera.position, modelViewer.controls.target).normalize();
+          
+          const adaptiveZoomFactor = calculateZoomFactor(
+            modelViewer.camera,
+            modelViewer.controls.target,
+            modelSizeRef.current
+          );
+          
+          modelViewer.camera.position.sub(direction.multiplyScalar(2 * adaptiveZoomFactor));
           modelViewer.controls.update();
+          
+          setTimeout(() => {
+            setTouchMode('none');
+            
+            if (!isTouchDevice) {
+              modelViewer.controls.enableRotate = true;
+              modelViewer.controls.enableZoom = true;
+            }
+            modelViewer.controls.update();
+          }, 250);
         }
+        break;
+      case 'none':
+      default:
+        if (!isTouchDevice) {
+          modelViewer.controls.enableRotate = true;
+          modelViewer.controls.enableZoom = true;
+        }
+        break;
+    }
+    
+    if (modelViewer.controls.enabled && isTouchDevice) {
+      modelViewer.controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN
+      };
+      
+      if (mode === 'pan') {
+        modelViewer.controls.touches.ONE = THREE.TOUCH.PAN;
+      } else if (mode === 'rotate') {
+        modelViewer.controls.touches.ONE = THREE.TOUCH.ROTATE;
       }
       
-      setTimeout(() => {
-        setTouchMode('none');
-      }, 250);
+      if (modelViewer.loadedModel) {
+        const box = new THREE.Box3().setFromObject(modelViewer.loadedModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        modelSizeRef.current = Math.max(size.x, size.y, size.z);
+      }
     }
-  }, [modelViewer.controls, modelViewer.camera]);
+    
+    modelViewer.controls.update();
+  }, [modelViewer.controls, modelViewer.camera, modelViewer.loadedModel, isTouchDevice]);
+
+  const handleClosePolygon = useCallback(() => {
+    if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
+      const firstPoint = modelViewer.tempPoints[0];
+      
+      if (firstPoint && firstPoint.position) {
+        const newPoints = [...modelViewer.tempPoints];
+        
+        if (modelViewer.finalizeMeasurement) {
+          modelViewer.finalizeMeasurement(newPoints);
+        } else {
+          modelViewer.setActiveTool('none');
+        }
+        
+        toast({
+          title: "Fläche geschlossen",
+          description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
+          duration: 3000,
+        });
+      }
+    }
+  }, [modelViewer, toast]);
 
   const handleContextMenu = useCallback((event: MouseEvent) => {
     event.preventDefault();
@@ -970,6 +1036,33 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     }
   }, [modelViewer.loadedModel]);
 
+  useEffect(() => {
+    const handleInitialTouchSetup = () => {
+      if (isTouchDevice && modelViewer.controls) {
+        console.log("Configuring controls for touch device");
+        
+        modelViewer.controls.touches = {
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN
+        };
+        
+        modelViewer.controls.rotateSpeed = 0.5;
+        modelViewer.controls.zoomSpeed = 1.0;
+        modelViewer.controls.panSpeed = 0.7;
+        modelViewer.controls.screenSpacePanning = true;
+        
+        modelViewer.controls.enableDamping = true;
+        modelViewer.controls.dampingFactor = 0.1;
+        
+        modelViewer.controls.update();
+      }
+    };
+    
+    if (modelViewer.controls && modelViewer.loadedModel) {
+      handleInitialTouchSetup();
+    }
+  }, [modelViewer.controls, modelViewer.loadedModel, isTouchDevice]);
+
   return (
     <div className="relative h-full w-full flex flex-col">
       <ViewerToolbar 
@@ -1003,7 +1096,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           />
         )}
         
-        {isMobile && modelViewer.loadedModel && (
+        {isTouchDevice && modelViewer.loadedModel && (
           <TouchControlsPanel 
             activeMode={touchMode}
             onModeChange={handleTouchModeChange}
@@ -1033,6 +1126,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           tempPoints={modelViewer.tempPoints || []}
           onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
           onDeleteSinglePoint={(measurementId, pointIndex) => modelViewer.deleteSinglePoint(measurementId, pointIndex)}
+          onClosePolygon={handleClosePolygon}
         />
       )}
       

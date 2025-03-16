@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin, Hexagon, CircleCheck } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -33,6 +32,7 @@ interface MeasurementToolsProps {
   tempPoints?: MeasurementPoint[];
   onDeleteTempPoint?: (index: number) => void;
   onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
+  onClosePolygon?: () => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -54,18 +54,27 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   scrollThreshold = 3,
   tempPoints = [],
   onDeleteTempPoint,
-  onDeleteSinglePoint
+  onDeleteSinglePoint,
+  onClosePolygon
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
   const [expandedMeasurement, setExpandedMeasurement] = useState<string | null>(null);
 
+  const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
+  const showClosePolygonButton = canClosePolygon && onClosePolygon !== undefined;
+  
   useEffect(() => {
-    if (editingId !== null && activeTool !== 'none') {
-      onToolChange('none');
+    if (activeTool === 'area') {
+      console.log("Debug close polygon button:", {
+        activeTool,
+        tempPointsLength: tempPoints?.length,
+        onClosePolygonExists: !!onClosePolygon,
+        showClosePolygonButton
+      });
     }
-  }, [editingId, activeTool, onToolChange]);
+  }, [activeTool, tempPoints, onClosePolygon, showClosePolygonButton]);
 
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
     event.preventDefault();
@@ -142,6 +151,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     setExpandedMeasurement(expandedMeasurement === id ? null : id);
   };
 
+  const handleClosePolygon = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onClosePolygon) {
+      console.log("Close polygon button clicked, calling handler");
+      onClosePolygon();
+    }
+  };
+
   return (
     <div 
       className={cn(
@@ -212,6 +230,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('area')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'area' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Fläche messen"
+                >
+                  <Hexagon size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Fläche messen</p>
+              </TooltipContent>
+            </Tooltip>
 
             {canUndo && (
               <Tooltip>
@@ -226,6 +264,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Letzten Punkt rückgängig machen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            {showClosePolygonButton && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleClosePolygon}
+                    className="p-2 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors"
+                    aria-label="Polygon schließen"
+                  >
+                    <CircleCheck size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Polygon schließen</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -292,7 +347,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           
           <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
-              {/* Display completed measurements */}
               {measurements.map((m) => (
                 <li key={m.id} className={cn(
                   "bg-background/40 p-2 rounded",
@@ -317,6 +371,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         <>
                           <ArrowUpDown size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}</span>
+                        </>
+                      )}
+                      {m.type === 'area' && (
+                        <>
+                          <Hexagon size={14} />
+                          <span>{m.value < 0.01 
+                            ? `${(m.value * 10000).toFixed(2)} cm²` 
+                            : `${m.value.toFixed(2)} m²`}
+                          </span>
                         </>
                       )}
                     </span>
