@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -820,8 +821,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     
     const pointToDelete = measurement.pointObjects?.[pointIndex];
     if (pointToDelete && measurementGroupRef.current) {
-      pointToDelete.geometry.dispose();
-      (pointToDelete.material as THREE.Material).dispose();
+      (pointToDelete as THREE.Mesh).geometry.dispose();
+      ((pointToDelete as THREE.Mesh).material as THREE.Material).dispose();
       measurementGroupRef.current.remove(pointToDelete);
     }
     
@@ -836,8 +837,8 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
           
           if (m.lineObjects && measurementGroupRef.current) {
             m.lineObjects.forEach(line => {
-              line.geometry.dispose();
-              (line.material as THREE.Material).dispose();
+              (line as THREE.Line).geometry.dispose();
+              ((line as THREE.Line).material as THREE.Material).dispose();
               measurementGroupRef.current?.remove(line);
             });
           }
@@ -886,7 +887,80 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               
               newInclination = calculateInclination(
                 updatedPoints[0].position,
+                updatedPoints[updatedPoints.length - 1].position
+              );
+            } else if (m.type === 'height') {
+              newValue = calculateHeight(
+                updatedPoints[0].position,
+                updatedPoints[updatedPoints.length - 1].position
+              );
+            }
+            
+            // Calculate new label position
+            let labelPosition: THREE.Vector3;
+            
+            if (m.type === 'length') {
+              const midIndex = Math.floor(updatedPoints.length / 2);
+              labelPosition = new THREE.Vector3().addVectors(
+                updatedPoints[midIndex > 0 ? midIndex - 1 : 0].position,
+                updatedPoints[midIndex].position
+              ).multiplyScalar(0.5);
+              labelPosition.y += 0.1;
+            } else {
+              const midHeight = (
+                updatedPoints[0].position.y + 
+                updatedPoints[updatedPoints.length - 1].position.y
+              ) / 2;
+              
+              labelPosition = new THREE.Vector3(
+                updatedPoints[0].position.x,
+                midHeight,
+                updatedPoints[0].position.z
+              );
+              labelPosition.x += 0.1;
+            }
+            
+            // Create label text
+            const labelText = m.type === 'length' 
+              ? formatMeasurementWithInclination(newValue, newInclination)
+              : `${newValue.toFixed(2)} ${m.unit}`;
+            
+            if (m.labelObject && measurementGroupRef.current) {
+              if (m.labelObject.material instanceof THREE.SpriteMaterial) {
+                if (m.labelObject.material.map) {
+                  m.labelObject.material.map.dispose();
+                }
+                m.labelObject.material.dispose();
+              }
+              
+              measurementGroupRef.current.remove(m.labelObject);
+              
+              newLabelObject = createTextSprite(
+                labelText,
+                labelPosition,
+                m.type === 'length' ? 0x00ff00 : 0x0000ff
+              );
+              
+              measurementGroupRef.current.add(newLabelObject);
+            }
+          }
+          
+          return {
+            ...m,
+            points: updatedPoints,
+            pointObjects: updatedPointObjects,
+            lineObjects: newLineObjects,
+            value: newValue,
+            inclination: m.type === 'length' ? newInclination : undefined,
+            labelObject: newLabelObject || m.labelObject
+          };
+        }
+        return m;
+      })
+    );
+  };
 
+  // Return the hook values
   return {
     state,
     background,
