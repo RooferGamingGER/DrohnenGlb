@@ -909,8 +909,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
   const handleRightMouseMove = useCallback((event: MouseEvent) => {
     if (isRightMouseDown && rightMousePreviousPosition.current && modelViewer.controls && modelViewer.camera) {
-      const deltaX = event.clientX - rightMousePreviousPosition.current
-      const deltaX = event.clientX - rightMousePreviousPosition.current.x;
+       const deltaX = event.clientX - rightMousePreviousPosition.current.x;
        const deltaY = event.clientY - rightMousePreviousPosition.current.y;
        
        const panSpeed = calculatePanSpeedFactor(
