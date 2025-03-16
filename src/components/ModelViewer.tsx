@@ -799,23 +799,66 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 
   const handleClosePolygon = useCallback(() => {
     if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
-      const firstPoint = modelViewer.tempPoints[0];
+      console.log("Schließe Polygon mit", modelViewer.tempPoints.length, "Punkten");
       
-      if (firstPoint && firstPoint.position) {
-        const newPoints = [...modelViewer.tempPoints];
+      let newPoints = [...modelViewer.tempPoints];
+      
+      const firstPoint = newPoints[0];
+      const lastPoint = newPoints[newPoints.length - 1];
+      
+      const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
+      
+      if (!isClosed) {
+        newPoints.push({
+          position: firstPoint.position.clone(),
+          worldPosition: firstPoint.worldPosition.clone()
+        });
+        console.log("Polygon wurde geschlossen durch Hinzufügen des ersten Punktes am Ende");
+      }
+      
+      if (modelViewer.finalizeMeasurement) {
+        modelViewer.finalizeMeasurement(newPoints);
         
-        if (modelViewer.finalizeMeasurement) {
-          modelViewer.finalizeMeasurement(newPoints);
-        } else {
-          modelViewer.setActiveTool('none');
+        if (modelViewer.measurements.length > 0) {
+          const lastMeasurement = modelViewer.measurements[modelViewer.measurements.length - 1];
+          
+          if (lastMeasurement.type === 'area') {
+            console.log("Aktualisiere die Flächenmessung nach dem Schließen");
+            
+            const positions = lastMeasurement.points.map(p => p.position);
+            const area = calculatePolygonArea(positions);
+            
+            modelViewer.updateMeasurement(lastMeasurement.id, { 
+              value: area,
+              points: closePolygon(lastMeasurement.points)
+            });
+            
+            updateMeasurementGeometry(lastMeasurement);
+          }
         }
         
         toast({
-          title: "Fläche geschlossen",
-          description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
+          title: "Fläche berechnet",
+          description: "Die Flächenmessung wurde erfolgreich abgeschlossen und berechnet.",
+          duration: 3000,
+        });
+      } else {
+        modelViewer.setActiveTool('none');
+        
+        toast({
+          title: "Fehler bei Berechnung",
+          description: "Die Flächenmessung konnte nicht abgeschlossen werden.",
+          variant: "destructive",
           duration: 3000,
         });
       }
+    } else if (modelViewer.tempPoints && modelViewer.tempPoints.length < 3) {
+      toast({
+        title: "Nicht genügend Punkte",
+        description: "Es werden mindestens 3 Punkte für eine Flächenmessung benötigt.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   }, [modelViewer, toast]);
 

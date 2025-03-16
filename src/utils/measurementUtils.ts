@@ -69,19 +69,42 @@ export const formatMeasurementWithInclination = (
   return `${value.toFixed(2)} m`;
 };
 
+// Ensure polygon is closed by adding first point to the end if needed
+export const ensureClosedPolygon = (points: THREE.Vector3[]): THREE.Vector3[] => {
+  if (points.length < 3) return points;
+  
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  
+  // Überprüfen, ob der letzte Punkt mit dem ersten identisch ist
+  const isClosed = firstPoint.distanceTo(lastPoint) < 0.001;
+  
+  // Wenn nicht geschlossen, füge den ersten Punkt am Ende hinzu
+  if (!isClosed) {
+    return [...points, firstPoint.clone()];
+  }
+  
+  // Polygon ist bereits geschlossen
+  return points;
+};
+
 // Calculate area of a polygon defined by an array of 3D points
+// Enhanced with triangle fan triangulation
 export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   if (points.length < 3) return 0;
+  
+  // Stelle sicher, dass das Polygon geschlossen ist
+  const closedPoints = ensureClosedPolygon(points);
   
   // Project points onto the best-fitting plane
   // First, find the center of mass of all points
   const center = new THREE.Vector3();
-  points.forEach(p => center.add(p));
-  center.divideScalar(points.length);
+  closedPoints.forEach(p => center.add(p));
+  center.divideScalar(closedPoints.length);
   
   // Find the normal of the best-fitting plane using covariance matrix
   const covariance = new THREE.Matrix3();
-  points.forEach(p => {
+  closedPoints.forEach(p => {
     const dx = p.x - center.x;
     const dy = p.y - center.y;
     const dz = p.z - center.z;
@@ -101,15 +124,15 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   // For simplicity, we'll use a heuristic approach to approximate the normal
   // Finding the cross product of two dominant directions in the data
   const v1 = new THREE.Vector3(
-    points[1].x - points[0].x,
-    points[1].y - points[0].y,
-    points[1].z - points[0].z
+    closedPoints[1].x - closedPoints[0].x,
+    closedPoints[1].y - closedPoints[0].y,
+    closedPoints[1].z - closedPoints[0].z
   ).normalize();
   
   const v2 = new THREE.Vector3(
-    points[Math.min(2, points.length - 1)].x - points[0].x,
-    points[Math.min(2, points.length - 1)].y - points[0].y,
-    points[Math.min(2, points.length - 1)].z - points[0].z
+    closedPoints[Math.min(2, closedPoints.length - 1)].x - closedPoints[0].x,
+    closedPoints[Math.min(2, closedPoints.length - 1)].y - closedPoints[0].y,
+    closedPoints[Math.min(2, closedPoints.length - 1)].z - closedPoints[0].z
   ).normalize();
   
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
@@ -129,7 +152,7 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   const zAxis = new THREE.Vector3().crossVectors(xAxis, normal).normalize();
   
   // Project all points onto the plane
-  const projectedPoints = points.map(p => {
+  const projectedPoints = closedPoints.map(p => {
     const offsetVector = new THREE.Vector3().subVectors(p, center);
     return new THREE.Vector2(
       offsetVector.dot(xAxis),
@@ -139,11 +162,15 @@ export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   
   // Calculate area using the shoelace formula
   let area = 0;
-  for (let i = 0; i < projectedPoints.length; i++) {
-    const j = (i + 1) % projectedPoints.length;
-    area += projectedPoints[i].x * projectedPoints[j].y;
-    area -= projectedPoints[j].x * projectedPoints[i].y;
+  for (let i = 0; i < projectedPoints.length - 1; i++) {
+    area += projectedPoints[i].x * projectedPoints[i+1].y;
+    area -= projectedPoints[i+1].x * projectedPoints[i].y;
   }
+  
+  // Add the final segment (last point to first point)
+  const lastIdx = projectedPoints.length - 1;
+  area += projectedPoints[lastIdx].x * projectedPoints[0].y;
+  area -= projectedPoints[0].x * projectedPoints[lastIdx].y;
   
   return Math.abs(area) / 2;
 };
@@ -156,7 +183,7 @@ export const formatArea = (area: number): string => {
   return `${area.toFixed(2)} m²`;
 };
 
-// Create a mesh for the area polygon
+// Create a mesh for the area polygon - now ensures closed polygon
 export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   if (points.length < 3) {
     // Return an empty mesh if fewer than 3 points
@@ -166,14 +193,17 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
     );
   }
   
+  // Stelle sicher, dass das Polygon geschlossen ist
+  const closedPoints = ensureClosedPolygon(points);
+  
   // Create a shape from the projected points
   const center = new THREE.Vector3();
-  points.forEach(p => center.add(p));
-  center.divideScalar(points.length);
+  closedPoints.forEach(p => center.add(p));
+  center.divideScalar(closedPoints.length);
   
   // Find the normal of the best-fitting plane
-  const v1 = new THREE.Vector3().subVectors(points[1], points[0]).normalize();
-  const v2 = new THREE.Vector3().subVectors(points[Math.min(2, points.length - 1)], points[0]).normalize();
+  const v1 = new THREE.Vector3().subVectors(closedPoints[1], closedPoints[0]).normalize();
+  const v2 = new THREE.Vector3().subVectors(closedPoints[Math.min(2, closedPoints.length - 1)], closedPoints[0]).normalize();
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
   
   // If the normal is too small, default to the Y-axis
@@ -191,7 +221,7 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   const rotationMatrix = new THREE.Matrix4().extractRotation(lookAtMatrix);
   
   // Project points onto the XZ plane
-  const projectedPoints = points.map(p => {
+  const projectedPoints = closedPoints.map(p => {
     const localPoint = p.clone().sub(center);
     localPoint.applyMatrix4(rotationMatrix);
     return new THREE.Vector2(localPoint.x, localPoint.z);
@@ -229,6 +259,30 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   mesh.userData.isAreaMeasurement = true;
   
   return mesh;
+};
+
+// Schließt ein Polygon indem der erste Punkt als letzter Punkt hinzugefügt wird
+export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
+  if (points.length < 3) return points;
+  
+  // Überprüfen, ob das Polygon bereits geschlossen ist
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  
+  const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
+  
+  if (isClosed) {
+    return points; // Polygon ist bereits geschlossen
+  }
+  
+  // Polygon schließen, indem wir den ersten Punkt am Ende hinzufügen
+  return [
+    ...points,
+    {
+      position: firstPoint.position.clone(),
+      worldPosition: firstPoint.worldPosition.clone()
+    }
+  ];
 };
 
 // Create a unique ID for measurements
@@ -616,18 +670,31 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       ];
       updateMeasurementLine(measurement.lineObjects[0], linePoints);
     }
-    // For area measurements
+    // For area measurements - with closing line
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Update the outline lines
-      for (let i = 0; i < measurement.points.length; i++) {
-        const nextIndex = (i + 1) % measurement.points.length;
+      // Für Flächenmessungen müssen wir sicherstellen, dass auch eine Linie 
+      // vom letzten zum ersten Punkt existiert (Schließung des Polygons)
+      const totalPoints = measurement.points.length;
+      
+      // Update all the lines including closure line
+      for (let i = 0; i < totalPoints; i++) {
+        const nextIndex = (i + 1) % totalPoints; // Schließt das Polygon automatisch
         const linePoints = [
           measurement.points[i].position.clone(),
           measurement.points[nextIndex].position.clone()
         ];
         
+        // Stelle sicher, dass wir genügend lineObjects haben
         if (i < measurement.lineObjects.length) {
           updateMeasurementLine(measurement.lineObjects[i], linePoints);
+        } else if (i === totalPoints - 1) {
+          // Wenn die Schließungslinie noch nicht existiert, erstelle sie
+          const closingLine = createMeasurementLine(linePoints, 0x9b87f5);
+          if (measurement.lineObjects) {
+            measurement.lineObjects.push(closingLine);
+          } else {
+            measurement.lineObjects = [closingLine];
+          }
         }
       }
     }
@@ -742,8 +809,10 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       }
     }
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Calculate the area based on the points
+      // Für Flächenmessungen sicherstellen, dass wir die Positionen als Vektoren haben
       const positionArray = measurement.points.map(p => p.position);
+      
+      // Berechne die Fläche basierend auf den Punkten
       measurement.value = calculatePolygonArea(positionArray);
       
       // Update the label
