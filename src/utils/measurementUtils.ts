@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -593,8 +594,6 @@ export const createPreviewLine = (points: THREE.Vector3[]): THREE.Line => {
     linewidth: 8,
     opacity: 0.6,  // More transparent for preview
     transparent: true,
-    dashSize: 3,
-    gapSize: 1,
   });
   
   const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -854,5 +853,163 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       // Slightly raise the label for better visibility
       centroid.y += 0.2;
     }
+  }
+};
+
+// Add the missing functions needed by ModelViewer.tsx
+export const updateAreaPreview = (
+  measurement: Measurement,
+  tempPoints: MeasurementPoint[],
+  scene: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  if (tempPoints.length < 3) {
+    // Clean up any existing preview elements
+    if (measurement.previewLineObject && measurement.previewLineObject.parent) {
+      measurement.previewLineObject.parent.remove(measurement.previewLineObject);
+      if (measurement.previewLineObject.geometry) {
+        measurement.previewLineObject.geometry.dispose();
+      }
+      measurement.previewLineObject = undefined;
+    }
+    
+    if (measurement.previewLabelObject && measurement.previewLabelObject.parent) {
+      measurement.previewLabelObject.parent.remove(measurement.previewLabelObject);
+      if (measurement.previewLabelObject.material && measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+      measurement.previewLabelObject = undefined;
+    }
+    
+    return;
+  }
+  
+  // Get positions of all points
+  const positions = tempPoints.map(p => p.position);
+  
+  // Create a temporary array with closing line to preview the polygon
+  const previewPositions = [...positions];
+  if (positions.length >= 3) {
+    previewPositions.push(positions[0].clone()); // Close the polygon for preview
+  }
+  
+  // Calculate area for the preview
+  const area = calculatePolygonArea(positions);
+  const areaText = formatArea(area);
+  
+  // Update or create preview line
+  if (measurement.previewLineObject) {
+    // Update existing preview line
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    measurement.previewLineObject.geometry = new THREE.BufferGeometry().setFromPoints(previewPositions);
+  } else {
+    // Create new preview line
+    const previewLine = createPreviewLine(previewPositions);
+    measurement.previewLineObject = previewLine;
+    scene.add(previewLine);
+  }
+  
+  // Calculate centroid for label placement
+  const centroid = new THREE.Vector3();
+  positions.forEach(pos => centroid.add(pos));
+  centroid.divideScalar(positions.length);
+  
+  // Slightly raise the label for better visibility
+  centroid.y += 0.2;
+  
+  // Update or create preview label
+  if (measurement.previewLabelObject) {
+    // Update existing preview label
+    measurement.previewLabelObject.position.copy(centroid);
+    if (measurement.previewLabelObject.material && measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+      if (measurement.previewLabelObject.material.map) {
+        measurement.previewLabelObject.material.map.dispose();
+      }
+      
+      const newLabelSprite = createPreviewTextSprite(`${areaText} (Vorschau)`, centroid);
+      
+      if (newLabelSprite.material && newLabelSprite.material instanceof THREE.SpriteMaterial) {
+        measurement.previewLabelObject.material.map = newLabelSprite.material.map;
+        measurement.previewLabelObject.material.needsUpdate = true;
+      }
+    }
+  } else {
+    // Create new preview label
+    const previewLabel = createPreviewTextSprite(`${areaText} (Vorschau)`, centroid);
+    measurement.previewLabelObject = previewLabel;
+    scene.add(previewLabel);
+  }
+  
+  // Update scale based on camera distance
+  if (measurement.previewLabelObject) {
+    updateLabelScale(measurement.previewLabelObject, camera);
+  }
+};
+
+// Function to finalize a polygon measurement
+export const finalizePolygon = (measurement: Measurement, scene: THREE.Group): void => {
+  if (measurement.type !== 'area' || measurement.points.length < 3) return;
+  
+  // Ensure the polygon is closed
+  const closedPoints = closePolygon(measurement.points);
+  measurement.points = closedPoints;
+  
+  // Clear any preview elements
+  if (measurement.previewLineObject && measurement.previewLineObject.parent) {
+    measurement.previewLineObject.parent.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  if (measurement.previewLabelObject && measurement.previewLabelObject.parent) {
+    measurement.previewLabelObject.parent.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material && measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+      if (measurement.previewLabelObject.material.map) {
+        measurement.previewLabelObject.material.map.dispose();
+      }
+      measurement.previewLabelObject.material.dispose();
+    }
+    measurement.previewLabelObject = undefined;
+  }
+  
+  // Recalculate area
+  const positions = measurement.points.map(p => p.position);
+  const area = calculatePolygonArea(positions);
+  measurement.value = area;
+  
+  // Update all measurement geometry (lines, labels, etc.)
+  updateMeasurementGeometry(measurement);
+  
+  // Make sure area label is updated with final value
+  if (measurement.labelObject) {
+    const areaText = formatArea(area);
+    const centroid = new THREE.Vector3();
+    positions.forEach(pos => centroid.add(pos));
+    centroid.divideScalar(positions.length);
+    
+    // Slightly raise the label for better visibility
+    centroid.y += 0.2;
+    
+    const newLabelSprite = createTextSprite(areaText, centroid);
+    
+    if (measurement.labelObject.material && measurement.labelObject.material instanceof THREE.SpriteMaterial) {
+      if (measurement.labelObject.material.map) {
+        measurement.labelObject.material.map.dispose();
+      }
+      
+      if (newLabelSprite.material && newLabelSprite.material instanceof THREE.SpriteMaterial) {
+        measurement.labelObject.material.map = newLabelSprite.material.map;
+        measurement.labelObject.material.needsUpdate = true;
+      }
+    }
+    
+    measurement.labelObject.position.copy(centroid);
   }
 };
