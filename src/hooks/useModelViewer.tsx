@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -15,6 +16,7 @@ import {
   calculateDistance,
   calculateHeight,
   calculateInclination,
+  calculatePolygonArea,
   createMeasurementId,
   createTextSprite,
   updateLabelScale,
