@@ -278,25 +278,19 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
 export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
   if (points.length < 3) return points;
   
-  // Get the first and last points
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
   
-  // Check if the polygon is already closed
-  const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
-  
-  if (isClosed) {
-    return points; // Already closed
-  }
-  
-  // Close the polygon by adding a copy of the first point at the end
-  return [
-    ...points,
-    {
+  // Check if we need to add a closing point (if first and last are different)
+  if (firstPoint.position.distanceTo(lastPoint.position) > 0.01) {
+    // Add a copy of the first point to close the polygon
+    return [...points, {
       position: firstPoint.position.clone(),
       worldPosition: firstPoint.worldPosition.clone()
-    }
-  ];
+    }];
+  }
+  
+  return points;
 };
 
 // Create a unique ID for measurements
@@ -942,34 +936,80 @@ export const updateAreaPreview = (
 };
 
 // Finalize polygon measurement after preview
-export const finalizePolygon = (
-  measurement: Measurement,
-  scene: THREE.Group
-): void => {
-  // First, clean up any preview objects
-  clearPreviewObjects(measurement, scene);
+export const finalizePolygon = (measurement: Measurement, parent: THREE.Object3D) => {
+  if (!measurement || measurement.type !== 'area' || measurement.points.length < 3) return;
   
-  // Ensure the polygon is properly closed
-  if (measurement.type === 'area' && measurement.points.length >= 3) {
-    // Make sure the polygon is closed in 3D
-    const positions = measurement.points.map(p => p.position);
-    const closedPositions = ensureClosedPolygon(positions);
+  // Remove any existing line objects for this measurement
+  const existingLines = parent.children.filter(
+    child => child instanceof THREE.Line && child.name.startsWith(`line-${measurement.id}`)
+  );
+  
+  existingLines.forEach(line => {
+    parent.remove(line);
+  });
+  
+  // Create new lines for the polygon, including the closing line
+  const positions = measurement.points.map(p => p.position);
+  
+  // Create a path connecting all points in order
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i < positions.length; i++) {
+    points.push(positions[i]);
+  }
+  
+  // Make sure to add the first point again to close the polygon if needed
+  if (positions[0].distanceTo(positions[positions.length - 1]) > 0.01) {
+    points.push(positions[0]);
+  }
+  
+  // Create the polygon outline
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({ color: 0xff8800, linewidth: 2 });
+  const line = new THREE.Line(geometry, material);
+  line.name = `line-${measurement.id}-polygon`;
+  parent.add(line);
+  
+  // Create a filled polygon if possible
+  try {
+    const shape = new THREE.Shape();
+    shape.moveTo(points[0].x, points[0].z);
     
-    // If a new point was added for closure, we need to update the measurement
-    if (closedPositions.length > positions.length) {
-      const firstPoint = measurement.points[0];
-      measurement.points.push({
-        position: firstPoint.position.clone(),
-        worldPosition: firstPoint.worldPosition.clone()
-      });
+    for (let i = 1; i < points.length; i++) {
+      shape.lineTo(points[i].x, points[i].z);
     }
     
-    // Calculate the final area value
-    measurement.value = calculatePolygonArea(closedPositions);
+    const shapeGeometry = new THREE.ShapeGeometry(shape);
+    const shapeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff8800,
+      transparent: true,
+      opacity: 0.2,
+      side: THREE.DoubleSide
+    });
     
-    // Update all geometry with the finalized points
-    updateMeasurementGeometry(measurement);
+    const shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
+    shapeMesh.name = `area-${measurement.id}`;
+    shapeMesh.rotation.x = Math.PI / 2;
+    
+    // Calculate average Y position for the area visualization
+    const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    shapeMesh.position.y = avgY + 0.01; // Slightly above the points to prevent z-fighting
+    
+    parent.add(shapeMesh);
+    
+    // Add filled mesh to measurement
+    if (!measurement.lineObjects) {
+      measurement.lineObjects = [];
+    }
+    
+    measurement.lineObjects.push(line);
+    measurement.lineObjects.push(shapeMesh as unknown as THREE.Line);
+  } catch (error) {
+    console.error("Error creating area visualization:", error);
   }
+  
+  // Update the value to ensure it's correct
+  const area = calculatePolygonArea(points);
+  measurement.value = area;
 };
 
 // Clear temporary preview objects - Enhanced to be more thorough
