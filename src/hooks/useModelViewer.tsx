@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -763,6 +762,21 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
 
+  // Helper function to safely dispose material
+  const safelyDisposeMaterial = (material: THREE.Material | THREE.Material[] | undefined) => {
+    if (!material) return;
+    
+    if (Array.isArray(material)) {
+      material.forEach(mat => {
+        if (mat && typeof mat.dispose === 'function') {
+          mat.dispose();
+        }
+      });
+    } else if (material && typeof material.dispose === 'function') {
+      material.dispose();
+    }
+  };
+
   const deleteMeasurement = (id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     if (measurementToDelete && measurementGroupRef.current) {
@@ -782,18 +796,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
             if ((line as THREE.Line).geometry) {
               (line as THREE.Line).geometry.dispose();
             }
-            if ((line as THREE.Line).material instanceof THREE.Material) {
-              (line as THREE.Line).material.dispose();
-            }
-            else if (Array.isArray((line as THREE.Line).material)) {
-              // Fix for array of materials - iterate through each material individually
-              ((line as THREE.Line).material as THREE.Material[]).forEach(mat => {
-                // Check if mat exists and has a dispose function
-                if (mat && typeof mat.dispose === 'function') {
-                  mat.dispose();
-                }
-              });
-            }
+            safelyDisposeMaterial((line as THREE.Line).material);
             measurementGroupRef.current?.remove(line);
           }
         });
@@ -805,18 +808,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
             if ((point as THREE.Mesh).geometry) {
               (point as THREE.Mesh).geometry.dispose();
             }
-            if ((point as THREE.Mesh).material instanceof THREE.Material) {
-              (point as THREE.Mesh).material.dispose();
-            }
-            else if (Array.isArray((point as THREE.Mesh).material)) {
-              // Fix for array of materials - iterate through each material individually
-              ((point as THREE.Mesh).material as THREE.Material[]).forEach(mat => {
-                // Check if mat exists and has a dispose function
-                if (mat && typeof mat.dispose === 'function') {
-                  mat.dispose();
-                }
-              });
-            }
+            safelyDisposeMaterial((point as THREE.Mesh).material);
             measurementGroupRef.current?.remove(point);
           }
         });
@@ -854,19 +846,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     const pointToDelete = measurement.pointObjects?.[pointIndex];
     if (pointToDelete && measurementGroupRef.current) {
       (pointToDelete as THREE.Mesh).geometry.dispose();
-      
-      if ((pointToDelete as THREE.Mesh).material instanceof THREE.Material) {
-        ((pointToDelete as THREE.Mesh).material as THREE.Material).dispose();
-      } else if (Array.isArray((pointToDelete as THREE.Mesh).material)) {
-        // For material arrays, individually dispose each material
-        ((pointToDelete as THREE.Mesh).material as THREE.Material[]).forEach(material => {
-          // Check if material exists and has a dispose function
-          if (material && typeof material.dispose === 'function') {
-            material.dispose();
-          }
-        });
-      }
-      
+      safelyDisposeMaterial((pointToDelete as THREE.Mesh).material);
       measurementGroupRef.current.remove(pointToDelete);
     }
   }
@@ -900,22 +880,4 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     resetView: () => console.log("Reset view"),
     clearMeasurements: () => setMeasurements([]),
     updateMeasurement: (id: string, updates: Partial<Measurement>) => {
-      setMeasurements(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-    },
-    toggleMeasurementsVisibility: (visible: boolean) => {
-      // Implementation here
-    },
-    deleteTempPoint: (index: number) => {
-      setTemporaryPoints(prev => {
-        const newPoints = [...prev];
-        newPoints.splice(index, 1);
-        return newPoints;
-      });
-    },
-    deleteSinglePoint,
-    deleteMeasurement,
-    undoLastPoint,
-    setActiveTool,
-    finalizeMeasurement
-  };
-};
+      setMeasurements(prev => prev.map(m => m.id === id ?
