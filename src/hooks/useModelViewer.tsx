@@ -1,27 +1,15 @@
-
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { calculatePolygonArea, clearPreviewObjects, updateMeasurementGeometry } from '@/utils/measurementUtils';
-
-export type MeasurementPoint = {
-  position: THREE.Vector3;
-  worldPosition: THREE.Vector3;
-};
-
-export type Measurement = {
-  id: string;
-  type: 'distance' | 'angle' | 'area';
-  points: MeasurementPoint[];
-  value: number;
-  unit: string;
-  visible: boolean;
-  editMode?: boolean;
-  labelObject?: THREE.Sprite;
-  lineObjects?: THREE.Line[];
-  pointObjects?: THREE.Mesh[];
-};
+import { 
+  calculatePolygonArea, 
+  clearPreviewObjects, 
+  updateMeasurementGeometry,
+  MeasurementType,
+  Measurement,
+  MeasurementPoint
+} from '@/utils/measurementUtils';
 
 type ModelViewerHookProps = {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -35,7 +23,7 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
   const [error, setError] = useState<string | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [tempPoints, setTemporaryPoints] = useState<MeasurementPoint[]>([]);
-  const [activeTool, setActiveTool] = useState<'none' | 'distance' | 'angle' | 'area'>('none');
+  const [activeTool, setActiveTool] = useState<MeasurementType>('none');
   
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -127,7 +115,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     currentMeasurementRef.current = null;
   };
 
-  // Initialize Three.js scene
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -230,7 +217,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     };
   }, []);
 
-  // Load model function
   const loadModel = useCallback(async (file: File) => {
     if (!sceneRef.current) return;
     
@@ -288,7 +274,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     }
   }, [loadedModel, onLoadComplete]);
 
-  // Reset view function
   const resetView = useCallback(() => {
     if (!controlsRef.current || !cameraRef.current) return;
     
@@ -297,7 +282,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     controlsRef.current.update();
   }, []);
 
-  // Handle adding a measurement point
   const addMeasurementPoint = useCallback((point: THREE.Vector3, isTemporary = false) => {
     const worldPoint = point.clone();
     const newPoint = { position: point.clone(), worldPosition: worldPoint };
@@ -329,7 +313,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     return newPoint;
   }, []);
 
-  // Undo last point
   const undoLastPoint = useCallback(() => {
     if (tempPoints.length > 0 && canUndoRef.current) {
       setTemporaryPoints(prev => prev.slice(0, -1));
@@ -340,7 +323,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     }
   }, [tempPoints]);
 
-  // Finalize a measurement
   const finalizeMeasurement = useCallback((points: MeasurementPoint[], additionalProps = {}) => {
     if (!activeTool || activeTool === 'none' || points.length === 0) return;
     
@@ -368,7 +350,7 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
         unit = 'm²';
         if (points.length >= 3) {
           // Use the provided area calculation from props or calculate it
-          if (additionalProps.hasOwnProperty('value')) {
+          if (additionalProps && ('value' in additionalProps)) {
             value = additionalProps.value as number;
           } else {
             const positions = points.map(p => p.position);
@@ -396,7 +378,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     return newMeasurement;
   }, [activeTool]);
 
-  // Delete measurement
   const deleteMeasurement = useCallback((id: string) => {
     const measurementToDelete = measurements.find(m => m.id === id);
     
@@ -452,7 +433,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     }
   }, [measurements]);
 
-  // Update measurement
   const updateMeasurement = useCallback((id: string, updates: Partial<Measurement>) => {
     setMeasurements(prev => {
       const index = prev.findIndex(m => m.id === id);
@@ -478,7 +458,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     });
   }, []);
 
-  // Delete a single point from a measurement
   const deleteSinglePoint = useCallback((measurementId: string, pointIndex: number) => {
     const measurement = measurements.find(m => m.id === measurementId);
     
@@ -529,7 +508,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     }
   }, [measurements, deleteMeasurement, updateMeasurement]);
 
-  // Delete temporary point
   const deleteTempPoint = useCallback((index: number) => {
     if (index < 0 || index >= tempPoints.length) return;
     
@@ -545,7 +523,6 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     }
   }, [tempPoints]);
 
-  // Toggle measurements visibility
   const toggleMeasurementsVisibility = useCallback((visible: boolean) => {
     if (measurementGroupRef.current) {
       measurementGroupRef.current.visible = visible;
@@ -581,3 +558,5 @@ export function useModelViewer({ containerRef, onLoadComplete }: ModelViewerHook
     setProgress
   };
 }
+
+export type { Measurement, MeasurementPoint, MeasurementType };
