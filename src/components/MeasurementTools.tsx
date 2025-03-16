@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin, Hexagon } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -212,6 +211,26 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 <p>Höhe messen</p>
               </TooltipContent>
             </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onToolChange('area')}
+                  className={cn(
+                    "p-2 rounded-md transition-colors",
+                    activeTool === 'area' 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-secondary"
+                  )}
+                  aria-label="Fläche messen"
+                >
+                  <Hexagon size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={isMobile ? "bottom" : "right"}>
+                <p>Fläche messen</p>
+              </TooltipContent>
+            </Tooltip>
 
             {canUndo && (
               <Tooltip>
@@ -292,7 +311,6 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
           
           <ScrollArea className={measurements.length > scrollThreshold ? (isMobile ? "h-[120px]" : "h-[200px]") + " pr-2" : "max-h-full"}>
             <ul className="space-y-2">
-              {/* Display completed measurements */}
               {measurements.map((m) => (
                 <li key={m.id} className={cn(
                   "bg-background/40 p-2 rounded",
@@ -317,6 +335,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                         <>
                           <ArrowUpDown size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}</span>
+                        </>
+                      )}
+                      {m.type === 'area' && (
+                        <>
+                          <Hexagon size={14} />
+                          <span>{m.value < 0.01 
+                            ? `${(m.value * 10000).toFixed(2)} cm²` 
+                            : `${m.value.toFixed(2)} m²`}
+                          </span>
                         </>
                       )}
                     </span>

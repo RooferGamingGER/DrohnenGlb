@@ -60,6 +60,14 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   const totalLengthCount = measurements
     .filter(m => m.type === 'length' && m.visible)
     .length;
+    
+  const totalArea = measurements
+    .filter(m => m.type === 'area' && m.value && m.visible)
+    .reduce((sum, m) => sum + m.value, 0);
+  
+  const totalAreaCount = measurements
+    .filter(m => m.type === 'area' && m.visible)
+    .length;
 
   const handleDownloadReport = async () => {
     if (measurements.length === 0 && screenshots.length === 0) {
@@ -166,6 +174,26 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     <SidebarProvider>
       <Sidebar className="z-20 fixed top-0 left-0 bottom-0 w-64 bg-white text-zinc-900 border-r border-zinc-200">
         <SidebarHeader className="p-4 border-b border-zinc-200 sticky top-0 bg-white">
+          {(totalLengthCount > 0 || totalAreaCount > 0) && (
+            <div className="text-xs text-muted-foreground mb-2">
+              {totalLengthCount > 0 && (
+                <div className="flex justify-between mb-1">
+                  <span>Gesamtlänge ({totalLengthCount}):</span>
+                  <span className="font-medium">{totalLength.toFixed(2)} m</span>
+                </div>
+              )}
+              {totalAreaCount > 0 && (
+                <div className="flex justify-between">
+                  <span>Gesamtfläche ({totalAreaCount}):</span>
+                  <span className="font-medium">
+                    {totalArea < 0.01 
+                      ? `${(totalArea * 10000).toFixed(2)} cm²` 
+                      : `${totalArea.toFixed(2)} m²`}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </SidebarHeader>
         
         <SidebarContent className="p-4">
