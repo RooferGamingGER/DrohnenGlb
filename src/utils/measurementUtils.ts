@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { nanoid } from 'nanoid';
 
-// Types
 export type MeasurementType = 'none' | 'length' | 'height' | 'area';
 
 export interface MeasurementPoint {
@@ -17,19 +16,15 @@ export interface Measurement {
   value: number;
   unit: string;
   visible?: boolean;
-  description?: string;
-  isActive?: boolean;
   editMode?: boolean;
   inclination?: number;
   labelObject?: THREE.Sprite;
   lineObjects?: THREE.Line[];
   pointObjects?: THREE.Mesh[];
+  isActive?: boolean;
 }
 
-// Functions
-export const createMeasurementId = (): string => {
-  return nanoid(8);
-};
+export const createMeasurementId = () => nanoid(8);
 
 export const calculateDistance = (point1: THREE.Vector3, point2: THREE.Vector3): number => {
   return point1.distanceTo(point2);
@@ -40,126 +35,146 @@ export const calculateHeight = (point1: THREE.Vector3, point2: THREE.Vector3): n
 };
 
 export const calculateInclination = (point1: THREE.Vector3, point2: THREE.Vector3): number => {
-  const horizontal = new THREE.Vector3(point2.x, point1.y, point2.z);
-  const horizontalDistance = point1.distanceTo(horizontal);
-  if (horizontalDistance === 0) return 90;
+  const dx = point2.x - point1.x;
+  const dy = point2.y - point1.y;
+  const dz = point2.z - point1.z;
   
-  const height = Math.abs(point2.y - point1.y);
-  return Math.atan(height / horizontalDistance) * (180 / Math.PI);
+  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+  
+  if (horizontalDistance < 0.0001) return 90;
+  
+  const angleRad = Math.atan2(Math.abs(dy), horizontalDistance);
+  return angleRad * (180 / Math.PI);
 };
 
 export const isInclinationSignificant = (inclination: number): boolean => {
-  return inclination > 5;
+  return inclination >= 5;
 };
 
 export const formatMeasurementWithInclination = (value: number, inclination?: number): string => {
-  const formattedValue = value.toFixed(2);
   if (inclination !== undefined && isInclinationSignificant(inclination)) {
-    return `${formattedValue} m | ${inclination.toFixed(1)}°`;
+    return `${value.toFixed(2)} m / ${inclination.toFixed(1)}°`;
   }
-  return `${formattedValue} m`;
+  return `${value.toFixed(2)} m`;
 };
 
-export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
-  if (points.length < 3) return 0;
+export const createTextCanvas = (text: string, backgroundColor: number = 0xffffff, textColor: string = 'black'): HTMLCanvasElement => {
+  const bgColorHex = '#' + backgroundColor.toString(16).padStart(6, '0');
   
-  let area = 0;
-  for (let i = 0; i < points.length; i++) {
-    const j = (i + 1) % points.length;
-    area += points[i].x * points[j].z;
-    area -= points[j].x * points[i].z;
-  }
-  
-  return Math.abs(area / 2);
-};
-
-export const createTextSprite = (
-  text: string, 
-  position: THREE.Vector3,
-  color: number = 0xffffff,
-  size: number = 0.5
-): THREE.Sprite => {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
-  if (!context) throw new Error("Could not get canvas context");
+  if (!context) throw new Error('Could not get 2D context for label canvas');
   
-  canvas.width = 256;
-  canvas.height = 128;
+  const fontSize = 60;
+  const padding = 10;
   
-  context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  context.font = `${fontSize}px Arial, sans-serif`;
+  
+  const textMetrics = context.measureText(text);
+  const textWidth = textMetrics.width;
+  const textHeight = fontSize;
+  
+  canvas.width = textWidth + padding * 2;
+  canvas.height = textHeight + padding * 2;
+  
+  context.fillStyle = bgColorHex;
   context.fillRect(0, 0, canvas.width, canvas.height);
   
-  context.font = '24px Arial';
-  context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+  context.fillStyle = textColor;
+  context.font = `${fontSize}px Arial, sans-serif`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(text, canvas.width / 2, canvas.height / 2);
   
+  return canvas;
+};
+
+export const createTextSprite = (text: string, position: THREE.Vector3, backgroundColor: number): THREE.Sprite => {
+  const canvas = createTextCanvas(text, backgroundColor);
   const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.SpriteMaterial({ map: texture });
-  const sprite = new THREE.Sprite(material);
   
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    sizeAttenuation: false
+  });
+  
+  const sprite = new THREE.Sprite(material);
   sprite.position.copy(position);
-  sprite.scale.set(size, size / 2, 1);
+  
+  const canvasAspect = canvas.width / canvas.height;
+  sprite.scale.set(0.8 * canvasAspect, 0.4, 1);
   
   return sprite;
 };
 
 export const updateLabelScale = (sprite: THREE.Sprite, camera: THREE.Camera): void => {
-  if (!sprite.userData.baseScale) {
-    sprite.userData.baseScale = { 
-      x: sprite.scale.x, 
-      y: sprite.scale.y, 
-      z: sprite.scale.z 
+  if (!sprite.userData || !sprite.userData.baseScale) {
+    sprite.userData = {
+      ...sprite.userData,
+      baseScale: { x: sprite.scale.x, y: sprite.scale.y, z: sprite.scale.z }
     };
   }
   
   const distance = sprite.position.distanceTo(camera.position);
-  const scale = Math.max(1, distance / 5);
+  const scale = distance / 8;
   
   sprite.scale.set(
     sprite.userData.baseScale.x * scale,
     sprite.userData.baseScale.y * scale,
-    sprite.userData.baseScale.z
+    1
   );
 };
 
-export const createDraggablePointMaterial = (hover: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({ 
-    color: hover ? 0xff9900 : 0xff0000,
-    opacity: hover ? 0.9 : 0.7,
-    transparent: true
+export const createDraggablePointMaterial = (isHovered: boolean): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({
+    color: isHovered ? 0xff8800 : 0xffaa00,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: true
   });
 };
 
-export const createEditablePointMaterial = (selected: boolean = false): THREE.MeshBasicMaterial => {
-  return new THREE.MeshBasicMaterial({ 
-    color: selected ? 0x00ff00 : 0x0000ff,
-    opacity: selected ? 0.9 : 0.7,
-    transparent: true
+export const createEditablePointMaterial = (isSelected: boolean): THREE.MeshBasicMaterial => {
+  return new THREE.MeshBasicMaterial({
+    color: isSelected ? 0xff3333 : 0xff0000,
+    transparent: true,
+    opacity: 0.8,
+    depthTest: true
   });
 };
 
-export const createDraggablePoint = (
-  position: THREE.Vector3, 
-  name: string = 'point'
-): THREE.Mesh => {
-  const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-  const material = createDraggablePointMaterial();
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.copy(position);
-  mesh.name = name;
-  return mesh;
+export const createDraggablePoint = (position: THREE.Vector3, name?: string): THREE.Mesh => {
+  const geometry = new THREE.SphereGeometry(0.025, 16, 16);
+  const material = createDraggablePointMaterial(false);
+  
+  const point = new THREE.Mesh(geometry, material);
+  point.position.copy(position);
+  
+  if (name) {
+    point.name = name;
+  }
+  
+  point.userData = {
+    ...point.userData,
+    isDraggable: true,
+    isSelected: false
+  };
+  
+  return point;
 };
 
-export const createMeasurementLine = (
-  points: THREE.Vector3[],
-  color: number = 0xffffff
-): THREE.Line => {
+export const createMeasurementLine = (points: THREE.Vector3[], color: number): THREE.Line => {
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({ color });
-  const line = new THREE.Line(geometry, material);
-  return line;
+  
+  const material = new THREE.LineBasicMaterial({
+    color: color,
+    linewidth: 2,
+    depthTest: true
+  });
+  
+  return new THREE.Line(geometry, material);
 };
 
 export const isDoubleClick = (currentTime: number, lastClickTime: number): boolean => {
@@ -167,79 +182,98 @@ export const isDoubleClick = (currentTime: number, lastClickTime: number): boole
 };
 
 export const togglePointSelection = (point: THREE.Mesh): void => {
-  if (!point.userData) point.userData = {};
-  point.userData.selected = !point.userData.selected;
-  
-  if (point.material instanceof THREE.MeshBasicMaterial) {
-    if (point.userData.selected) {
-      point.material.color.set(0x00ff00);
-      point.material.opacity = 0.9;
-    } else {
-      point.material.color.set(0xff0000);
-      point.material.opacity = 0.7;
-    }
+  if (!point.userData) {
+    point.userData = {};
   }
+  
+  point.userData.isSelected = !point.userData.isSelected;
+  
+  point.material = point.userData.isSelected
+    ? createEditablePointMaterial(true)
+    : createDraggablePointMaterial(false);
 };
 
 export const isPointSelected = (point: THREE.Mesh): boolean => {
-  return point.userData?.selected || false;
+  return point.userData && point.userData.isSelected;
+};
+
+export const calculatePolygonArea = (points: THREE.Vector3[]): number => {
+  if (points.length < 3) return 0;
+  
+  let area = 0;
+  
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    
+    // Using the shoelace formula modified for 3D points projected onto the XZ plane
+    area += points[i].x * points[j].z - points[j].x * points[i].z;
+  }
+  
+  return Math.abs(area) / 2;
 };
 
 export const highlightMeasurementPoints = (
   measurement: Measurement, 
-  hover: boolean = false
+  measurementGroup: THREE.Group,
+  highlight: boolean = true
 ): void => {
   if (!measurement.pointObjects) return;
   
   measurement.pointObjects.forEach(point => {
-    if (point.material instanceof THREE.MeshBasicMaterial) {
-      if (measurement.editMode) {
-        point.material.color.set(hover ? 0x00ffff : 0x0000ff);
-      } else {
-        point.material.color.set(hover ? 0xff9900 : 0xff0000);
+    if (point) {
+      point.material = highlight 
+        ? createEditablePointMaterial(false) 
+        : createDraggablePointMaterial(false);
+      
+      if (point.userData) {
+        point.userData.isDraggable = true;
       }
-      point.material.opacity = hover ? 0.9 : 0.7;
     }
   });
 };
 
-export const updateCursorForDraggablePoint = (
-  isHovering: boolean,
-  isDragging: boolean
-): void => {
-  if (isDragging) {
-    document.body.style.cursor = 'grabbing';
-  } else if (isHovering) {
-    document.body.style.cursor = 'grab';
-  } else {
-    document.body.style.cursor = 'auto';
+export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
+  if (!points || points.length < 3) return points;
+  
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  
+  const distance = lastPoint.position.distanceTo(firstPoint.position);
+  
+  if (distance < 0.1) {
+    return points;
   }
+  
+  return [...points];
 };
 
 export const findNearestEditablePoint = (
-  measurements: Measurement[],
   raycaster: THREE.Raycaster,
-  camera: THREE.Camera
+  camera: THREE.Camera,
+  mousePosition: THREE.Vector2,
+  measurementGroup: THREE.Group
 ): { measurement: Measurement, pointIndex: number, point: THREE.Mesh } | null => {
-  const editableMeasurements = measurements.filter(m => m.editMode && m.visible !== false);
-  if (editableMeasurements.length === 0) return null;
+  const pointObjects = measurementGroup.children.filter(
+    child => child instanceof THREE.Mesh && child.name.startsWith('point-')
+  );
   
-  for (const measurement of editableMeasurements) {
-    if (!measurement.pointObjects) continue;
+  const intersects = raycaster.intersectObjects(pointObjects, false);
+  
+  if (intersects.length > 0) {
+    const pointMesh = intersects[0].object as THREE.Mesh;
+    const pointId = pointMesh.name;
     
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const intersects = raycaster.intersectObjects(measurement.pointObjects, false);
-    
-    if (intersects.length > 0) {
-      const intersect = intersects[0];
-      const pointIndex = measurement.pointObjects.findIndex(p => p === intersect.object);
+    const nameParts = pointId.split('-');
+    if (nameParts.length >= 3) {
+      const measurementId = nameParts[1];
+      const pointIndex = parseInt(nameParts[2], 10);
       
-      if (pointIndex !== -1) {
-        return {
-          measurement,
-          pointIndex,
-          point: measurement.pointObjects[pointIndex]
-        };
+      // Find the measurement that this point belongs to
+      const measurements = measurementGroup.parent?.userData?.measurements as Measurement[] || [];
+      const measurement = measurements.find(m => m.id === measurementId);
+      
+      if (measurement && (measurement.editMode || pointMesh.userData?.isSelected)) {
+        return { measurement, pointIndex, point: pointMesh };
       }
     }
   }
@@ -247,68 +281,66 @@ export const findNearestEditablePoint = (
   return null;
 };
 
-export const updateMeasurementGeometry = (
-  measurement: Measurement,
-  updatedPointIndex: number
-): void => {
-  if (!measurement.points || !measurement.lineObjects) return;
+export const updateCursorForDraggablePoint = (isHovering: boolean): void => {
+  document.body.style.cursor = isHovering ? 'pointer' : 'auto';
+};
+
+export const updateMeasurementGeometry = (measurement: Measurement): void => {
+  if (!measurement.pointObjects || !measurement.lineObjects) return;
   
-  if (measurement.type === 'length') {
-    if (measurement.lineObjects.length > 0 && measurement.points.length >= 2) {
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        measurement.points[0].position,
-        measurement.points[1].position
-      ]);
-      
-      measurement.lineObjects[0].geometry.dispose();
-      measurement.lineObjects[0].geometry = lineGeometry;
-    }
-  } else if (measurement.type === 'height') {
-    if (measurement.lineObjects.length > 0 && measurement.points.length >= 2) {
-      const verticalPoint = new THREE.Vector3(
-        measurement.points[0].position.x,
-        measurement.points[1].position.y,
-        measurement.points[0].position.z
-      );
-      
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-        measurement.points[0].position,
-        verticalPoint,
-        measurement.points[1].position
-      ]);
-      
-      measurement.lineObjects[0].geometry.dispose();
-      measurement.lineObjects[0].geometry = lineGeometry;
-    }
-  } else if (measurement.type === 'area') {
-    if (measurement.points.length >= 3) {
-      // For each line segment
-      for (let i = 0; i < measurement.points.length; i++) {
-        const j = (i + 1) % measurement.points.length;
-        
-        if (i < measurement.lineObjects.length) {
-          const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-            measurement.points[i].position,
-            measurement.points[j].position
-          ]);
-          
-          measurement.lineObjects[i].geometry.dispose();
-          measurement.lineObjects[i].geometry = lineGeometry;
-        }
+  // Update points positions if needed
+  
+  // Update line geometry
+  if (measurement.type === 'length' && measurement.lineObjects.length > 0) {
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      measurement.points[0].position,
+      measurement.points[1].position
+    ]);
+    
+    measurement.lineObjects[0].geometry.dispose();
+    measurement.lineObjects[0].geometry = lineGeometry;
+  } else if (measurement.type === 'height' && measurement.lineObjects.length > 0) {
+    const verticalPoint = new THREE.Vector3(
+      measurement.points[0].position.x,
+      measurement.points[1].position.y,
+      measurement.points[0].position.z
+    );
+    
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      measurement.points[0].position,
+      verticalPoint,
+      measurement.points[1].position
+    ]);
+    
+    measurement.lineObjects[0].geometry.dispose();
+    measurement.lineObjects[0].geometry = lineGeometry;
+  } else if (measurement.type === 'area' && measurement.lineObjects.length > 0) {
+    // For area, we need to update the polygon
+    const positions = measurement.points.map(p => p.position);
+    if (positions.length >= 3) {
+      // Close the polygon by adding the first point at the end
+      const closedPositions = [...positions];
+      if (positions[0].distanceTo(positions[positions.length - 1]) > 0.001) {
+        closedPositions.push(positions[0]);
       }
+      
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(closedPositions);
+      measurement.lineObjects[0].geometry.dispose();
+      measurement.lineObjects[0].geometry = lineGeometry;
     }
   }
   
+  // Update label position
   if (measurement.labelObject) {
     let labelPosition: THREE.Vector3;
     
-    if (measurement.type === 'length') {
+    if (measurement.type === 'length' && measurement.points.length >= 2) {
       labelPosition = new THREE.Vector3().addVectors(
         measurement.points[0].position,
         measurement.points[1].position
       ).multiplyScalar(0.5);
       labelPosition.y += 0.1;
-    } else if (measurement.type === 'height') {
+    } else if (measurement.type === 'height' && measurement.points.length >= 2) {
       const midHeight = (
         measurement.points[0].position.y + 
         measurement.points[1].position.y
@@ -320,85 +352,35 @@ export const updateMeasurementGeometry = (
         measurement.points[0].position.z
       );
       labelPosition.x += 0.1;
-    } else if (measurement.type === 'area') {
-      // Find center of polygon
-      const center = new THREE.Vector3();
-      measurement.points.forEach(p => center.add(p.position));
-      center.divideScalar(measurement.points.length);
-      center.y += 0.1;
+    } else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // Calculate centroid of the polygon for area measurement
+      let centroidX = 0, centroidY = 0, centroidZ = 0;
+      measurement.points.forEach(point => {
+        centroidX += point.position.x;
+        centroidY += point.position.y;
+        centroidZ += point.position.z;
+      });
       
-      labelPosition = center;
+      const numPoints = measurement.points.length;
+      labelPosition = new THREE.Vector3(
+        centroidX / numPoints,
+        centroidY / numPoints + 0.1,
+        centroidZ / numPoints
+      );
     } else {
-      labelPosition = measurement.points[0].position.clone();
-      labelPosition.y += 0.1;
+      return;
     }
     
     measurement.labelObject.position.copy(labelPosition);
   }
 };
 
-export const updateAreaPreview = (
-  points: MeasurementPoint[],
-  measurementGroup: THREE.Group
-): void => {
-  if (points.length < 2) return;
+export const finalizePolygon = (measurement: Measurement, measurementGroup: THREE.Group): void => {
+  if (measurement.type !== 'area' || !measurement.points || measurement.points.length < 3) return;
   
-  // Remove any existing preview
-  clearPreviewObjects(measurementGroup);
+  const positions = measurement.points.map(p => p.position);
   
-  const positions = points.map(p => p.position);
-  
-  // Create preview lines
-  for (let i = 0; i < positions.length - 1; i++) {
-    const line = createMeasurementLine(
-      [positions[i], positions[i + 1]],
-      0xffff00
-    );
-    line.name = 'preview-line';
-    measurementGroup.add(line);
-  }
-  
-  // Add closing line if there are at least 3 points
-  if (positions.length >= 3) {
-    const closingLine = createMeasurementLine(
-      [positions[positions.length - 1], positions[0]],
-      0xffff00
-    );
-    closingLine.name = 'preview-line-closing';
-    closingLine.visible = true;
-    measurementGroup.add(closingLine);
-    
-    // Create area label
-    const area = calculatePolygonArea(positions);
-    
-    // Find center of polygon
-    const center = new THREE.Vector3();
-    positions.forEach(p => center.add(p));
-    center.divideScalar(positions.length);
-    center.y += 0.1;
-    
-    const labelText = area < 0.01 
-      ? `${(area * 10000).toFixed(2)} cm²` 
-      : `${area.toFixed(2)} m²`;
-    
-    const label = createTextSprite(labelText, center, 0xffff00);
-    label.name = 'preview-label';
-    measurementGroup.add(label);
-  }
-};
-
-export const closePolygon = (
-  points: MeasurementPoint[],
-  measurementGroup: THREE.Group
-): void => {
-  if (points.length < 3) return;
-
-  // Clear any existing preview objects
-  clearPreviewObjects(measurementGroup);
-  
-  const positions = points.map(p => p.position);
-  
-  // Create permanent area mesh
+  // Create face geometry for the area
   const shape = new THREE.Shape();
   shape.moveTo(positions[0].x, positions[0].z);
   
@@ -407,86 +389,145 @@ export const closePolygon = (
   }
   
   shape.lineTo(positions[0].x, positions[0].z);
+  
+  const geometry = new THREE.ShapeGeometry(shape);
+  
+  // Rotate the geometry to lay flat on the XZ plane
+  geometry.rotateX(Math.PI / 2);
+  
+  // Adjust Y position
+  let avgY = 0;
+  positions.forEach(pos => { avgY += pos.y; });
+  avgY /= positions.length;
+  
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.2,
+    side: THREE.DoubleSide
+  });
+  
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = avgY + 0.01; // Slightly above the points to avoid z-fighting
+  mesh.name = `area-${measurement.id}`;
+  
+  // Store the mesh in the measurement
+  measurement.lineObjects = [...(measurement.lineObjects || []), mesh];
+  
+  measurementGroup.add(mesh);
 };
 
-export const finalizePolygon = (
+export const updateAreaPreview = (
+  measurement: Measurement,
   points: MeasurementPoint[],
-  measurementGroup: THREE.Group
-): Measurement => {
-  if (points.length < 3) {
-    throw new Error("Cannot finalize polygon with fewer than 3 points");
-  }
+  measurementGroup: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  // Remove any existing preview
+  clearPreviewObjects(measurement, measurementGroup);
+  
+  if (points.length < 3) return;
   
   const positions = points.map(p => p.position);
-  const area = calculatePolygonArea(positions);
   
-  // Create point objects
-  const pointObjects: THREE.Mesh[] = [];
-  for (let i = 0; i < points.length; i++) {
-    const pointName = `point-${createMeasurementId()}-${i}`;
-    const pointMesh = createDraggablePoint(points[i].position, pointName);
-    measurementGroup.add(pointMesh);
-    pointObjects.push(pointMesh);
+  // Create line connecting all points
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints([...positions, positions[0]]);
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.6
+  });
+  
+  const line = new THREE.Line(lineGeometry, lineMaterial);
+  line.name = `preview-line-${measurement.id}`;
+  
+  // Create area mesh
+  const shape = new THREE.Shape();
+  shape.moveTo(positions[0].x, positions[0].z);
+  
+  for (let i = 1; i < positions.length; i++) {
+    shape.lineTo(positions[i].x, positions[i].z);
   }
   
-  // Create line objects
-  const lineObjects: THREE.Line[] = [];
-  for (let i = 0; i < points.length; i++) {
-    const j = (i + 1) % points.length;
-    const line = createMeasurementLine([positions[i], positions[j]], 0xffff00);
-    measurementGroup.add(line);
-    lineObjects.push(line);
-  }
+  shape.lineTo(positions[0].x, positions[0].z);
   
-  // Create center label
-  const center = new THREE.Vector3();
-  positions.forEach(p => center.add(p));
-  center.divideScalar(positions.length);
-  center.y += 0.1;
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.rotateX(Math.PI / 2);
   
-  const labelText = area < 0.01 
-    ? `${(area * 10000).toFixed(2)} cm²` 
-    : `${area.toFixed(2)} m²`;
+  let avgY = 0;
+  positions.forEach(pos => { avgY += pos.y; });
+  avgY /= positions.length;
   
-  const label = createTextSprite(labelText, center, 0xffff00);
-  measurementGroup.add(label);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x00ff00,
+    transparent: true,
+    opacity: 0.15,
+    side: THREE.DoubleSide
+  });
   
-  const measurement: Measurement = {
-    id: createMeasurementId(),
-    type: 'area',
-    points,
-    value: area,
-    unit: 'm²',
-    visible: true,
-    isActive: false,
-    labelObject: label,
-    lineObjects,
-    pointObjects
-  };
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = avgY + 0.01;
+  mesh.name = `preview-mesh-${measurement.id}`;
   
-  return measurement;
-};
-
-export const clearPreviewObjects = (measurementGroup: THREE.Group): void => {
-  const previewObjects = measurementGroup.children.filter(
-    child => child.name.startsWith('preview-')
+  // Add area text
+  const areaValue = calculatePolygonArea(positions);
+  
+  const labelText = areaValue < 0.01 ? 
+    `${(areaValue * 10000).toFixed(2)} cm²` : 
+    `${areaValue.toFixed(2)} m²`;
+  
+  // Calculate centroid for label position
+  let centroidX = 0, centroidY = 0, centroidZ = 0;
+  positions.forEach(pos => {
+    centroidX += pos.x;
+    centroidY += pos.y;
+    centroidZ += pos.z;
+  });
+  
+  const centroid = new THREE.Vector3(
+    centroidX / positions.length,
+    centroidY / positions.length + 0.1,
+    centroidZ / positions.length
   );
   
-  previewObjects.forEach(obj => {
-    if (obj instanceof THREE.Line) {
-      obj.geometry.dispose();
-      if (obj.material instanceof THREE.Material) {
-        obj.material.dispose();
-      } else if (Array.isArray(obj.material)) {
-        obj.material.forEach(m => m.dispose());
+  const label = createTextSprite(labelText, centroid, 0x00ff00);
+  label.name = `preview-label-${measurement.id}`;
+  
+  label.userData = {
+    ...label.userData,
+    isLabel: true,
+    baseScale: { x: 0.8, y: 0.4, z: 1 }
+  };
+  
+  updateLabelScale(label, camera);
+  
+  // Add all preview objects to the measurement group
+  measurementGroup.add(line);
+  measurementGroup.add(mesh);
+  measurementGroup.add(label);
+};
+
+export const clearPreviewObjects = (measurement: Measurement, measurementGroup: THREE.Group): void => {
+  const previewObjectNames = [
+    `preview-line-${measurement.id}`,
+    `preview-mesh-${measurement.id}`,
+    `preview-label-${measurement.id}`
+  ];
+  
+  previewObjectNames.forEach(name => {
+    const object = measurementGroup.children.find(child => child.name === name);
+    if (object) {
+      if (object instanceof THREE.Line || object instanceof THREE.Mesh) {
+        object.geometry.dispose();
       }
-    } else if (obj instanceof THREE.Sprite) {
-      if (obj.material instanceof THREE.SpriteMaterial && obj.material.map) {
-        obj.material.map.dispose();
+      
+      if (object.material instanceof THREE.Material) {
+        object.material.dispose();
+      } else if (Array.isArray(object.material)) {
+        object.material.forEach(mat => mat.dispose());
       }
-      obj.material.dispose();
+      
+      measurementGroup.remove(object);
     }
-    
-    measurementGroup.remove(obj);
   });
 };

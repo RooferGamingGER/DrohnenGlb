@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -242,8 +243,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       const dataUrl = captureScreenshot(
         modelViewer.renderer,
         modelViewer.scene,
-        modelViewer.camera,
-        isMobile
+        modelViewer.camera
       );
       
       if (dataUrl) {
@@ -367,7 +367,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         modelViewer.setActiveTool('none');
       }
       
-      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current, true);
+      highlightMeasurementPoints(measurement, modelViewer.measurementGroupRef.current);
       
       toast({
         title: "Bearbeitungsmodus aktiviert",
@@ -479,8 +479,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         raycasterRef.current,
         modelViewer.camera!,
         mousePosition,
-        modelViewer.measurementGroupRef.current,
-        0.2
+        modelViewer.measurementGroupRef.current
       );
       
       updateCursorForDraggablePoint(!!nearestPoint);
@@ -506,8 +505,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         raycasterRef.current,
         modelViewer.camera!,
         mousePosition,
-        modelViewer.measurementGroupRef.current,
-        0.2
+        modelViewer.measurementGroupRef.current
       );
       
       if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
@@ -528,21 +526,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       if (nearestPoint && !isFollowingMouse) {
         event.preventDefault();
         
-        const pointName = nearestPoint.name;
-        const nameParts = pointName.split('-');
-        
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
+        if (typeof nearestPoint === 'object' && 'measurement' in nearestPoint && 'pointIndex' in nearestPoint && 'point' in nearestPoint) {
+          const { measurement, pointIndex, point } = nearestPoint;
           
           setIsFollowingMouse(true);
-          setDraggedPoint(nearestPoint);
-          setSelectedMeasurementId(measurementId);
+          setDraggedPoint(point);
+          setSelectedMeasurementId(measurement.id);
           setSelectedPointIndex(pointIndex);
           
           document.body.style.cursor = 'grabbing';
           
-          console.log(`Punkt ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+          console.log(`Punkt ausgewählt: ${point.name}, Messung: ${measurement.id}, Index: ${pointIndex}`);
           
           toast({
             title: "Punkt aktiviert",
@@ -620,8 +614,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         raycasterRef.current,
         modelViewer.camera!,
         touchPosition,
-        modelViewer.measurementGroupRef.current,
-        0.3
+        modelViewer.measurementGroupRef.current
       );
       
       if (isFollowingMouse && draggedPoint && selectedMeasurementId && selectedPointIndex !== null) {
@@ -641,19 +634,15 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       if (nearestPoint && !isFollowingMouse) {
         event.preventDefault();
         
-        const pointName = nearestPoint.name;
-        const nameParts = pointName.split('-');
-        
-        if (nameParts.length >= 3) {
-          const measurementId = nameParts[1];
-          const pointIndex = parseInt(nameParts[2], 10);
+        if (typeof nearestPoint === 'object' && 'measurement' in nearestPoint && 'pointIndex' in nearestPoint && 'point' in nearestPoint) {
+          const { measurement, pointIndex, point } = nearestPoint;
           
           setIsFollowingMouse(true);
-          setDraggedPoint(nearestPoint);
-          setSelectedMeasurementId(measurementId);
+          setDraggedPoint(point);
+          setSelectedMeasurementId(measurement.id);
           setSelectedPointIndex(pointIndex);
           
-          console.log(`Punkt per Touch ausgewählt: ${pointName}, Messung: ${measurementId}, Index: ${pointIndex}`);
+          console.log(`Punkt per Touch ausgewählt: ${point.name}, Messung: ${measurement.id}, Index: ${pointIndex}`);
           
           toast({
             title: "Punkt aktiviert",
@@ -845,7 +834,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       const tempPositions = modelViewer.tempPoints.map(p => p.position);
       const calculatedArea = calculatePolygonArea([...tempPositions, tempPositions[0]]);
       
-      let newPoints = closePolygon([...modelViewer.tempPoints]);
+      let newPoints = closePolygon(modelViewer.tempPoints);
       
       if (modelViewer.finalizeMeasurement) {
         if (modelViewer.measurementGroupRef?.current) {
@@ -861,30 +850,32 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           clearPreviewObjects(previewMeasurement, modelViewer.measurementGroupRef.current);
         }
         
-        modelViewer.finalizeMeasurement(newPoints, {
+        const newMeasurement = modelViewer.finalizeMeasurement(newPoints, {
           value: calculatedArea
         });
         
         if (modelViewer.measurements.length > 0) {
           const lastMeasurement = modelViewer.measurements[modelViewer.measurements.length - 1];
           
-          if (lastMeasurement.type === 'area') {
+          if (lastMeasurement && lastMeasurement.type === 'area') {
             console.log("Aktualisiere die Flächenmessung nach dem Schließen");
             
             if (modelViewer.measurementGroupRef?.current) {
-              clearPreviewObjects(lastMeasurement, modelViewer.measurementGroupRef.current);
-              finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
+              if (lastMeasurement.points && lastMeasurement.points.length > 0) {
+                clearPreviewObjects(lastMeasurement, modelViewer.measurementGroupRef.current);
+                finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
               
-              if (!lastMeasurement.value || lastMeasurement.value === 0) {
-                const positions = lastMeasurement.points.map(p => p.position);
-                const area = calculatePolygonArea(positions);
-                
-                modelViewer.updateMeasurement(lastMeasurement.id, { 
-                  value: area
-                });
+                if (!lastMeasurement.value || lastMeasurement.value === 0) {
+                  const positions = lastMeasurement.points.map(p => p.position);
+                  const area = calculatePolygonArea(positions);
+                  
+                  modelViewer.updateMeasurement(lastMeasurement.id, { 
+                    value: area
+                  });
+                }
+              
+                updateMeasurementGeometry(lastMeasurement);
               }
-              
-              updateMeasurementGeometry(lastMeasurement);
               
               if (lastMeasurement.pointObjects) {
                 lastMeasurement.pointObjects.forEach(point => {
@@ -1265,6 +1256,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
           onDeleteSinglePoint={(measurementId, pointIndex) => modelViewer.deleteSinglePoint(measurementId, pointIndex)}
           onClosePolygon={handleClosePolygon}
+          canClosePolygon={modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3}
         />
       )}
       
