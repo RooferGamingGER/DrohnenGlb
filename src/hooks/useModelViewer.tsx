@@ -1319,7 +1319,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
   };
   
-  const finalizeMeasurement = (points: MeasurementPoint[]) => {
+  const finalizeMeasurement = useCallback((points: MeasurementPoint[]) => {
     if (activeTool === 'none' || points.length < 2) return;
     
     let value = 0;
@@ -1363,8 +1363,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setTemporaryPoints([]);
     
     currentMeasurementRef.current = null;
-  };
-  
+    setActiveTool('none');
+  }, [activeTool]);
+
   const handleMeasurementTap = (touch: Touch) => {
     if (isDraggingPoint) return;
     
@@ -1748,6 +1749,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     controls: controlsRef.current,
     loadedModel: modelRef.current,
     updateModelViewer,
-    adjustCameraToModelSize
+    adjustCameraToModelSize,
+    finalizeMeasurement
   };
 };

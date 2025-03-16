@@ -801,13 +801,18 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
       const firstPoint = modelViewer.tempPoints[0];
       
-      modelViewer.completeMeasurement();
-      
-      toast({
-        title: "Fläche geschlossen",
-        description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
-        duration: 3000,
-      });
+      if (firstPoint && firstPoint.position) {
+        const newPoints = [...modelViewer.tempPoints];
+        
+        modelViewer.finalizeMeasurement?.(newPoints) || 
+        modelViewer.setActiveTool('none');
+        
+        toast({
+          title: "Fläche geschlossen",
+          description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
+          duration: 3000,
+        });
+      }
     }
   }, [modelViewer, toast]);
 
