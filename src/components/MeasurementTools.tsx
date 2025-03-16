@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin, Hexagon, CircleCheck } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
@@ -63,14 +62,19 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
   const [expandedMeasurement, setExpandedMeasurement] = useState<string | null>(null);
 
-  // Check if we should show the "Close Polygon" button
-  const showClosePolygonButton = activeTool === 'area' && tempPoints.length >= 3 && onClosePolygon;
-
+  const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
+  const showClosePolygonButton = canClosePolygon && onClosePolygon !== undefined;
+  
   useEffect(() => {
-    if (editingId !== null && activeTool !== 'none') {
-      onToolChange('none');
+    if (activeTool === 'area') {
+      console.log("Debug close polygon button:", {
+        activeTool,
+        tempPointsLength: tempPoints?.length,
+        onClosePolygonExists: !!onClosePolygon,
+        showClosePolygonButton
+      });
     }
-  }, [editingId, activeTool, onToolChange]);
+  }, [activeTool, tempPoints, onClosePolygon, showClosePolygonButton]);
 
   const handleDeleteMeasurement = (id: string, event: React.MouseEvent) => {
     event.preventDefault();
@@ -145,6 +149,15 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
     event.preventDefault();
     event.stopPropagation();
     setExpandedMeasurement(expandedMeasurement === id ? null : id);
+  };
+
+  const handleClosePolygon = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onClosePolygon) {
+      console.log("Close polygon button clicked, calling handler");
+      onClosePolygon();
+    }
   };
 
   return (
@@ -259,7 +272,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={onClosePolygon}
+                    onClick={handleClosePolygon}
                     className="p-2 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors"
                     aria-label="Polygon schließen"
                   >

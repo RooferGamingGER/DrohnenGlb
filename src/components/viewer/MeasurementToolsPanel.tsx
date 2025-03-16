@@ -55,6 +55,13 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onDeleteSinglePoint,
   onClosePolygon
 }) => {
+  // Add debug logging to verify props
+  console.log("MeasurementToolsPanel props:", {
+    activeTool,
+    tempPointsLength: tempPoints?.length,
+    hasClosePolygonHandler: !!onClosePolygon
+  });
+
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
