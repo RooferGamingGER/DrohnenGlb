@@ -786,8 +786,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               (line as THREE.Line).material.dispose();
             }
             else if (Array.isArray((line as THREE.Line).material)) {
+              // Fix for array of materials - iterate through each material individually
               ((line as THREE.Line).material as THREE.Material[]).forEach(mat => {
-                if (mat && mat.dispose) mat.dispose();
+                // Check if mat exists and has a dispose function
+                if (mat && typeof mat.dispose === 'function') {
+                  mat.dispose();
+                }
               });
             }
             measurementGroupRef.current?.remove(line);
@@ -805,8 +809,12 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
               (point as THREE.Mesh).material.dispose();
             }
             else if (Array.isArray((point as THREE.Mesh).material)) {
+              // Fix for array of materials - iterate through each material individually
               ((point as THREE.Mesh).material as THREE.Material[]).forEach(mat => {
-                if (mat && mat.dispose) mat.dispose();
+                // Check if mat exists and has a dispose function
+                if (mat && typeof mat.dispose === 'function') {
+                  mat.dispose();
+                }
               });
             }
             measurementGroupRef.current?.remove(point);
@@ -852,14 +860,15 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       } else if (Array.isArray((pointToDelete as THREE.Mesh).material)) {
         // For material arrays, individually dispose each material
         ((pointToDelete as THREE.Mesh).material as THREE.Material[]).forEach(material => {
-          if (material && material.dispose) material.dispose();
+          // Check if material exists and has a dispose function
+          if (material && typeof material.dispose === 'function') {
+            material.dispose();
+          }
         });
       }
       
       measurementGroupRef.current.remove(pointToDelete);
     }
-    
-    // Correct closing brace - adding the missing closing brace here
   }
 
   return {
