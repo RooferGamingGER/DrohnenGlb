@@ -229,7 +229,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             </Button>
           )}
           
-          {(totalLengthCount > 0 || totalAreaCount > 0 || (activeTool === 'area' && tempArea > 0)) && (
+          {(totalLengthCount > 0 || totalAreaCount > 0) && (
             <div className="text-xs text-muted-foreground mb-2">
               {totalLengthCount > 0 && (
                 <div className="flex justify-between mb-1">
@@ -238,22 +238,12 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
                 </div>
               )}
               {totalAreaCount > 0 && (
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between">
                   <span>Gesamtfläche ({totalAreaCount}):</span>
                   <span className="font-medium">
                     {totalArea < 0.01 
                       ? `${(totalArea * 10000).toFixed(2)} cm²` 
                       : `${totalArea.toFixed(2)} m²`}
-                  </span>
-                </div>
-              )}
-              {activeTool === 'area' && tempArea > 0 && (
-                <div className="flex justify-between mt-1 text-blue-500 font-medium">
-                  <span>Aktuelle Fläche:</span>
-                  <span>
-                    {tempArea < 0.01 
-                      ? `${(tempArea * 10000).toFixed(2)} cm²` 
-                      : `${tempArea.toFixed(2)} m²`}
                   </span>
                 </div>
               )}
