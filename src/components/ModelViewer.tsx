@@ -892,7 +892,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // Reset the active tool to stop capturing points
+              // Switch to navigation mode (set tool to 'none')
               modelViewer.setActiveTool('none');
               
               // Update the measurement visuals

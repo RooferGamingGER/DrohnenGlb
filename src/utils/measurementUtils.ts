@@ -820,7 +820,12 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
           closedPolygon[startIdx].clone(),
           closedPolygon[endIdx].clone()
         ];
-        updateMeasurementLine(measurement.lineObjects[i], linePoints);
+        
+        if (i < measurement.lineObjects.length) {
+          updateMeasurementLine(measurement.lineObjects[i], linePoints);
+          // Make sure line is visible
+          measurement.lineObjects[i].visible = true;
+        }
       }
     }
   }
@@ -851,6 +856,9 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       
       measurement.labelObject.position.copy(center);
     }
+    
+    // Make sure label is visible
+    measurement.labelObject.visible = true;
   }
 };
 
@@ -969,6 +977,19 @@ export const finalizePolygon = (
     
     // Update all geometry with the finalized points
     updateMeasurementGeometry(measurement);
+    
+    // Important: Keep points visible and editable
+    if (measurement.pointObjects) {
+      measurement.pointObjects.forEach(point => {
+        if (point) {
+          point.visible = true;
+          // Make sure the point is draggable
+          if (point.userData) {
+            point.userData.isDraggable = true;
+          }
+        }
+      });
+    }
   }
 };
 
