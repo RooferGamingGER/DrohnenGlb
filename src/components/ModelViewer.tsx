@@ -892,7 +892,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // Switch to navigation mode (set tool to 'none')
+              // IMPORTANT: Switch to navigation mode (set tool to 'none')
               modelViewer.setActiveTool('none');
               
               // Update the measurement visuals

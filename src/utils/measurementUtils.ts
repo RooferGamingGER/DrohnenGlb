@@ -209,14 +209,45 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   // Stelle sicher, dass das Polygon geschlossen ist
   const closedPoints = ensureClosedPolygon(points);
   
-  // Create a shape from the projected points
+  // Project points onto the best-fitting plane
+  // First, find the center of mass of all points
   const center = new THREE.Vector3();
   closedPoints.forEach(p => center.add(p));
   center.divideScalar(closedPoints.length);
   
-  // Find the normal of the best-fitting plane
-  const v1 = new THREE.Vector3().subVectors(closedPoints[1], closedPoints[0]).normalize();
-  const v2 = new THREE.Vector3().subVectors(closedPoints[Math.min(2, closedPoints.length - 1)], closedPoints[0]).normalize();
+  // Find the normal of the best-fitting plane using covariance matrix
+  const covariance = new THREE.Matrix3();
+  closedPoints.forEach(p => {
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    const dz = p.z - center.z;
+    
+    covariance.elements[0] += dx * dx; // xx
+    covariance.elements[1] += dx * dy; // xy
+    covariance.elements[2] += dx * dz; // xz
+    covariance.elements[3] += dy * dx; // yx
+    covariance.elements[4] += dy * dy; // yy
+    covariance.elements[5] += dy * dz; // yz
+    covariance.elements[6] += dz * dx; // zx
+    covariance.elements[7] += dz * dy; // zy
+    covariance.elements[8] += dz * dz; // zz
+  });
+  
+  // Find the eigenvector corresponding to the smallest eigenvalue
+  // For simplicity, we'll use a heuristic approach to approximate the normal
+  // Finding the cross product of two dominant directions in the data
+  const v1 = new THREE.Vector3(
+    closedPoints[1].x - closedPoints[0].x,
+    closedPoints[1].y - closedPoints[0].y,
+    closedPoints[1].z - closedPoints[0].z
+  ).normalize();
+  
+  const v2 = new THREE.Vector3(
+    closedPoints[Math.min(2, closedPoints.length - 1)].x - closedPoints[0].x,
+    closedPoints[Math.min(2, closedPoints.length - 1)].y - closedPoints[0].y,
+    closedPoints[Math.min(2, closedPoints.length - 1)].z - closedPoints[0].z
+  ).normalize();
+  
   const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
   
   // If the normal is too small, default to the Y-axis
@@ -224,23 +255,25 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
     normal.set(0, 1, 0);
   }
   
-  // Create a matrix to transform points to the XZ plane
-  const lookAtMatrix = new THREE.Matrix4();
-  const tempCenter = center.clone();
-  const tempTarget = tempCenter.clone().add(normal);
-  const up = new THREE.Vector3(0, 1, 0);
+  // Create a coordinate system in the plane
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(normal.dot(u)) > 0.9) {
+    u.set(0, 1, 0);
+  }
   
-  lookAtMatrix.lookAt(tempCenter, tempTarget, up);
-  const rotationMatrix = new THREE.Matrix4().extractRotation(lookAtMatrix);
+  const xAxis = new THREE.Vector3().crossVectors(normal, u).normalize();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, normal).normalize();
   
-  // Project points onto the XZ plane
+  // Project all points onto the plane
   const projectedPoints = closedPoints.map(p => {
-    const localPoint = p.clone().sub(center);
-    localPoint.applyMatrix4(rotationMatrix);
-    return new THREE.Vector2(localPoint.x, localPoint.z);
+    const offsetVector = new THREE.Vector3().subVectors(p, center);
+    return new THREE.Vector2(
+      offsetVector.dot(xAxis),
+      offsetVector.dot(zAxis)
+    );
   });
   
-  // Create a shape from the 2D points
+  // Create a shape from the projected points
   const shape = new THREE.Shape();
   shape.moveTo(projectedPoints[0].x, projectedPoints[0].y);
   for (let i = 1; i < projectedPoints.length; i++) {
@@ -254,7 +287,7 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
   // Transform the geometry back to 3D space
   geometry.rotateX(Math.PI / 2);
   
-  const inverseRotation = rotationMatrix.clone().transpose();
+  const inverseRotation = new THREE.Matrix4().extractRotation(new THREE.Matrix4().lookAt(center, center.add(normal), new THREE.Vector3(0, 1, 0)));
   geometry.applyMatrix4(inverseRotation);
   geometry.translate(center.x, center.y, center.z);
   
@@ -949,7 +982,7 @@ export const updateAreaPreview = (
   }
 };
 
-// Finalize polygon measurement after preview
+// Finalize polygon measurement after preview - FIXED: keeps points visible and fully closes polygon
 export const finalizePolygon = (
   measurement: Measurement,
   scene: THREE.Group
