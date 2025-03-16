@@ -12,4 +12,5 @@ export interface Screenshot {
   imageDataUrl: string;
   description: string;
   filename?: string;
+  relatedMeasurements?: Measurement[];
 }
