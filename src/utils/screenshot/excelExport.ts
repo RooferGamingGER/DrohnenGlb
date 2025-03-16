@@ -1,6 +1,6 @@
 
 import * as XLSX from 'xlsx';
-import { Measurement } from '../measurementUtils';
+import type { Measurement } from '../measurementUtils';
 
 /**
  * Exports measurements to Excel format
@@ -8,7 +8,7 @@ import { Measurement } from '../measurementUtils';
 export const exportMeasurementsToExcel = (measurements: Measurement[]): void => {
   const data = measurements.map(m => ({
     'Beschreibung': m.description || '-',
-    'Typ': m.type === 'length' ? 'Länge' : 'Höhe',
+    'Typ': m.type === 'length' ? 'Länge' : m.type === 'height' ? 'Höhe' : 'Fläche',
     'Wert': m.value,
     'Einheit': m.unit
   }));
