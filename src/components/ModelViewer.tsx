@@ -851,7 +851,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       if (modelViewer.finalizeMeasurement) {
         // Ensure all preview objects are cleared BEFORE creating the final measurement
         if (modelViewer.measurementGroupRef?.current) {
-          clearPreviewObjects(modelViewer.measurementGroupRef.current);
+          clearPreviewObjects(modelViewer.measurementGroupRef.current, true);
         }
         
         // Create a finalized measurement with the calculated area value
@@ -868,7 +868,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             // Clean up all preview elements
             if (modelViewer.measurementGroupRef?.current) {
               // First clear any previous preview objects
-              clearPreviewObjects(modelViewer.measurementGroupRef.current);
+              clearPreviewObjects(modelViewer.measurementGroupRef.current, false);
               
               // Then finalize the polygon with proper area calculation
               finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
@@ -1272,3 +1272,4 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 };
 
 export default ModelViewer;
+
