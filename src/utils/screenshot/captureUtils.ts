@@ -50,13 +50,14 @@ export const safelyDisposeMaterial = (material: THREE.Material | THREE.Material[
         safelyDisposeMaterial(mat);
       });
     } else {
-      // Handle textures
-      if (material.map) material.map.dispose();
-      if ((material as any).lightMap) (material as any).lightMap.dispose();
-      if ((material as any).bumpMap) (material as any).bumpMap.dispose();
-      if ((material as any).normalMap) (material as any).normalMap.dispose();
-      if ((material as any).specularMap) (material as any).specularMap.dispose();
-      if ((material as any).envMap) (material as any).envMap.dispose();
+      // Handle textures by checking if they exist first
+      // For MeshBasicMaterial, MeshStandardMaterial, etc. with map property
+      if ('map' in material && material.map) material.map.dispose();
+      if ('lightMap' in material && (material as any).lightMap) (material as any).lightMap.dispose();
+      if ('bumpMap' in material && (material as any).bumpMap) (material as any).bumpMap.dispose();
+      if ('normalMap' in material && (material as any).normalMap) (material as any).normalMap.dispose();
+      if ('specularMap' in material && (material as any).specularMap) (material as any).specularMap.dispose();
+      if ('envMap' in material && (material as any).envMap) (material as any).envMap.dispose();
       
       // Dispose the material itself
       material.dispose();
