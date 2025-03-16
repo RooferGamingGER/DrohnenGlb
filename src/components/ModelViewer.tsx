@@ -1,7 +1,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
-import { useModelViewer } from '@/hooks/useModelViewer';
+import { useModelViewerImplementation } from '@/hooks/useModelViewerImplementation';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -84,7 +84,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
   
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   
-  const modelViewer = useModelViewer({
+  const modelViewer = useModelViewerImplementation({
     containerRef,
     onLoadComplete: () => {
       setTimeout(() => {

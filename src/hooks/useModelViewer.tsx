@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
@@ -107,7 +106,20 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
   const [hoverPoint, setHoverPoint] = useState<THREE.Vector3 | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   
-  const handleMouseMove = (event: MouseEvent) => {
+  const handleMeasurementTap = (touch: Touch) => {
+    console.log("Handle measurement tap", touch);
+  };
+
+  const addMeasurementPoint = (point: THREE.Vector3) => {
+    console.log("Add measurement point", point);
+  };
+  
+  const finalizeMeasurement = (points: MeasurementPoint[], options?: Partial<Measurement>) => {
+    console.log("Finalize measurement", points, options);
+    return {} as Measurement;
+  };
+
+  const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
@@ -205,9 +217,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     }
     
     previousMouseRef.current.copy(mouseRef.current);
-  };
+  }, [isFollowingMouse, draggedPoint, modelRef, selectedMeasurementId, selectedPointIndex, isDragging]);
 
-  const handleMouseDown = (event: MouseEvent) => {
+  const handleMouseDown = useCallback((event: MouseEvent) => {
     if (!containerRef.current || !measurementGroupRef.current) return;
     
     if (hoveredPointId && !isDraggingPoint) {
@@ -315,9 +327,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }
       }
     }
-  };
+  }, [modelRef, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex]);
 
-  const handleTouchStart = (event: TouchEvent) => {
+  const handleTouchStart = useCallback((event: TouchEvent) => {
     if (!containerRef.current) return;
     
     event.preventDefault();
@@ -410,9 +422,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
         }, 500);
       }
     }
-  };
+  }, [modelRef, toast, isFollowingMouse, draggedPoint, selectedMeasurementId, selectedPointIndex, activeTool, touchMode]);
 
-  const handleTouchMove = (event: TouchEvent) => {
+  const handleTouchMove = useCallback((event: TouchEvent) => {
     if (!containerRef.current) return;
     
     event.preventDefault();
@@ -498,9 +510,9 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
       
       touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
     }
-  };
+  }, [isFollowingMouse, draggedPoint, modelRef, selectedMeasurementId, selectedPointIndex, isDragging]);
 
-  const handleTouchEnd = (event: TouchEvent) => {
+  const handleTouchEnd = useCallback((event: TouchEvent) => {
     if (isPinchingRef.current) {
       isPinchingRef.current = false;
       pinchDistanceStartRef.current = null;
@@ -542,7 +554,7 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     touchStartPositionRef.current = null;
     isTouchMoveRef.current = false;
     touchIdentifierRef.current = null;
-  };
+  }, [activeTool, containerRef, isDraggingPoint, modelRef, toast]);
 
   const addMeasurementPointTouch = (point: THREE.Vector3) => {
     if (activeTool === 'none') return;
@@ -960,7 +972,40 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     );
   };
 
-  // Return the hook values
+  const setProgress = (progress: number) => {
+    setState(prev => ({ ...prev, progress }));
+  };
+
+  const loadModel = async (file: File) => {
+    console.log("Load model", file);
+    setState(prev => ({ ...prev, isLoading: true }));
+  };
+
+  const resetView = () => {
+    console.log("Reset view");
+  };
+
+  const clearMeasurements = () => {
+    console.log("Clear measurements");
+    setMeasurements([]);
+  };
+
+  const updateMeasurement = (id: string, updates: Partial<Measurement>) => {
+    console.log("Update measurement", id, updates);
+    setMeasurements(prev => 
+      prev.map(m => m.id === id ? { ...m, ...updates } : m)
+    );
+  };
+
+  const toggleMeasurementsVisibility = (visible: boolean) => {
+    console.log("Toggle measurements visibility", visible);
+  };
+
+  const deleteTempPoint = (index: number) => {
+    console.log("Delete temp point at index", index);
+    setTemporaryPoints(prev => prev.filter((_, i) => i !== index));
+  };
+
   return {
     state,
     background,
@@ -998,5 +1043,26 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     isPinchingRef,
     hoverPoint,
     canUndo,
+    setProgress,
+    loadModel,
+    resetView,
+    clearMeasurements,
+    updateMeasurement,
+    toggleMeasurementsVisibility,
+    deleteTempPoint,
+    deleteSinglePoint,
+    deleteMeasurement,
+    undoLastPoint,
+    setActiveTool: setActiveTool,
+    tempPoints: temporaryPoints,
+    loadedModel: modelRef.current,
+    camera: cameraRef.current,
+    controls: controlsRef.current,
+    renderer: rendererRef.current,
+    scene: sceneRef.current,
+    isLoading: state.isLoading,
+    progress: state.progress,
+    error: state.error,
+    finalizeMeasurement,
   };
 };
