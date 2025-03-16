@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export type MeasurementType = 'length' | 'height' | 'area' | 'none';
@@ -1055,5 +1056,3 @@ export const clearPreviewObjects = (
     measurement.previewLabelObject = undefined;
   }
 };
-
-// ... keep existing code (interaction and edit mode functions)
