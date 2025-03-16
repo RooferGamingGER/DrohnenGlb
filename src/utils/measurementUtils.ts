@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type MeasurementType = 'length' | 'height' | 'area' | 'none' | 'distance' | 'angle';
+export type MeasurementType = 'length' | 'height' | 'area' | 'none';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -13,13 +13,16 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
-  visible: boolean;
+  inclination?: number; // Neigungswinkel in Grad
   description?: string;
-  editMode?: boolean;
-  inclination?: number;
-  labelObject?: THREE.Sprite;
-  lineObjects?: THREE.Line[];
-  pointObjects?: THREE.Mesh[];
+  isActive?: boolean;
+  visible?: boolean;
+  editMode?: boolean; // Neues Feld für den Bearbeitungsmodus
+  labelObject?: THREE.Sprite; // Reference to the 3D label
+  lineObjects?: THREE.Line[]; // References to the 3D lines
+  pointObjects?: THREE.Mesh[]; // References to the 3D points
+  previewLineObject?: THREE.Line; // New: Reference to preview line connecting last to first point
+  previewLabelObject?: THREE.Sprite; // New: Reference to preview area label
 }
 
 // Calculate distance between two points in 3D space
@@ -275,19 +278,25 @@ export const createAreaMesh = (points: THREE.Vector3[]): THREE.Mesh => {
 export const closePolygon = (points: MeasurementPoint[]): MeasurementPoint[] => {
   if (points.length < 3) return points;
   
+  // Get the first and last points
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
   
-  // Check if we need to add a closing point (if first and last are different)
-  if (firstPoint.position.distanceTo(lastPoint.position) > 0.01) {
-    // Add a copy of the first point to close the polygon
-    return [...points, {
-      position: firstPoint.position.clone(),
-      worldPosition: firstPoint.worldPosition.clone()
-    }];
+  // Check if the polygon is already closed
+  const isClosed = firstPoint.position.distanceTo(lastPoint.position) < 0.001;
+  
+  if (isClosed) {
+    return points; // Already closed
   }
   
-  return points;
+  // Close the polygon by adding a copy of the first point at the end
+  return [
+    ...points,
+    {
+      position: firstPoint.position.clone(),
+      worldPosition: firstPoint.worldPosition.clone()
+    }
+  ];
 };
 
 // Create a unique ID for measurements
@@ -766,7 +775,7 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
   // Update lines if they exist
   if (measurement.lineObjects && measurement.lineObjects.length > 0) {
     // For a simple line between two points (length measurement)
-    if (measurement.type === 'distance' && measurement.points.length === 2) {
+    if (measurement.type === 'length' && measurement.points.length === 2) {
       const linePoints = [
         measurement.points[0].position.clone(),
         measurement.points[1].position.clone()
@@ -818,11 +827,262 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
   
   // Update label if it exists
   if (measurement.labelObject) {
-    // Position the label at the center of the measurement
-    const center = new THREE.Vector3();
-    measurement.points.forEach(point => {
-      center.add(point.position);
-    });
-    center.divideScalar(measurement.points.length);
+    if (measurement.type === 'length' && measurement.points.length === 2) {
+      // For length measurements, position label at the midpoint
+      const midpoint = new THREE.Vector3().addVectors(
+        measurement.points[0].position,
+        measurement.points[1].position
+      ).multiplyScalar(0.5);
+      
+      // Add a small Y offset to avoid z-fighting with the line
+      midpoint.y += 0.05;
+      
+      measurement.labelObject.position.copy(midpoint);
+    } else if (measurement.type === 'area' && measurement.points.length >= 3) {
+      // For area measurements, position label at the centroid
+      const positions = measurement.points.map(p => p.position);
+      
+      const center = new THREE.Vector3();
+      positions.forEach(p => center.add(p));
+      center.divideScalar(positions.length);
+      
+      // Add a small Y offset to ensure visibility
+      center.y += 0.1;
+      
+      measurement.labelObject.position.copy(center);
+    }
+  }
+};
+
+// Calculate the normal of a polygon for better orientation
+export const calculatePolygonNormal = (points: THREE.Vector3[]): THREE.Vector3 => {
+  if (points.length < 3) {
+    return new THREE.Vector3(0, 1, 0); // Default to Y-up if not enough points
+  }
+  
+  // Calculate the center/average of all points
+  const center = new THREE.Vector3();
+  points.forEach(p => center.add(p));
+  center.divideScalar(points.length);
+  
+  // Use Newell's method for a more robust normal calculation
+  const normal = new THREE.Vector3(0, 0, 0);
+  
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % points.length];
     
-    // Offset the label slightly above
+    normal.x += (current.y - next.y) * (current.z + next.z);
+    normal.y += (current.z - next.z) * (current.x + next.x);
+    normal.z += (current.x - next.x) * (current.y + next.y);
+  }
+  
+  normal.normalize();
+  
+  // If normal length is too small, default to Y-axis
+  if (normal.length() < 0.1) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  
+  return normal;
+};
+
+// Update area preview for in-progress measurements
+export const updateAreaPreview = (
+  measurement: Measurement,
+  points: MeasurementPoint[],
+  scene: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  if (points.length < 3) {
+    // Clear any existing preview elements if we have fewer than 3 points
+    clearPreviewObjects(measurement, scene);
+    return;
+  }
+  
+  // We'll only show points during measurement, not preview lines or area calculations
+  // This removes the temporary preview lines and area calculation until the polygon is closed
+  
+  // Clean up any existing preview objects to ensure they don't accumulate
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
+      }
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  // Remove preview label if it exists
+  if (measurement.previewLabelObject) {
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
+  }
+};
+
+// Finalize polygon measurement after preview
+export const finalizePolygon = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // First, clean up any preview objects
+  clearPreviewObjects(measurement, scene);
+  
+  // Ensure the polygon is properly closed
+  if (measurement.type === 'area' && measurement.points.length >= 3) {
+    // Make sure the polygon is closed in 3D
+    const positions = measurement.points.map(p => p.position);
+    const closedPositions = ensureClosedPolygon(positions);
+    
+    // If a new point was added for closure, we need to update the measurement
+    if (closedPositions.length > positions.length) {
+      const firstPoint = measurement.points[0];
+      measurement.points.push({
+        position: firstPoint.position.clone(),
+        worldPosition: firstPoint.worldPosition.clone()
+      });
+    }
+    
+    // Calculate the final area value
+    measurement.value = calculatePolygonArea(closedPositions);
+    
+    // Update all geometry with the finalized points
+    updateMeasurementGeometry(measurement);
+  }
+};
+
+// Clear temporary preview objects - Enhanced to be more thorough
+export const clearPreviewObjects = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // Remove preview line if it exists
+  if (measurement.previewLineObject) {
+    scene.remove(measurement.previewLineObject);
+    if (measurement.previewLineObject.geometry) {
+      measurement.previewLineObject.geometry.dispose();
+    }
+    if (measurement.previewLineObject.material) {
+      if (Array.isArray(measurement.previewLineObject.material)) {
+        measurement.previewLineObject.material.forEach(m => m.dispose());
+      } else {
+        measurement.previewLineObject.material.dispose();
+      }
+    }
+    measurement.previewLineObject = undefined;
+  }
+  
+  // Remove preview label if it exists
+  if (measurement.previewLabelObject) {
+    scene.remove(measurement.previewLabelObject);
+    if (measurement.previewLabelObject.material) {
+      if (Array.isArray(measurement.previewLabelObject.material)) {
+        measurement.previewLabelObject.material.forEach(m => {
+          if (m instanceof THREE.SpriteMaterial && m.map) {
+            m.map.dispose();
+          }
+          m.dispose();
+        });
+      } else if (measurement.previewLabelObject.material instanceof THREE.SpriteMaterial) {
+        if (measurement.previewLabelObject.material.map) {
+          measurement.previewLabelObject.material.map.dispose();
+        }
+        measurement.previewLabelObject.material.dispose();
+      }
+    }
+    measurement.previewLabelObject = undefined;
+  }
+  
+  // Find and remove ALL preview objects related to this measurement - more aggressive cleanup
+  scene.traverse((object) => {
+    if (object.userData && 
+       (object.userData.isPreview || 
+        object.userData.isTemporary || 
+        object.userData.measurementId === 'preview' ||
+        (object.userData.measurementId === measurement.id && object.userData.isPreviewElement))) {
+      
+      if (object.parent) {
+        object.parent.remove(object);
+      }
+      
+      // Properly dispose of resources
+      if (object instanceof THREE.Mesh) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Line) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Sprite) {
+        if (object.material instanceof THREE.SpriteMaterial) {
+          if (object.material.map) {
+            object.material.map.dispose();
+          }
+          object.material.dispose();
+        }
+      }
+    }
+  });
+  
+  // Also remove any objects directly in the scene with names matching this measurement's preview patterns
+  const objectsToRemove: THREE.Object3D[] = [];
+  
+  scene.traverse((object) => {
+    const name = object.name.toLowerCase();
+    
+    if (name.includes('preview') || 
+        name.includes('temp') || 
+        name.includes(`preview-${measurement.id}`) || 
+        name.includes(`temp-${measurement.id}`)) {
+      objectsToRemove.push(object);
+    }
+  });
+  
+  // Remove identified objects
+  objectsToRemove.forEach(object => {
+    scene.remove(object);
+    
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(m => m.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
+    }
+  });
+};
