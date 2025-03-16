@@ -892,7 +892,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // Force all points to be visible
+              // Force update geometry to ensure all line segments are created
+              updateMeasurementGeometry(lastMeasurement);
+              
+              // Force all points to be visible and draggable
               if (lastMeasurement.pointObjects) {
                 lastMeasurement.pointObjects.forEach(point => {
                   if (point) {
@@ -908,11 +911,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
               // IMPORTANT: Switch to navigation mode explicitly after a short delay
               // This allows the points to fully initialize
               setTimeout(() => {
-                // Force update geometry after switching tools
+                // Force update geometry one more time to ensure all lines are visible
                 updateMeasurementGeometry(lastMeasurement);
                 // Then switch to navigation mode
                 modelViewer.setActiveTool('none');
-              }, 50);
+              }, 100);
               
               toast({
                 title: "Fläche berechnet",

@@ -851,7 +851,7 @@ export const updateMeasurementGeometry = (
       // Update all the lines including the closure line
       for (let i = 0; i < requiredLines; i++) {
         const startIdx = i;
-        const endIdx = (i + 1) % totalPoints;
+        const endIdx = (i + 1) % totalPoints; // This ensures we create the closing line
         
         const linePoints = [
           positions[startIdx].clone(),
