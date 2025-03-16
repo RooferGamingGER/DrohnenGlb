@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useModelViewer } from '@/hooks/useModelViewer';
@@ -19,7 +18,8 @@ import {
   closePolygon,
   updateAreaPreview,
   finalizePolygon,
-  Measurement
+  Measurement,
+  clearPreviewObjects
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
@@ -844,6 +844,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       let newPoints = closePolygon([...modelViewer.tempPoints]);
       
       if (modelViewer.finalizeMeasurement) {
+        if (modelViewer.measurementGroupRef?.current) {
+          clearPreviewObjects(modelViewer.measurementGroupRef.current);
+        }
+        
         modelViewer.finalizeMeasurement(newPoints);
         
         if (modelViewer.measurements.length > 0) {
@@ -852,7 +856,9 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           if (lastMeasurement.type === 'area') {
             console.log("Aktualisiere die Flächenmessung nach dem Schließen");
             
-            finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current || new THREE.Group());
+            if (modelViewer.measurementGroupRef?.current) {
+              finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current);
+            }
             
             const positions = lastMeasurement.points.map(p => p.position);
             const area = calculatePolygonArea(positions);
@@ -1146,7 +1152,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         id: 'preview',
         type: 'area',
         points: [...modelViewer.tempPoints],
-        value: 0,
+        value: calculatePolygonArea([...modelViewer.tempPoints.map(p => p.position), modelViewer.tempPoints[0].position]),
         unit: 'm²',
         visible: true
       };
@@ -1157,6 +1163,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
         modelViewer.measurementGroupRef.current,
         modelViewer.camera
       );
+    }
+    
+    if (modelViewer.activeTool !== 'area' && 
+        modelViewer.measurementGroupRef?.current) {
+      clearPreviewObjects(modelViewer.measurementGroupRef.current);
     }
   }, [modelViewer.activeTool, modelViewer.tempPoints, modelViewer.measurementGroupRef, modelViewer.camera]);
 
@@ -1244,3 +1255,4 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 };
 
 export default ModelViewer;
+
