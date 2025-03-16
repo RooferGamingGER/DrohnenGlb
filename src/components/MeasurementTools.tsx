@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin, Hexagon } from 'lucide-react';
+import { Ruler, Move, ArrowUpDown, Trash, Undo, X, Pencil, Check, List, Eye, EyeOff, Navigation, GripHorizontal, MapPin, Hexagon, CircleCheck } from 'lucide-react';
 import { MeasurementType, Measurement, isInclinationSignificant, MeasurementPoint } from '@/utils/measurementUtils';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ interface MeasurementToolsProps {
   tempPoints?: MeasurementPoint[];
   onDeleteTempPoint?: (index: number) => void;
   onDeleteSinglePoint?: (measurementId: string, pointIndex: number) => void;
+  onClosePolygon?: () => void;
 }
 
 const MeasurementTools: React.FC<MeasurementToolsProps> = ({
@@ -53,12 +55,16 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
   scrollThreshold = 3,
   tempPoints = [],
   onDeleteTempPoint,
-  onDeleteSinglePoint
+  onDeleteSinglePoint,
+  onClosePolygon
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showMeasurementsList, setShowMeasurementsList] = useState(!isMobile);
   const [expandedMeasurement, setExpandedMeasurement] = useState<string | null>(null);
+
+  // Check if we should show the "Close Polygon" button
+  const showClosePolygonButton = activeTool === 'area' && tempPoints.length >= 3 && onClosePolygon;
 
   useEffect(() => {
     if (editingId !== null && activeTool !== 'none') {
@@ -245,6 +251,23 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "bottom" : "right"}>
                   <p>Letzten Punkt rückgängig machen</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            
+            {showClosePolygonButton && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onClosePolygon}
+                    className="p-2 rounded-md bg-green-500 text-white hover:bg-green-600 transition-colors"
+                    aria-label="Polygon schließen"
+                  >
+                    <CircleCheck size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? "bottom" : "right"}>
+                  <p>Polygon schließen</p>
                 </TooltipContent>
               </Tooltip>
             )}

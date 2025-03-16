@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -28,6 +29,7 @@ interface MeasurementToolsPanelProps {
   tempPoints: MeasurementPoint[];
   onDeleteTempPoint: (index: number) => void;
   onDeleteSinglePoint: (measurementId: string, pointIndex: number) => void;
+  onClosePolygon: () => void;
 }
 
 const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
@@ -50,7 +52,8 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   onTakeScreenshot,
   tempPoints,
   onDeleteTempPoint,
-  onDeleteSinglePoint
+  onDeleteSinglePoint,
+  onClosePolygon
 }) => {
   const totalLength = measurements
     .filter(m => m.type === 'length' && m.value && m.visible)
@@ -162,6 +165,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
             tempPoints={tempPoints}
             onDeleteTempPoint={onDeleteTempPoint}
             onDeleteSinglePoint={onDeleteSinglePoint}
+            onClosePolygon={onClosePolygon}
           />
         </div>
       </div>
@@ -249,6 +253,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               tempPoints={tempPoints}
               onDeleteTempPoint={onDeleteTempPoint}
               onDeleteSinglePoint={onDeleteSinglePoint}
+              onClosePolygon={onClosePolygon}
             />
           </ScrollArea>
         </SidebarContent>
