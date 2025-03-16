@@ -820,4 +820,62 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
   }
   
   // Update label if it exists
-  if (measurement
+  if (measurement.labelObject) {
+    // Position the label at the center of the measurement
+    const center = new THREE.Vector3();
+    measurement.points.forEach(point => {
+      center.add(point.position);
+    });
+    center.divideScalar(measurement.points.length);
+    
+    // Offset the label slightly above the measurement
+    const labelPosition = center.clone().add(new THREE.Vector3(0, 0.3, 0));
+    measurement.labelObject.position.copy(labelPosition);
+  }
+};
+
+// Clear all temporary preview objects
+export const clearPreviewObjects = (scene: THREE.Group): void => {
+  // Find and remove all objects marked as previews
+  const previewObjects = [];
+  
+  scene.traverse((object) => {
+    if (object.userData && 
+        (object.userData.isPreview || 
+         object.userData.isPreviewLine || 
+         object.userData.isTemporaryPoint ||
+         object.name.includes('preview-') ||
+         object.name.includes('temp-'))) {
+      previewObjects.push(object);
+    }
+  });
+  
+  // Remove all found preview objects
+  previewObjects.forEach(object => {
+    if (object.parent) {
+      object.parent.remove(object);
+    }
+    
+    // Dispose of resources
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+      if (object.geometry) {
+        object.geometry.dispose();
+      }
+      
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
+    } else if (object instanceof THREE.Sprite) {
+      if (object.material instanceof THREE.SpriteMaterial) {
+        if (object.material.map) {
+          object.material.map.dispose();
+        }
+        object.material.dispose();
+      }
+    }
+  });
+};
