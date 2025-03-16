@@ -874,7 +874,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           if (lastMeasurement.type === 'area') {
             console.log("Aktualisiere die Flächenmessung nach dem Schließen");
             
-            // Clean up all preview elements
+            // Clean up all preview elements without removing the actual measurement points
             if (modelViewer.measurementGroupRef?.current) {
               // First clear any previous preview objects
               clearPreviewObjects(lastMeasurement, modelViewer.measurementGroupRef.current);
@@ -892,8 +892,17 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // IMPORTANT: Switch to navigation mode (set tool to 'none')
-              modelViewer.setActiveTool('none');
+              // Ensure all points remain visible
+              if (lastMeasurement.pointObjects) {
+                lastMeasurement.pointObjects.forEach(point => {
+                  if (point) point.visible = true;
+                });
+              }
+              
+              // IMPORTANT: Switch to navigation mode explicitly
+              setTimeout(() => {
+                modelViewer.setActiveTool('none');
+              }, 0);
               
               // Update the measurement visuals
               updateMeasurementGeometry(lastMeasurement);

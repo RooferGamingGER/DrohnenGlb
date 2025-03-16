@@ -860,6 +860,22 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
           measurement.lineObjects[i].visible = true;
         }
       }
+      
+      // Remove excess lines if we have too many
+      while (measurement.lineObjects.length > requiredLines) {
+        const lineToRemove = measurement.lineObjects.pop();
+        if (lineToRemove && lineToRemove.parent) {
+          lineToRemove.parent.remove(lineToRemove);
+          if (lineToRemove.geometry) lineToRemove.geometry.dispose();
+          if (lineToRemove.material) {
+            if (Array.isArray(lineToRemove.material)) {
+              lineToRemove.material.forEach(m => m.dispose());
+            } else {
+              lineToRemove.material.dispose();
+            }
+          }
+        }
+      }
     }
   }
   
@@ -982,12 +998,12 @@ export const updateAreaPreview = (
   }
 };
 
-// Finalize polygon measurement after preview - FIXED: keeps points visible and fully closes polygon
+// Finalize polygon measurement after preview - Fixed to keep points visible and fully close polygon
 export const finalizePolygon = (
   measurement: Measurement,
   scene: THREE.Group
 ): void => {
-  // First, clean up any preview objects
+  // First, clean up ONLY preview objects but NOT the actual measurement points
   clearPreviewObjects(measurement, scene);
   
   // Ensure the polygon is properly closed
@@ -1011,7 +1027,7 @@ export const finalizePolygon = (
     // Update all geometry with the finalized points
     updateMeasurementGeometry(measurement);
     
-    // Important: Keep points visible and editable
+    // IMPORTANT: Keep all points visible and editable
     if (measurement.pointObjects) {
       measurement.pointObjects.forEach(point => {
         if (point) {
