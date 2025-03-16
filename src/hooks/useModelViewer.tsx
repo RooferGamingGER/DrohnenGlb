@@ -859,6 +859,19 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     setActiveTool(tool);
   };
 
+  const clearMeasurements = () => {
+    setMeasurements([]);
+  };
+
+  const updateMeasurement = (id: string, updates: Partial<Measurement>) => {
+    setMeasurements(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+  };
+
+  const deleteTempPoint = (index: number) => {
+    // Implementation or placeholder
+    console.log(`Delete temp point at index ${index}`);
+  };
+
   return {
     state,
     background,
@@ -875,15 +888,4 @@ export const useModelViewer = ({ containerRef, onLoadComplete }: UseModelViewerP
     scene: sceneRef.current,
     camera: cameraRef.current,
     renderer: rendererRef.current,
-    controls: controlsRef.current,
-    loadedModel: modelRef.current,
-    measurementGroupRef,
-    
-    // Include the rest of the return values from useModelViewer
-    tempPoints: temporaryPoints,
-    
-    // Add methods
-    setProgress: (progress: number) => setState(prev => ({ ...prev, progress })),
-    loadModel: async (file: File) => console.log("Load model", file),
-    resetView: () => console.log("Reset view"),
-    clearMeasurements:
+    controls: controlsRef.current
