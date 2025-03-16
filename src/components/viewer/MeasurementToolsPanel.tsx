@@ -1,4 +1,3 @@
-
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -119,10 +118,9 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   const handleClosePolygon = () => {
     if (canClosePolygon) {
       onClosePolygon();
-      toast({
-        title: "Fläche geschlossen",
-        description: `Die Flächenmessung wurde erfolgreich abgeschlossen (${tempArea < 0.01 ? `${(tempArea * 10000).toFixed(2)} cm²` : `${tempArea.toFixed(2)} m²`}).`,
-      });
+      
+      // Toast notification will be shown by ModelViewer after actual completion
+      // so we won't add a duplicate notification here
     } else {
       toast({
         title: "Nicht genügend Punkte",

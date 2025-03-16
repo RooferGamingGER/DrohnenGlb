@@ -1016,7 +1016,7 @@ export const finalizePolygon = (
   }
 };
 
-// Clear temporary preview objects
+// Clear temporary preview objects - Enhanced to be more thorough
 export const clearPreviewObjects = (
   measurement: Measurement,
   scene: THREE.Group
@@ -1058,10 +1058,18 @@ export const clearPreviewObjects = (
     measurement.previewLabelObject = undefined;
   }
   
-  // Also remove any temporary meshes or other preview objects that might be in the scene
+  // Find and remove ALL preview objects related to this measurement
   scene.traverse((object) => {
-    if (object.userData && object.userData.isPreview && object.userData.measurementId === measurement.id) {
-      scene.remove(object);
+    if (object.userData && 
+       (object.userData.isPreview || 
+        object.userData.isTemporary || 
+        (object.userData.measurementId === measurement.id && object.userData.isPreviewElement))) {
+      
+      if (object.parent) {
+        object.parent.remove(object);
+      }
+      
+      // Properly dispose of resources
       if (object instanceof THREE.Mesh) {
         if (object.geometry) object.geometry.dispose();
         if (object.material) {
@@ -1070,6 +1078,52 @@ export const clearPreviewObjects = (
           } else {
             object.material.dispose();
           }
+        }
+      } else if (object instanceof THREE.Line) {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      } else if (object instanceof THREE.Sprite) {
+        if (object.material instanceof THREE.SpriteMaterial) {
+          if (object.material.map) {
+            object.material.map.dispose();
+          }
+          object.material.dispose();
+        }
+      }
+    }
+  });
+  
+  // Also remove any objects directly in the scene with names matching this measurement's preview patterns
+  const objectsToRemove: THREE.Object3D[] = [];
+  
+  scene.traverse((object) => {
+    const name = object.name.toLowerCase();
+    
+    if (name.includes('preview') || 
+        name.includes('temp') || 
+        name.includes(`preview-${measurement.id}`) || 
+        name.includes(`temp-${measurement.id}`)) {
+      objectsToRemove.push(object);
+    }
+  });
+  
+  // Remove identified objects
+  objectsToRemove.forEach(object => {
+    scene.remove(object);
+    
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(m => m.dispose());
+        } else {
+          object.material.dispose();
         }
       }
     }
