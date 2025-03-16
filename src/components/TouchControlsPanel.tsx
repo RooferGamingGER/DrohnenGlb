@@ -28,13 +28,19 @@ const TouchControlsPanel: React.FC<TouchControlsPanelProps> = ({
 
   // Enable Hammer.js or similar touch gesture library if available in the window object
   useEffect(() => {
-    // This is a check that would help if we were to add Hammer.js in the future
-    // Currently serves as a placeholder for future enhancement
-    const touchSupported = 'ontouchstart' in window;
+    // Check for touch support
+    const touchSupported = 'ontouchstart' in window || 
+                          navigator.maxTouchPoints > 0 ||
+                          // @ts-ignore - Some browsers use msMaxTouchPoints
+                          navigator.msMaxTouchPoints > 0;
     console.log("Touch support detected:", touchSupported);
     
-    // We'll rely on the native touch events in the ModelViewer component for now
-  }, []);
+    // Set default mode to rotate if touch is supported and mode is none
+    if (touchSupported && activeMode === 'none') {
+      // Optional: set a default mode for touch devices
+      // onModeChange('rotate');
+    }
+  }, [activeMode]);
 
   return (
     <div className="touch-controls-panel fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white/80 dark:bg-black/80 rounded-full px-4 py-2 flex gap-4 shadow-lg z-50 backdrop-blur">
