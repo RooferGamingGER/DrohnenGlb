@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type MeasurementType = 'distance' | 'angle' | 'area' | 'none';
+export type MeasurementType = 'length' | 'height' | 'area' | 'none' | 'distance' | 'angle';
 
 export interface MeasurementPoint {
   position: THREE.Vector3;
@@ -13,16 +13,13 @@ export interface Measurement {
   points: MeasurementPoint[];
   value: number;
   unit: string;
-  inclination?: number; // Neigungswinkel in Grad
+  visible: boolean;
   description?: string;
-  isActive?: boolean;
-  visible?: boolean;
-  editMode?: boolean; // Neues Feld für den Bearbeitungsmodus
-  labelObject?: THREE.Sprite; // Reference to the 3D label
-  lineObjects?: THREE.Line[]; // References to the 3D lines
-  pointObjects?: THREE.Mesh[]; // References to the 3D points
-  previewLineObject?: THREE.Line; // New: Reference to preview line connecting last to first point
-  previewLabelObject?: THREE.Sprite; // New: Reference to preview area label
+  editMode?: boolean;
+  inclination?: number;
+  labelObject?: THREE.Sprite;
+  lineObjects?: THREE.Line[];
+  pointObjects?: THREE.Mesh[];
 }
 
 // Calculate distance between two points in 3D space
@@ -835,9 +832,12 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
 };
 
 // Clear all temporary preview objects
-export const clearPreviewObjects = (scene: THREE.Group): void => {
+export const clearPreviewObjects = (
+  measurement: Measurement, 
+  scene: THREE.Group
+): void => {
   // Find and remove all objects marked as previews
-  const previewObjects = [];
+  const previewObjects: THREE.Object3D[] = [];
   
   scene.traverse((object) => {
     if (object.userData && 
@@ -845,7 +845,8 @@ export const clearPreviewObjects = (scene: THREE.Group): void => {
          object.userData.isPreviewLine || 
          object.userData.isTemporaryPoint ||
          object.name.includes('preview-') ||
-         object.name.includes('temp-'))) {
+         object.name.includes('temp-') ||
+         object.name === `preview-area`)) {
       previewObjects.push(object);
     }
   });
@@ -878,4 +879,157 @@ export const clearPreviewObjects = (scene: THREE.Group): void => {
       }
     }
   });
+};
+
+// Update area preview as points are added
+export const updateAreaPreview = (
+  measurement: Measurement,
+  points: MeasurementPoint[],
+  scene: THREE.Group,
+  camera: THREE.Camera
+): void => {
+  if (points.length < 3) return;
+  
+  // Clear previous preview
+  clearPreviewObjects(measurement, scene);
+  
+  // Create preview area
+  const positions = points.map(p => p.position);
+  const geometry = new THREE.BufferGeometry();
+  
+  // Create a shape from the points
+  const shape = new THREE.Shape();
+  shape.moveTo(positions[0].x, positions[0].z);
+  
+  for (let i = 1; i < positions.length; i++) {
+    shape.lineTo(positions[i].x, positions[i].z);
+  }
+  
+  // Close the shape
+  shape.lineTo(positions[0].x, positions[0].z);
+  
+  // Create the fill material
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x3498db,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  
+  try {
+    // Create geometry from shape
+    const shapeGeometry = new THREE.ShapeGeometry(shape);
+    
+    // Rotate to match the XZ plane
+    const mesh = new THREE.Mesh(shapeGeometry, material);
+    mesh.rotation.x = Math.PI / 2;
+    
+    // Calculate the average Y value for the mesh
+    let avgY = 0;
+    positions.forEach(pos => {
+      avgY += pos.y;
+    });
+    avgY /= positions.length;
+    
+    // Position the mesh at the average Y value
+    mesh.position.y = avgY + 0.01; // Slight offset to avoid z-fighting
+    
+    mesh.name = 'preview-area';
+    mesh.userData.isPreview = true;
+    
+    scene.add(mesh);
+  } catch (error) {
+    console.error('Error creating area preview:', error);
+  }
+};
+
+// Finalize a polygon area measurement
+export const finalizePolygon = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  if (measurement.type !== 'area' || measurement.points.length < 3) return;
+  
+  // Clear any preview objects
+  clearPreviewObjects(measurement, scene);
+  
+  // Create final area visualization
+  const positions = measurement.points.map(p => p.position);
+  const shape = new THREE.Shape();
+  shape.moveTo(positions[0].x, positions[0].z);
+  
+  for (let i = 1; i < positions.length; i++) {
+    shape.lineTo(positions[i].x, positions[i].z);
+  }
+  
+  // Close the shape
+  shape.lineTo(positions[0].x, positions[0].z);
+  
+  // Create the fill material
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x27ae60,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  
+  try {
+    // Create geometry from shape
+    const shapeGeometry = new THREE.ShapeGeometry(shape);
+    
+    // Rotate to match the XZ plane
+    const mesh = new THREE.Mesh(shapeGeometry, material);
+    mesh.rotation.x = Math.PI / 2;
+    
+    // Calculate the average Y value for the mesh
+    let avgY = 0;
+    positions.forEach(pos => {
+      avgY += pos.y;
+    });
+    avgY /= positions.length;
+    
+    // Position the mesh at the average Y value
+    mesh.position.y = avgY + 0.01; // Slight offset to avoid z-fighting
+    
+    mesh.name = `area-fill-${measurement.id}`;
+    
+    scene.add(mesh);
+    
+    // Store reference to the mesh in the measurement
+    if (!measurement.lineObjects) {
+      measurement.lineObjects = [];
+    }
+    measurement.lineObjects.push(mesh as unknown as THREE.Line);
+    
+    // Create outline
+    const outlineGeometry = new THREE.BufferGeometry();
+    const points: THREE.Vector3[] = [];
+    
+    for (let i = 0; i < positions.length; i++) {
+      points.push(positions[i].clone());
+    }
+    
+    // Close the loop
+    points.push(positions[0].clone());
+    
+    outlineGeometry.setFromPoints(points);
+    
+    const outlineMaterial = new THREE.LineBasicMaterial({
+      color: 0x27ae60,
+      linewidth: 2
+    });
+    
+    const outline = new THREE.Line(outlineGeometry, outlineMaterial);
+    outline.name = `area-outline-${measurement.id}`;
+    scene.add(outline);
+    
+    measurement.lineObjects.push(outline);
+    
+    // Calculate final area value
+    measurement.value = calculatePolygonArea(positions);
+  } catch (error) {
+    console.error('Error finalizing polygon:', error);
+  }
 };

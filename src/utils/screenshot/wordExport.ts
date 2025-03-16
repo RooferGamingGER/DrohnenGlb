@@ -52,14 +52,20 @@ export const exportMeasurementsToWord = (
     `;
     
     measurements.forEach(m => {
-      const hasSignificantInclination = m.type === 'length' && 
+      const hasSignificantInclination = (m.type === 'length' || m.type === 'distance') && 
                                        m.inclination !== undefined && 
                                        isInclinationSignificant(m.inclination);
+      
+      let measurementType = 'Unbekannt';
+      if (m.type === 'length' || m.type === 'distance') measurementType = 'Länge';
+      else if (m.type === 'height') measurementType = 'Höhe';
+      else if (m.type === 'area') measurementType = 'Fläche';
+      else if (m.type === 'angle') measurementType = 'Winkel';
       
       htmlContent += `
         <tr>
           <td>${m.description || '-'}</td>
-          <td>${m.type === 'length' ? 'Länge' : 'Höhe'}</td>
+          <td>${measurementType}</td>
           <td>${m.value.toFixed(2)} ${m.unit}</td>
           <td>${hasSignificantInclination ? `${m.inclination?.toFixed(1)}°` : '-'}</td>
         </tr>

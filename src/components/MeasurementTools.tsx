@@ -194,7 +194,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => onToolChange('length')}
+                  onClick={() => onToolChange('length' as MeasurementType)}
                   className={cn(
                     "p-2 rounded-md transition-colors",
                     activeTool === 'length' 
@@ -214,7 +214,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => onToolChange('height')}
+                  onClick={() => onToolChange('height' as MeasurementType)}
                   className={cn(
                     "p-2 rounded-md transition-colors",
                     activeTool === 'height' 
@@ -354,7 +354,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                 )}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-2 cursor-pointer" onClick={(e) => toggleMeasurementExpand(m.id, e)}>
-                      {m.type === 'length' && (
+                      {(m.type === 'length' || m.type === 'distance') && (
                         <>
                           <Ruler size={14} />
                           <span>
@@ -367,7 +367,7 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                           </span>
                         </>
                       )}
-                      {m.type === 'height' && (
+                      {(m.type === 'height') && (
                         <>
                           <ArrowUpDown size={14} />
                           <span>{m.value.toFixed(2)} {m.unit}</span>
@@ -380,6 +380,12 @@ const MeasurementTools: React.FC<MeasurementToolsProps> = ({
                             ? `${(m.value * 10000).toFixed(2)} cm²` 
                             : `${m.value.toFixed(2)} m²`}
                           </span>
+                        </>
+                      )}
+                      {m.type === 'angle' && (
+                        <>
+                          <Navigation size={14} />
+                          <span>{m.value.toFixed(1)}°</span>
                         </>
                       )}
                     </span>

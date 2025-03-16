@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import { Measurement, MeasurementType } from '../measurementUtils';
 
 export interface ScreenshotData {
   imageDataUrl: string;
@@ -15,4 +14,4 @@ export interface Screenshot {
 }
 
 // Re-export the measurement types for consistency
-export { Measurement, MeasurementType };
+export type { Measurement, MeasurementType } from '../measurementUtils';

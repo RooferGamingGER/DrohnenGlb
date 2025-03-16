@@ -1,6 +1,6 @@
 
 import MeasurementTools from '@/components/MeasurementTools';
-import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea, clearPreviewObjects } from '@/utils/measurementUtils';
+import { Measurement, MeasurementType, MeasurementPoint } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { FileDown, Home, RefreshCcw, Camera, Trash2, Square } from "lucide-react";
@@ -68,11 +68,11 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   });
 
   const totalLength = measurements
-    .filter(m => m.type === 'length' && m.value && m.visible)
+    .filter(m => (m.type === 'length' || m.type === 'distance') && m.value && m.visible)
     .reduce((sum, m) => sum + m.value, 0);
   
   const totalLengthCount = measurements
-    .filter(m => m.type === 'length' && m.visible)
+    .filter(m => (m.type === 'length' || m.type === 'distance') && m.visible)
     .length;
     
   const totalArea = measurements
