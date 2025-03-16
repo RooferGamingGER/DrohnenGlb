@@ -797,6 +797,20 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
     modelViewer.controls.update();
   }, [modelViewer.controls, modelViewer.camera, modelViewer.loadedModel, isTouchDevice]);
 
+  const handleClosePolygon = useCallback(() => {
+    if (modelViewer.activeTool === 'area' && modelViewer.tempPoints && modelViewer.tempPoints.length >= 3) {
+      const firstPoint = modelViewer.tempPoints[0];
+      
+      modelViewer.completeMeasurement();
+      
+      toast({
+        title: "Fläche geschlossen",
+        description: "Die Flächenmessung wurde erfolgreich abgeschlossen.",
+        duration: 3000,
+      });
+    }
+  }, [modelViewer, toast]);
+
   const handleContextMenu = useCallback((event: MouseEvent) => {
     event.preventDefault();
   }, []);
@@ -1104,6 +1118,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           tempPoints={modelViewer.tempPoints || []}
           onDeleteTempPoint={(index) => modelViewer.deleteTempPoint(index)}
           onDeleteSinglePoint={(measurementId, pointIndex) => modelViewer.deleteSinglePoint(measurementId, pointIndex)}
+          onClosePolygon={handleClosePolygon}
         />
       )}
       
@@ -1124,4 +1139,3 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
 };
 
 export default ModelViewer;
-
