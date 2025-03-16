@@ -1,3 +1,4 @@
+
 import MeasurementTools from '@/components/MeasurementTools';
 import { Measurement, MeasurementType, MeasurementPoint, calculatePolygonArea } from '@/utils/measurementUtils';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider } from "@/components/ui/sidebar";
@@ -102,8 +103,9 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
     }
   };
 
+  // Real-time area calculation for in-progress polygon
   const tempArea = tempPoints && tempPoints.length >= 3 
-    ? calculatePolygonArea(tempPoints.map(p => p.position))
+    ? calculatePolygonArea([...tempPoints.map(p => p.position), tempPoints[0].position])
     : 0;
 
   const canClosePolygon = activeTool === 'area' && tempPoints && tempPoints.length >= 3;
@@ -111,6 +113,10 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
   const handleClosePolygon = () => {
     if (canClosePolygon) {
       onClosePolygon();
+      toast({
+        title: "Fläche geschlossen",
+        description: `Die Flächenmessung wurde erfolgreich abgeschlossen (${tempArea < 0.01 ? `${(tempArea * 10000).toFixed(2)} cm²` : `${tempArea.toFixed(2)} m²`}).`,
+      });
     } else {
       toast({
         title: "Nicht genügend Punkte",
@@ -131,7 +137,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={handleClosePolygon}
-                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse"
+                className="text-xs py-1 h-auto border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse transition-all duration-300"
               >
                 <Square className="mr-1 h-3 w-3" />
                 Fläche schließen
@@ -215,7 +221,7 @@ const MeasurementToolsPanel: React.FC<MeasurementToolsPanelProps> = ({
               variant="outline" 
               size="sm" 
               onClick={handleClosePolygon}
-              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse"
+              className="w-full mb-3 border-blue-500 text-blue-500 hover:bg-blue-50 font-bold animate-pulse transition-all duration-300"
             >
               <Square className="mr-2 h-4 w-4" />
               Fläche schließen

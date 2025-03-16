@@ -15,7 +15,9 @@ import {
   findNearestEditablePoint,
   updateMeasurementGeometry,
   calculatePolygonArea,
-  closePolygon
+  closePolygon,
+  updateAreaPreview,
+  finalizePolygon
 } from '@/utils/measurementUtils';
 import { 
   calculateZoomFactor, 
@@ -456,14 +458,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
             const positions = updatedPoints.map(p => p.position);
             const area = calculatePolygonArea(positions);
             measurement.value = area;
+            
+            updateMeasurementGeometry(measurement);
           }
           
           modelViewer.updateMeasurement(selectedMeasurementId, { 
             points: updatedPoints,
             value: measurement.value 
           });
-          
-          updateMeasurementGeometry(measurement);
         }
       }
     } else if (!isDragging && !isFollowingMouse && modelViewer.measurementGroupRef?.current) {
@@ -848,6 +850,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
           if (lastMeasurement.type === 'area') {
             console.log("Aktualisiere die Flächenmessung nach dem Schließen");
             
+            finalizePolygon(lastMeasurement, modelViewer.measurementGroupRef.current || new THREE.Group());
+            
             const positions = lastMeasurement.points.map(p => p.position);
             const area = calculatePolygonArea(positions);
             
@@ -1128,6 +1132,31 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
       handleInitialTouchSetup();
     }
   }, [modelViewer.controls, modelViewer.loadedModel, isTouchDevice]);
+
+  useEffect(() => {
+    if (modelViewer.activeTool === 'area' && 
+        modelViewer.tempPoints && 
+        modelViewer.tempPoints.length >= 3 &&
+        modelViewer.measurementGroupRef?.current &&
+        modelViewer.camera) {
+      
+      const previewMeasurement: Measurement = {
+        id: 'preview',
+        type: 'area',
+        points: [...modelViewer.tempPoints],
+        value: 0,
+        unit: 'm²',
+        visible: true
+      };
+      
+      updateAreaPreview(
+        previewMeasurement, 
+        modelViewer.tempPoints, 
+        modelViewer.measurementGroupRef.current,
+        modelViewer.camera
+      );
+    }
+  }, [modelViewer.activeTool, modelViewer.tempPoints, modelViewer.measurementGroupRef, modelViewer.camera]);
 
   return (
     <div className="relative h-full w-full flex flex-col">
