@@ -802,7 +802,9 @@ export const findNearestEditablePoint = (
 };
 
 // Update the measurement lines and label with improved polygon closing
-export const updateMeasurementGeometry = (measurement: Measurement): void => {
+export const updateMeasurementGeometry = (
+  measurement: Measurement
+): void => {
   if (!measurement.points || measurement.points.length < 2) return;
   
   // Update lines if they exist
@@ -817,13 +819,15 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
     }
     // For area measurements - with proper closing line
     else if (measurement.type === 'area' && measurement.points.length >= 3) {
-      // Always work with and ensure a properly closed polygon
+      // Get positions from points
       const positions = measurement.points.map(p => p.position);
-      const closedPolygon = ensureClosedPolygon(positions);
-      const totalPoints = closedPolygon.length;
       
-      // Calculate how many lines we need
-      const requiredLines = totalPoints - 1;  // For a closed polygon
+      // For polygon measurements, make sure we have a line for each segment
+      const totalPoints = positions.length;
+      
+      // Calculate exactly how many lines we need
+      // For a closed polygon with n points, we need n lines (including the closing line)
+      const requiredLines = totalPoints;
       
       // Create line objects if they don't exist or if we need more
       if (!measurement.lineObjects) {
@@ -847,11 +851,11 @@ export const updateMeasurementGeometry = (measurement: Measurement): void => {
       // Update all the lines including the closure line
       for (let i = 0; i < requiredLines; i++) {
         const startIdx = i;
-        const endIdx = (i + 1) % closedPolygon.length;
+        const endIdx = (i + 1) % totalPoints;
         
         const linePoints = [
-          closedPolygon[startIdx].clone(),
-          closedPolygon[endIdx].clone()
+          positions[startIdx].clone(),
+          positions[endIdx].clone()
         ];
         
         if (i < measurement.lineObjects.length) {
@@ -957,9 +961,6 @@ export const updateAreaPreview = (
     return;
   }
   
-  // We'll only show points during measurement, not preview lines or area calculations
-  // This removes the temporary preview lines and area calculation until the polygon is closed
-  
   // Clean up any existing preview objects to ensure they don't accumulate
   if (measurement.previewLineObject) {
     scene.remove(measurement.previewLineObject);
@@ -998,51 +999,7 @@ export const updateAreaPreview = (
   }
 };
 
-// Finalize polygon measurement after preview - Fixed to keep points visible and fully close polygon
-export const finalizePolygon = (
-  measurement: Measurement,
-  scene: THREE.Group
-): void => {
-  // First, clean up ONLY preview objects but NOT the actual measurement points
-  clearPreviewObjects(measurement, scene);
-  
-  // Ensure the polygon is properly closed
-  if (measurement.type === 'area' && measurement.points.length >= 3) {
-    // Make sure the polygon is closed in 3D
-    const positions = measurement.points.map(p => p.position);
-    const closedPositions = ensureClosedPolygon(positions);
-    
-    // If a new point was added for closure, we need to update the measurement
-    if (closedPositions.length > positions.length) {
-      const firstPoint = measurement.points[0];
-      measurement.points.push({
-        position: firstPoint.position.clone(),
-        worldPosition: firstPoint.worldPosition.clone()
-      });
-    }
-    
-    // Calculate the final area value
-    measurement.value = calculatePolygonArea(closedPositions);
-    
-    // Update all geometry with the finalized points
-    updateMeasurementGeometry(measurement);
-    
-    // IMPORTANT: Keep all points visible and editable
-    if (measurement.pointObjects) {
-      measurement.pointObjects.forEach(point => {
-        if (point) {
-          point.visible = true;
-          // Make sure the point is draggable
-          if (point.userData) {
-            point.userData.isDraggable = true;
-          }
-        }
-      });
-    }
-  }
-};
-
-// Clear temporary preview objects - Enhanced to be more thorough
+// Completely rewritten to be more cautious and not delete measurement points
 export const clearPreviewObjects = (
   measurement: Measurement,
   scene: THREE.Group
@@ -1084,14 +1041,15 @@ export const clearPreviewObjects = (
     measurement.previewLabelObject = undefined;
   }
   
-  // Find and remove ALL preview objects related to this measurement - more aggressive cleanup
+  // IMPORTANT: Only remove objects marked as preview - not actual measurement points
+  // Find objects that are explicitly marked as preview
   scene.traverse((object) => {
     if (object.userData && 
-       (object.userData.isPreview || 
-        object.userData.isTemporary || 
-        object.userData.measurementId === 'preview' ||
-        (object.userData.measurementId === measurement.id && object.userData.isPreviewElement))) {
+       (object.userData.isPreview === true || 
+        object.userData.isTemporary === true || 
+        object.userData.measurementId === 'preview')) {
       
+      // Only remove if explicitly marked as preview
       if (object.parent) {
         object.parent.remove(object);
       }
@@ -1126,23 +1084,27 @@ export const clearPreviewObjects = (
     }
   });
   
-  // Also remove any objects directly in the scene with names matching this measurement's preview patterns
+  // Also remove objects with names containing 'preview' or 'temp'
+  // but be careful not to match regular measurement points
   const objectsToRemove: THREE.Object3D[] = [];
   
   scene.traverse((object) => {
     const name = object.name.toLowerCase();
     
-    if (name.includes('preview') || 
-        name.includes('temp') || 
-        name.includes(`preview-${measurement.id}`) || 
-        name.includes(`temp-${measurement.id}`)) {
+    // Only match exact patterns for preview/temporary objects
+    if (name.startsWith('preview-') || 
+        name.startsWith('temp-') || 
+        name === 'preview' || 
+        name === 'temporary') {
       objectsToRemove.push(object);
     }
   });
   
   // Remove identified objects
   objectsToRemove.forEach(object => {
-    scene.remove(object);
+    if (object.parent) {
+      object.parent.remove(object);
+    }
     
     if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
       if (object.geometry) object.geometry.dispose();
@@ -1155,4 +1117,53 @@ export const clearPreviewObjects = (
       }
     }
   });
+};
+
+// Completely rewritten finalizePolygon to ensure points remain visible
+export const finalizePolygon = (
+  measurement: Measurement,
+  scene: THREE.Group
+): void => {
+  // First, carefully clean up ONLY preview objects
+  clearPreviewObjects(measurement, scene);
+  
+  // Ensure the polygon is properly closed
+  if (measurement.type === 'area' && measurement.points.length >= 3) {
+    // Make sure the polygon is closed in 3D
+    const positions = measurement.points.map(p => p.position);
+    const firstPoint = positions[0];
+    const lastPoint = positions[positions.length - 1];
+    
+    // Check if we need to close the polygon
+    const needsClosure = firstPoint.distanceTo(lastPoint) > 0.001;
+    
+    // If the polygon needs to be closed, add the first point at the end
+    if (needsClosure) {
+      console.log("Closing the polygon by adding first point at the end");
+      measurement.points.push({
+        position: firstPoint.clone(),
+        worldPosition: firstPoint.clone()
+      });
+    }
+    
+    // Calculate the final area value with the closed polygon
+    const closedPositions = measurement.points.map(p => p.position);
+    measurement.value = calculatePolygonArea(closedPositions);
+    
+    // Update all geometry with the finalized points
+    updateMeasurementGeometry(measurement);
+    
+    // CRITICAL: Ensure all points remain visible and draggable
+    if (measurement.pointObjects) {
+      measurement.pointObjects.forEach(point => {
+        if (point) {
+          point.visible = true;
+          // Make sure the point is draggable
+          if (point.userData) {
+            point.userData.isDraggable = true;
+          }
+        }
+      });
+    }
+  }
 };

@@ -892,20 +892,27 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ forceHideHeader = false, init
                 });
               }
               
-              // Ensure all points remain visible
+              // Force all points to be visible
               if (lastMeasurement.pointObjects) {
                 lastMeasurement.pointObjects.forEach(point => {
-                  if (point) point.visible = true;
+                  if (point) {
+                    point.visible = true;
+                    // Ensure it remains draggable
+                    if (point.userData) {
+                      point.userData.isDraggable = true;
+                    }
+                  }
                 });
               }
               
-              // IMPORTANT: Switch to navigation mode explicitly
+              // IMPORTANT: Switch to navigation mode explicitly after a short delay
+              // This allows the points to fully initialize
               setTimeout(() => {
+                // Force update geometry after switching tools
+                updateMeasurementGeometry(lastMeasurement);
+                // Then switch to navigation mode
                 modelViewer.setActiveTool('none');
-              }, 0);
-              
-              // Update the measurement visuals
-              updateMeasurementGeometry(lastMeasurement);
+              }, 50);
               
               toast({
                 title: "Fläche berechnet",
